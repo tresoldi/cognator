@@ -1,0 +1,11 @@
+/cognator
+/bench
+/diag
+/investigate
+/oovscan
+/sweep
+/bin/
+/tmp/
+*.prof
+*.test
+*.out

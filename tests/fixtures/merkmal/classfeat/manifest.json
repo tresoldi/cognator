@@ -1,0 +1,114 @@
+{
+  "distance_normalization": {
+    "d_max_raw": 0.94605918,
+    "description": "d' = clip(d_raw / d_max_raw, 0, 1)",
+    "method": "linear_scale"
+  },
+  "export_date": "2023-11-14T22:13:20Z",
+  "files": {
+    "classes.tsv": {
+      "bytes": 573,
+      "present": true,
+      "rows": 110,
+      "sha256": "a92bd07420fd79abcc052380703633fb8cd67a28f77ad2abc5a28ac9724ccafb"
+    },
+    "distances.tsv": {
+      "bytes": 180871,
+      "present": true,
+      "rows": 12100,
+      "sha256": "27bd5aeb8a711da31e280ceb18bb99ffffcb3016b79103ece726233c9c1cf3c2"
+    },
+    "fallback.tsv": {
+      "bytes": 18,
+      "present": true,
+      "rows": 0,
+      "sha256": "00e3981701df5c12cd8bc43592f90ecb641d43cbcb5d1ea8783efe57b7e9efdf"
+    },
+    "partitions.tsv": {
+      "bytes": 33960,
+      "present": true,
+      "rows": 550,
+      "sha256": "31e6e49f5ec8879f99c3e69aafab6c85e17092c6732a93a319290f6c738f7c6c"
+    },
+    "prosody.tsv": {
+      "bytes": 561,
+      "present": true,
+      "rows": 110,
+      "sha256": "e3b4e237b9c1544365e7dfbddcf423fef03067f41865102da395c423ac0087e5"
+    }
+  },
+  "grapheme_count": 110,
+  "merkmal_version": "0.4.0",
+  "partitions": {
+    "definitions": {
+      "coarse": {
+        "class_count": 11,
+        "features": [
+          "type",
+          "sonorant",
+          "continuant",
+          "high",
+          "back"
+        ]
+      },
+      "cognate": {
+        "class_count": 30,
+        "features": [
+          "back",
+          "continuant",
+          "coronal",
+          "dorsal",
+          "high",
+          "labial",
+          "sonorant",
+          "type",
+          "voice"
+        ],
+        "source": "custom"
+      },
+      "fine": {
+        "class_count": 34,
+        "features": [
+          "type",
+          "sonorant",
+          "continuant",
+          "labial",
+          "coronal",
+          "dorsal",
+          "voice",
+          "high",
+          "back",
+          "round"
+        ]
+      },
+      "medium": {
+        "class_count": 20,
+        "features": [
+          "type",
+          "sonorant",
+          "continuant",
+          "labial",
+          "coronal",
+          "dorsal",
+          "high",
+          "back"
+        ]
+      },
+      "prosody": {
+        "class_count": 4,
+        "features": [
+          "role"
+        ]
+      }
+    },
+    "levels": [
+      "prosody",
+      "coarse",
+      "medium",
+      "fine",
+      "cognate"
+    ]
+  },
+  "schema_version": 1,
+  "system": "classfeat"
+}
