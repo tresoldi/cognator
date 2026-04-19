@@ -25,7 +25,6 @@ import (
 type Spec struct {
 	Iterations     int     // EM passes per lect-pair (default 3)
 	Lambda         float64 // learned/prior blend (default 0.5)
-	Alpha          float64 // Dirichlet pseudocount (default 1.0)
 	Threshold      float64 // manual override; 0 → Otsu auto-threshold
 	ThresholdMin   float64 // Otsu clamp floor (default 0.2)
 	ThresholdMax   float64 // Otsu clamp ceiling (default 0.8)
@@ -35,11 +34,9 @@ type Spec struct {
 	BootstrapSigma float64 // stddev of edge-distance perturbation (default 0.05)
 	ClusterScope   string  // "concept" (default) | "global"
 	MinPairs       int     // skip training a scorer if the pair has <N form-pairs; use prior (default 5)
-	AlignmentMode  string  // "global" | "combined" (default; global + local + overlap, lingpy-style)
-	ClassReduce    bool    // strip IPA modifiers/diacritics upstream so scoring trains on coarse classes (NFD-strip heuristic)
-	PartitionLevel string  // use merkmal's partition table at this level ("coarse"/"medium"/"fine") instead of NFD-strip; overrides ClassReduce when set
+	AlignmentMode  string  // "global" | "combined" (default; global + local + overlap)
+	ClassReduce    bool    // strip IPA modifiers/diacritics upstream (NFD-strip heuristic)
 	NullMode       string  // "marginal" (default, cheap) | "shuffle" (permutation-based, more accurate on sparse pairs)
-	NullMinRuns    int     // floor on shuffle runs before adaptive stopping can check (default 20)
 	NullMaxRuns    int     // cap on shuffle runs per lect-pair (default 200; adaptive stopping usually stops earlier)
 }
 
@@ -55,37 +52,34 @@ type Result struct {
 // DETECTION, not evaluation).
 func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
 	if spec.Iterations <= 0 {
-		spec.Iterations = 3
+		spec.Iterations = DefaultIterations
 	}
 	if spec.Lambda <= 0 {
-		spec.Lambda = 0.5
-	}
-	if spec.Alpha <= 0 {
-		spec.Alpha = 1.0
+		spec.Lambda = DefaultLambda
 	}
 	if spec.ThresholdMin <= 0 {
-		spec.ThresholdMin = 0.2
+		spec.ThresholdMin = DefaultThresholdMin
 	}
 	if spec.ThresholdMax <= 0 {
-		spec.ThresholdMax = 0.8
+		spec.ThresholdMax = DefaultThresholdMax
 	}
 	if spec.BootstrapSigma <= 0 {
-		spec.BootstrapSigma = 0.05
+		spec.BootstrapSigma = DefaultBootstrapSigma
 	}
 	if spec.ClusterScope == "" {
-		spec.ClusterScope = "concept"
+		spec.ClusterScope = DefaultClusterScope
 	}
 	if spec.MinPairs <= 0 {
-		spec.MinPairs = 5
+		spec.MinPairs = DefaultMinPairs
 	}
 	if spec.AlignmentMode == "" {
-		spec.AlignmentMode = "combined"
+		spec.AlignmentMode = DefaultAlignmentMode
 	}
 	if spec.NullMode == "" {
-		spec.NullMode = "marginal"
+		spec.NullMode = DefaultNullMode
 	}
 	if spec.NullMaxRuns <= 0 {
-		spec.NullMaxRuns = 200
+		spec.NullMaxRuns = DefaultNullMaxRuns
 	}
 
 	out := Result{OOV: map[string]int{}}
@@ -130,13 +124,7 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 			if !b.Known(g) {
 				res.OOV[g]++
 			}
-			if spec.PartitionLevel != "" {
-				if c := b.Partition(spec.PartitionLevel, g); c != "" {
-					g = c
-				} else if spec.ClassReduce {
-					g = segment.ClassReduce(g)
-				}
-			} else if spec.ClassReduce {
+			if spec.ClassReduce {
 				g = segment.ClassReduce(g)
 			}
 			gs = append(gs, g)
@@ -188,18 +176,7 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 	}
 
 	var reducer func(string) string
-	if spec.PartitionLevel != "" {
-		lvl := spec.PartitionLevel
-		reducer = func(g string) string {
-			if c := b.Partition(lvl, g); c != "" {
-				return c
-			}
-			if spec.ClassReduce {
-				return segment.ClassReduce(g)
-			}
-			return g
-		}
-	} else if spec.ClassReduce {
+	if spec.ClassReduce {
 		reducer = segment.ClassReduce
 	}
 	lectIndex := score.IndexByLectWithReducer(recs, b, reducer)
@@ -209,7 +186,7 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 	jobs := make(chan job, workers*2)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	priorForWorkers := align.PriorScorer(b)
+	priorForWorkers := align.ProsodyAwareScorer(b)
 	for w := 0; w < workers; w++ {
 		wg.Add(1)
 		go func() {
@@ -227,12 +204,6 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 					if spec.NullMode == "shuffle" {
 						nullSpec := score.DefaultShuffleNullSpec(spec.Seed + uint64(len(fps)))
 						nullSpec.MaxRuns = spec.NullMaxRuns
-						if spec.NullMinRuns > 0 {
-							nullSpec.MinRuns = spec.NullMinRuns
-							if nullSpec.MinRuns > nullSpec.MaxRuns {
-								nullSpec.MaxRuns = nullSpec.MinRuns
-							}
-						}
 						null = score.ComputeShuffleNull(fps, priorForWorkers, nullSpec)
 					}
 					tab := score.TrainIteratedWithShuffle(jb.a, jb.b, fps, b, spec.Iterations, spec.Lambda, null)
@@ -288,7 +259,7 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 	// concept-scope by design of PairByConcept). For typical corpora
 	// these add dominant volume, so we parallelize.
 	if spec.ClusterScope == "global" {
-		priorOnly := align.PriorScorer(b)
+		priorOnly := align.ProsodyAwareScorer(b)
 		crossEdges, crossDists := computeCrossConceptEdges(globalForms, tokens, priorOnly, workers)
 		globalEdges = append(globalEdges, crossEdges...)
 		allDistances = append(allDistances, crossDists...)
@@ -405,59 +376,6 @@ func computeCrossConceptEdges(forms []wordlist.Record, tokens map[string][]strin
 		d = append(d, r.dists...)
 	}
 	return e, d
-}
-
-// computeGlobalEdges is retained for compatibility with older
-// callers; currently unused internally.
-func computeGlobalEdges(forms []wordlist.Record, tokens map[string][]string, pairScorers map[pairKey]align.Scorer, prior align.Scorer, workers int) []cEdge {
-	n := len(forms)
-	if n < 2 {
-		return nil
-	}
-	chunks := workers * 4
-	if chunks < 1 {
-		chunks = 1
-	}
-	type batch struct {
-		edges []cEdge
-	}
-	results := make([]batch, chunks)
-	var wg sync.WaitGroup
-	for c := 0; c < chunks; c++ {
-		wg.Add(1)
-		go func(c int) {
-			defer wg.Done()
-			var local []cEdge
-			for i := c; i < n; i += chunks {
-				fi := forms[i]
-				ti := tokens[fi.ID]
-				if len(ti) == 0 {
-					continue
-				}
-				for j := i + 1; j < n; j++ {
-					fj := forms[j]
-					if fi.LanguageID == fj.LanguageID {
-						continue
-					}
-					tj := tokens[fj.ID]
-					if len(tj) == 0 {
-						continue
-					}
-					s := pickScorer(pairScorers, prior, fi.LanguageID, fj.LanguageID)
-					src, tgt := canonicalGraphemes(tokens, fi, fj)
-					d := align.Distance(src, tgt, s)
-					local = append(local, cEdge{i: i, j: j, d: d})
-				}
-			}
-			results[c] = batch{edges: local}
-		}(c)
-	}
-	wg.Wait()
-	var out []cEdge
-	for _, r := range results {
-		out = append(out, r.edges...)
-	}
-	return out
 }
 
 // clusterGlobal runs Infomap on one family-wide graph of cross-lect
@@ -623,35 +541,6 @@ func clusterConfidences(part []int, rawEdges []cEdge, threshold float64) []float
 		out[i] = wSum[i] / float64(wCnt[i])
 	}
 	return out
-}
-
-type pairKey struct{ src, tgt string }
-
-func pickScorer(scorers map[pairKey]align.Scorer, prior align.Scorer, a, b string) align.Scorer {
-	src, tgt := canonicalPair(a, b)
-	if s, ok := scorers[pairKey{src, tgt}]; ok {
-		return s
-	}
-	return prior
-}
-
-func canonicalPair(a, b string) (string, string) {
-	if a < b {
-		return a, b
-	}
-	return b, a
-}
-
-func canonicalGraphemes(tokens map[string][]string, fa, fb wordlist.Record) ([]string, []string) {
-	src, tgt := canonicalPair(fa.LanguageID, fb.LanguageID)
-	if fa.LanguageID == src {
-		return tokens[fa.ID], tokens[fb.ID]
-	}
-	if fb.LanguageID == src {
-		return tokens[fb.ID], tokens[fa.ID]
-	}
-	_ = tgt
-	return tokens[fa.ID], tokens[fb.ID]
 }
 
 func groupByFamily(recs []wordlist.Record) map[string][]wordlist.Record {

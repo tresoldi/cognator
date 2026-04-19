@@ -23,6 +23,19 @@ import (
 // alignment columns.
 const Gap = "-"
 
+// priorSharpness controls how quickly the merkmal-distance prior
+// decays. exp(-priorSharpness·d): d=0 → 1.0, d=0.5 → 0.135, d=1 →
+// 0.018. Chosen to give identical graphemes dominant prior mass
+// while still distinguishing nearby-similar from distant pairs.
+const priorSharpness = 4.0
+
+// tanhScale squashes log-odds (log₂ space) into tanh's effective
+// range. log₂(10) ≈ 3.3, so lo/3 puts a "10× overrepresented" cell
+// near tanh's saturating region. Tested against raw-clamp
+// alternatives (±2, ±5): clamping gains on low-recall datasets but
+// crashes precision on high-precision ones.
+const tanhScale = 3.0
+
 // FormPair is one comparandum: two grapheme sequences sharing a
 // concept across the source and target lects. SourceID/TargetID
 // are the originating wordlist.Record IDs, used by downstream
@@ -148,7 +161,7 @@ func (t *CorrespondenceTable) LogOdds(b *merkmal.Bundle, source, target string, 
 	}
 	observed := float64(t.attested[source][target])
 	total := float64(t.totalColumns)
-	prior := math.Exp(-4.0 * b.Distance(source, target))
+	prior := math.Exp(-priorSharpness * b.Distance(source, target))
 	numerator := (observed + alpha*prior) / (total + alpha)
 
 	var denominator float64
@@ -329,12 +342,12 @@ type learnedScorer struct {
 func LearnedScorer(b *merkmal.Bundle, table *CorrespondenceTable, lambda float64) align.Scorer {
 	return &learnedScorer{
 		bundle: b,
-		prior:  align.PriorScorer(b),
+		prior:  align.ProsodyAwareScorer(b),
 		table:  table,
 		lambda: lambda,
 		alpha:  1.0,
-		gapT:   0.5,
-		gapS:   0.5,
+		gapT:   align.DefaultGapCost,
+		gapS:   align.DefaultGapCost,
 	}
 }
 
@@ -343,14 +356,8 @@ func (l *learnedScorer) Score(a, b string) float64 {
 	if l.lambda == 0 {
 		return ps
 	}
-	// tanh squashes log-odds to [-1, +1] so learned and prior live on
-	// comparable scales for blending. Tested against raw-clamp
-	// alternatives (±2, ±5): they gain on low-recall datasets
-	// (lionnetyotonahua, chacontukanoan) but induce precision
-	// crashes on high-precision ones (kesslersignificance,
-	// blustaustronesian), netting lower mean F. Keep tanh.
 	lo := l.table.LogOdds(l.bundle, a, b, l.alpha)
-	ls := math.Tanh(lo / 3.0)
+	ls := math.Tanh(lo / tanhScale)
 	return (1.0-l.lambda)*ps + l.lambda*ls
 }
 

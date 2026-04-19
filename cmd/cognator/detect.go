@@ -20,7 +20,6 @@ func detectCmd(args []string) {
 	bundle := fs.String("bundle", "tests/fixtures/merkmal/descriptive", "merkmal bundle directory")
 	iters := fs.Int("iterations", 3, "EM iterations per ordered lect-pair")
 	lambda := fs.Float64("lambda", 0.5, "learned-vs-prior blend in [0, 1]")
-	alpha := fs.Float64("alpha", 1.0, "Dirichlet pseudocount strength")
 	threshold := fs.Float64("threshold", 0, "distance threshold (0 = auto via Otsu)")
 	threshMin := fs.Float64("threshold-min", 0.2, "Otsu clamp floor")
 	threshMax := fs.Float64("threshold-max", 0.8, "Otsu clamp ceiling")
@@ -56,7 +55,6 @@ func detectCmd(args []string) {
 	spec := pipeline.Spec{
 		Iterations:     *iters,
 		Lambda:         *lambda,
-		Alpha:          *alpha,
 		Threshold:      *threshold,
 		ThresholdMin:   *threshMin,
 		ThresholdMax:   *threshMax,

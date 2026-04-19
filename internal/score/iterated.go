@@ -33,7 +33,7 @@ func TrainIteratedWithShuffle(srcLect, tgtLect string, pairs []FormPair, bundle 
 	if iterations < 1 {
 		iterations = 1
 	}
-	var scorer align.Scorer = align.PriorScorer(bundle)
+	var scorer align.Scorer = align.ProsodyAwareScorer(bundle)
 	var table *CorrespondenceTable
 	for i := 0; i < iterations; i++ {
 		if null != nil {

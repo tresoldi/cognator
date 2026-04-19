@@ -101,7 +101,7 @@ func join(parts []string, sep string) string {
 
 func TestDetectSyntheticRecoversEachConceptOneCluster(t *testing.T) {
 	recs := syntheticCorpus()
-	spec := Spec{Iterations: 3, Lambda: 0.5, Alpha: 1.0, Seed: 1}
+	spec := Spec{Iterations: 3, Lambda: 0.5, Seed: 1}
 	res := Detect(recs, bundle, spec)
 	if len(res.Rows) != len(recs) {
 		t.Fatalf("got %d rows, want %d", len(res.Rows), len(recs))
@@ -180,7 +180,7 @@ func TestDetectWalworthPolynesianB3(t *testing.T) {
 		t.Skipf("too few walworth records: %d", len(recs))
 	}
 
-	spec := Spec{Iterations: 3, Lambda: 0.5, Alpha: 1.0, Seed: 1}
+	spec := Spec{Iterations: 3, Lambda: 0.5, Seed: 1}
 	res := Detect(recs, bundle, spec)
 	pred := map[string]string{}
 	for _, r := range res.Rows {

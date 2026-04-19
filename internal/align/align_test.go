@@ -163,3 +163,37 @@ func TestSymmetricDistanceOnSymmetricScorer(t *testing.T) {
 func split(s string) []string {
 	return strings.Fields(s)
 }
+
+func TestProsodyAwarePenalizesCrossRoleScore(t *testing.T) {
+	plain := PriorScorer(descriptiveBundle)
+	prosody := ProsodyAwareScorer(descriptiveBundle)
+	// p is a consonant, a is a vowel — distinct known roles.
+	plainCV := plain.Score("p", "a")
+	prosodyCV := prosody.Score("p", "a")
+	if math.Abs((plainCV-prosodyCV)-RoleMismatchPenalty) > 1e-9 {
+		t.Errorf("prosody penalty not applied to C~V: plain=%.4f prosody=%.4f want diff=%.4f",
+			plainCV, prosodyCV, RoleMismatchPenalty)
+	}
+	// Same-role pair: no penalty.
+	if plain.Score("p", "t") != prosody.Score("p", "t") {
+		t.Errorf("prosody penalty spuriously applied to C~C: plain=%.4f prosody=%.4f",
+			plain.Score("p", "t"), prosody.Score("p", "t"))
+	}
+	// Identity: no penalty.
+	if plain.Score("a", "a") != prosody.Score("a", "a") {
+		t.Errorf("prosody penalty spuriously applied to identity")
+	}
+}
+
+func TestProsodyAwareKeepsCompatibleAlignments(t *testing.T) {
+	// Latin-Italian nokte~notte alignments should still contain the k~t
+	// and t~t columns even with role awareness — both k and t are
+	// consonants, and the penalty does not fire inside a C~C pairing.
+	s := ProsodyAwareScorer(descriptiveBundle)
+	a := split("n o k t e")
+	b := split("n o t t e")
+	pairs := alignedPairs(NeedlemanWunsch(a, b, s))
+	if !strings.Contains(pairs, "k~t") || !strings.Contains(pairs, "t~t") {
+		t.Errorf("prosody-aware NW broke CC-path alignment: %s", pairs)
+	}
+}

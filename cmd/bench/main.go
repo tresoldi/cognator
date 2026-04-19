@@ -48,7 +48,6 @@ func main() {
 		outMD         = flag.String("out-md", "benchmark/results.md", "markdown summary output")
 		iters         = flag.Int("iterations", 3, "EM iterations per lect-pair")
 		lambda        = flag.Float64("lambda", 0.5, "learned/prior blend (0.0=prior only, 1.0=learned only)")
-		alpha         = flag.Float64("alpha", 1.0, "Dirichlet pseudocount")
 		scope         = flag.String("cluster-scope", "concept", "'concept' or 'global'")
 		thresholdOver = flag.Float64("threshold", 0, "override threshold (0 = Otsu per-dataset)")
 		thresholdMin  = flag.Float64("threshold-min", 0, "Otsu clamp floor (0 = default 0.2)")
@@ -57,10 +56,8 @@ func main() {
 		jobs          = flag.Int("jobs", 0, "workers per family (0 = GOMAXPROCS)")
 		parallelFam   = flag.Int("parallel-families", 2, "concurrent families")
 		alignMode     = flag.String("alignment-mode", "combined", "'global' or 'combined' (global+local+overlap, default)")
-		classReduce   = flag.Bool("class-reduce", true, "NFD-strip IPA modifiers upstream (fallback when --partition-level is empty)")
-		partitionLvl  = flag.String("partition-level", "", "merkmal partition level to use ('coarse'/'medium'/'fine'); empty = use class-reduce NFD strip")
+		classReduce   = flag.Bool("class-reduce", true, "NFD-strip IPA modifiers upstream")
 		nullMode      = flag.String("null-mode", "marginal", "'marginal' (default) or 'shuffle' (permutation-based null, slower but more accurate)")
-		nullMinRuns   = flag.Int("null-min-runs", 0, "floor on shuffle runs before adaptive stopping can kick in (0 = default 20)")
 		nullMaxRuns   = flag.Int("null-max-runs", 200, "cap on shuffle runs per lect-pair; adaptive stopping may end earlier")
 		filter        = flag.String("datasets", "", "comma list of families; empty = all")
 		minCognacy    = flag.Int("min-cognacy", 50, "skip families with fewer than N Cognacy-annotated forms")
@@ -111,7 +108,6 @@ func main() {
 			results[i] = runFamily(name, byFam[name], b, pipeline.Spec{
 				Iterations:    *iters,
 				Lambda:        *lambda,
-				Alpha:         *alpha,
 				Threshold:     *thresholdOver,
 				ThresholdMin:  *thresholdMin,
 				ThresholdMax:  *thresholdMax,
@@ -119,11 +115,9 @@ func main() {
 				Jobs:          *jobs,
 				ClusterScope:  *scope,
 				AlignmentMode: *alignMode,
-				ClassReduce:    *classReduce,
-				PartitionLevel: *partitionLvl,
-				NullMode:       *nullMode,
-				NullMinRuns:    *nullMinRuns,
-				NullMaxRuns:    *nullMaxRuns,
+				ClassReduce:   *classReduce,
+				NullMode:      *nullMode,
+				NullMaxRuns:   *nullMaxRuns,
 			}, *minCognacy, *maxLects, *maxForms)
 			r := results[i]
 			if r.Skipped != "" {
