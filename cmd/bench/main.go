@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/pprof"
 	"sort"
 	"strings"
 	"sync"
@@ -61,8 +62,10 @@ func main() {
 		nullMaxRuns   = flag.Int("null-max-runs", 200, "cap on shuffle runs per lect-pair; adaptive stopping may end earlier")
 		filter        = flag.String("datasets", "", "comma list of families; empty = all")
 		minCognacy    = flag.Int("min-cognacy", 50, "skip families with fewer than N Cognacy-annotated forms")
-		maxLects      = flag.Int("max-lects", 250, "skip families with more than N distinct lects (0 = no limit)")
-		maxForms      = flag.Int("max-forms", 0, "skip families with more than N forms (0 = no limit)")
+		maxLects      = flag.Int("max-lects", 250, "skip families with more than N distinct lects (0 = no limit; memory guard)")
+		maxForms      = flag.Int("max-forms", 15000, "skip families with more than N forms (0 = no limit; memory guard — mid-family NW edge transients can balloon 30x sys on L²-heavy families)")
+		memProfile    = flag.String("mem-profile", "", "write post-run heap profile to this file (go tool pprof)")
+		memProfileEach = flag.String("mem-profile-each", "", "write a heap profile after EACH family to this dir (filename = family.prof)")
 	)
 	flag.Parse()
 
@@ -123,12 +126,33 @@ func main() {
 			if r.Skipped != "" {
 				log.Printf("[%s] skipped: %s", r.Dataset, r.Skipped)
 			} else {
-				log.Printf("[%s] lects=%d forms=%d P=%.3f R=%.3f F=%.3f threshold=%.3f clusts=%d (%dms)",
-					r.Dataset, r.Lects, r.Forms, r.Precision, r.Recall, r.F, r.Threshold, r.Clusters, r.ElapsedMillis)
+				var ms runtime.MemStats
+				runtime.ReadMemStats(&ms)
+				log.Printf("[%s] lects=%d forms=%d P=%.3f R=%.3f F=%.3f threshold=%.3f clusts=%d (%dms) alloc=%dMB sys=%dMB",
+					r.Dataset, r.Lects, r.Forms, r.Precision, r.Recall, r.F, r.Threshold, r.Clusters, r.ElapsedMillis,
+					ms.Alloc/(1<<20), ms.Sys/(1<<20))
+				if *memProfileEach != "" {
+					runtime.GC()
+					f, err := os.Create(filepath.Join(*memProfileEach, name+".prof"))
+					if err == nil {
+						_ = pprof.WriteHeapProfile(f)
+						_ = f.Close()
+					}
+				}
 			}
 		}(i, name)
 	}
 	wg.Wait()
+
+	if *memProfile != "" {
+		runtime.GC()
+		f, err := os.Create(*memProfile)
+		if err == nil {
+			_ = pprof.WriteHeapProfile(f)
+			_ = f.Close()
+			log.Printf("wrote heap profile %s", *memProfile)
+		}
+	}
 
 	if err := ensureDir(*outTSV); err != nil {
 		log.Fatalf("mkdir: %v", err)
