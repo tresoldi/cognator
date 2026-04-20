@@ -33,12 +33,101 @@ const (
 	// DefaultNullMaxRuns caps the shuffle null's permutation budget per
 	// lect-pair. Adaptive stopping usually halts far earlier.
 	DefaultNullMaxRuns = 200
+
+	// DefaultThresholdShrink controls how much a concept-local threshold
+	// is pulled toward the family-level prior in "concept-shrink" mode.
+	// 0 = pure concept-local Otsu; 1 = pure family prior.
+	DefaultThresholdShrink = 0.5
+
+	// DefaultGraphTopK expands support-mode candidate graphs with the
+	// k nearest neighbors of each node even when they sit above the
+	// family threshold.
+	DefaultGraphTopK = 2
+
+	// DefaultGraphAdaptiveMargin is the minimum support gap between a
+	// node's best and second-best top-k neighbors required for that
+	// node to sponsor a unilateral expansion edge in adaptive mode.
+	DefaultGraphAdaptiveMargin = 0.1
+
+	// DefaultGraphAdaptiveEitherMax is the ambiguity-share ceiling
+	// below which adaptive mode simply reuses the legacy either-endpoint
+	// expansion policy for the whole concept graph.
+	DefaultGraphAdaptiveEitherMax = 0.15
+
+	// DefaultGraphAdaptiveAmbiguity is the share of active nodes that
+	// must look ambiguous before adaptive mode falls back to mutual
+	// expansion for the whole concept graph.
+	DefaultGraphAdaptiveAmbiguity = 0.5
+
+	// DefaultGraphContrastivePenalty scales the optional edge penalty
+	// applied when an edge is locally dominated by stronger rivals.
+	// Zero keeps legacy behavior.
+	DefaultGraphContrastivePenalty = 0.0
+
+	// DefaultGraphContrastiveFloor ignores small best-rival gaps before
+	// the contrastive penalty starts to activate.
+	DefaultGraphContrastiveFloor = 0.05
+
+	// DefaultGraphRisk* weights define the calibrated edge-risk blend
+	// used by the contrastive penalty. By default we preserve the
+	// previous behavior by averaging rank and rival-gap risk only.
+	DefaultGraphRiskRankWeight = 0.5
+	DefaultGraphRiskGapWeight = 0.5
+	DefaultGraphRiskTriangleWeight = 0.0
+	DefaultGraphRiskUnilateralWeight = 0.0
+
+	// DefaultGraphMutualBoost raises the weight of mutual top-k edges
+	// toward 1.0 in support mode.
+	DefaultGraphMutualBoost = 0.2
+
+	// DefaultGraphTriangleBoost raises the weight of edges that are
+	// supported by shared neighbors in the candidate graph.
+	DefaultGraphTriangleBoost = 0.3
+
+	// DefaultGraphUnilateralPenalty reduces the weight of non-mutual
+	// top-k expansion edges when both endpoints already have stronger
+	// local alternatives. Default 0 keeps legacy support behavior.
+	DefaultGraphUnilateralPenalty = 0.0
+
+	// DefaultGraphRivalFloor is the support level above which the
+	// unilateral-edge penalty starts to activate.
+	DefaultGraphRivalFloor = 0.6
+
+	// DefaultRefineCoreWeight is the minimum internal edge weight used
+	// by the post-cluster core-connectivity refinement.
+	DefaultRefineCoreWeight = 0.75
+
+	// DefaultRefineConfidenceThreshold gates node reassignment to only
+	// the least confident members of a cluster.
+	DefaultRefineConfidenceThreshold = 0.55
+
+	// DefaultRefineAltRatio requires the strongest alternative cluster
+	// support to exceed the current in-cluster mean by this factor
+	// before reassignment is allowed.
+	DefaultRefineAltRatio = 1.1
+
+	// DefaultRefineBridgeRatio removes weak in-cluster edges incident
+	// to low-confidence nodes when the edge falls below this fraction
+	// of the node's mean in-cluster support.
+	DefaultRefineBridgeRatio = 0.7
+
+	// DefaultRefineClusterConfidenceThreshold triggers local reclustering
+	// only for clusters whose mean member confidence falls below this value.
+	DefaultRefineClusterConfidenceThreshold = 0.75
+
+	// DefaultRefineLocalCoreWeight is the edge floor used by local
+	// reclustering on flagged clusters.
+	DefaultRefineLocalCoreWeight = 0.8
 )
 
 // Default string values (const-incompatible via Go's zero-value rules,
 // kept as plain variables).
 var (
-	DefaultClusterScope  = "concept"
-	DefaultAlignmentMode = "combined"
-	DefaultNullMode      = "marginal"
+	DefaultClusterScope       = "concept"
+	DefaultAlignmentMode      = "combined"
+	DefaultNullMode           = "marginal"
+	DefaultThresholdMode      = "family"
+	DefaultGraphMode          = "threshold"
+	DefaultGraphExpansionMode = "either"
+	DefaultRefineMode         = "none"
 )

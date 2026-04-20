@@ -14,6 +14,7 @@ import (
 
 	"github.com/tresoldi/cognator/internal/align"
 	"github.com/tresoldi/cognator/internal/cluster"
+	"github.com/tresoldi/cognator/internal/evidence"
 	"github.com/tresoldi/cognator/internal/merkmal"
 	"github.com/tresoldi/cognator/internal/score"
 	"github.com/tresoldi/cognator/internal/segment"
@@ -23,21 +24,46 @@ import (
 // Spec is the user-visible configuration for a cognator run.
 // Zero values fall back to documented defaults.
 type Spec struct {
-	Iterations     int     // EM passes per lect-pair (default 3)
-	Lambda         float64 // learned/prior blend (default 0.5)
-	Threshold      float64 // manual override; 0 → Otsu auto-threshold
-	ThresholdMin   float64 // Otsu clamp floor (default 0.2)
-	ThresholdMax   float64 // Otsu clamp ceiling (default 0.8)
-	Seed           uint64  // Infomap RNG seed
-	Jobs           int     // concurrent workers; 0 → GOMAXPROCS
-	Bootstrap      int     // confidence bootstrap runs (default 0 = off)
-	BootstrapSigma float64 // stddev of edge-distance perturbation (default 0.05)
-	ClusterScope   string  // "concept" (default) | "global"
-	MinPairs       int     // skip training a scorer if the pair has <N form-pairs; use prior (default 5)
-	AlignmentMode  string  // "global" | "combined" (default; global + local + overlap)
-	ClassReduce    bool    // strip IPA modifiers/diacritics upstream (NFD-strip heuristic)
-	NullMode       string  // "marginal" (default, cheap) | "shuffle" (permutation-based, more accurate on sparse pairs)
-	NullMaxRuns    int     // cap on shuffle runs per lect-pair (default 200; adaptive stopping usually stops earlier)
+	Iterations                       int     // EM passes per lect-pair (default 3)
+	Lambda                           float64 // learned/prior blend (default 0.5)
+	Threshold                        float64 // manual override; 0 → Otsu auto-threshold
+	ThresholdMode                    string  // "family" (default) | "concept-shrink"
+	ThresholdMin                     float64 // Otsu clamp floor (default 0.2)
+	ThresholdMax                     float64 // Otsu clamp ceiling (default 0.8)
+	ThresholdShrink                  float64 // shrinkage toward family prior in "concept-shrink" mode (default 0.5)
+	GraphMode                        string  // "threshold" (default) | "support"
+	GraphExpansionMode               string  // "either" (default) | "mutual" | "adaptive" for top-k expansion
+	GraphTopK                        int     // top-k nearest-neighbor candidate expansion in support mode (default 2)
+	GraphAdaptiveMargin              float64 // top1-vs-top2 support gap needed to sponsor unilateral expansion in adaptive mode
+	GraphAdaptiveEitherMax           float64 // ambiguity-share ceiling below which adaptive mode reuses either expansion
+	GraphAdaptiveAmbiguity           float64 // ambiguous-node share above which adaptive mode falls back to mutual expansion
+	GraphMutualBoost                 float64 // weight boost for mutual top-k edges (default 0.2)
+	GraphTriangleBoost               float64 // weight boost for triangle-supported edges (default 0.3)
+	GraphContrastivePenalty          float64 // optional penalty for edges dominated by stronger local competitors
+	GraphContrastiveFloor            float64 // ignore small rival gaps before contrastive penalty activates
+	GraphRiskRankWeight              float64 // weight of endpoint-rank risk in calibrated edge-risk score
+	GraphRiskGapWeight               float64 // weight of best-rival gap risk in calibrated edge-risk score
+	GraphRiskTriangleWeight          float64 // weight of low triangle-support risk in calibrated edge-risk score
+	GraphRiskUnilateralWeight        float64 // weight of non-mutual expansion risk in calibrated edge-risk score
+	GraphUnilateralPenalty           float64 // penalty on non-mutual expanded edges when endpoints have stronger rivals
+	GraphRivalFloor                  float64 // rival-support floor at which unilateral penalty activates
+	RefineMode                       string  // "none" (default) | "core-cc" | "reassign" | "bridge-cut" | "local-recluster"
+	RefineCoreWeight                 float64 // minimum internal edge weight for core-connectivity refinement
+	RefineConfidenceThreshold        float64 // only reassign nodes below this confidence
+	RefineAltRatio                   float64 // strongest alternative support must beat in-cluster support by this ratio
+	RefineBridgeRatio                float64 // weak-edge cutoff relative to node mean for bridge cutting
+	RefineClusterConfidenceThreshold float64 // flag clusters below this mean confidence for local reclustering
+	RefineLocalCoreWeight            float64 // edge floor used by local reclustering on flagged clusters
+	Seed                             uint64  // Infomap RNG seed
+	Jobs                             int     // concurrent workers; 0 → GOMAXPROCS
+	Bootstrap                        int     // confidence bootstrap runs (default 0 = off)
+	BootstrapSigma                   float64 // stddev of edge-distance perturbation (default 0.05)
+	ClusterScope                     string  // "concept" (default) | "global"
+	MinPairs                         int     // skip training a scorer if the pair has <N form-pairs; use prior (default 5)
+	AlignmentMode                    string  // "global" | "combined" (default; global + local + overlap)
+	ClassReduce                      bool    // strip IPA modifiers/diacritics upstream (NFD-strip heuristic)
+	NullMode                         string  // "marginal" (default, cheap) | "shuffle" (permutation-based, more accurate on sparse pairs)
+	NullMaxRuns                      int     // cap on shuffle runs per lect-pair (default 200; adaptive stopping usually stops earlier)
 }
 
 // Result is the end-to-end output.
@@ -62,6 +88,84 @@ func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
 	}
 	if spec.ThresholdMax <= 0 {
 		spec.ThresholdMax = DefaultThresholdMax
+	}
+	if spec.ThresholdMode == "" {
+		spec.ThresholdMode = DefaultThresholdMode
+	}
+	if spec.ThresholdShrink <= 0 {
+		spec.ThresholdShrink = DefaultThresholdShrink
+	}
+	if spec.ThresholdShrink > 1 {
+		spec.ThresholdShrink = 1
+	}
+	if spec.GraphMode == "" {
+		spec.GraphMode = DefaultGraphMode
+	}
+	if spec.GraphExpansionMode == "" {
+		spec.GraphExpansionMode = DefaultGraphExpansionMode
+	}
+	if spec.GraphTopK <= 0 {
+		spec.GraphTopK = DefaultGraphTopK
+	}
+	if spec.GraphAdaptiveMargin <= 0 {
+		spec.GraphAdaptiveMargin = DefaultGraphAdaptiveMargin
+	}
+	if spec.GraphAdaptiveEitherMax < 0 {
+		spec.GraphAdaptiveEitherMax = DefaultGraphAdaptiveEitherMax
+	}
+	if spec.GraphAdaptiveAmbiguity <= 0 {
+		spec.GraphAdaptiveAmbiguity = DefaultGraphAdaptiveAmbiguity
+	}
+	if spec.GraphContrastivePenalty < 0 {
+		spec.GraphContrastivePenalty = DefaultGraphContrastivePenalty
+	}
+	if spec.GraphContrastiveFloor < 0 {
+		spec.GraphContrastiveFloor = DefaultGraphContrastiveFloor
+	}
+	if spec.GraphRiskRankWeight < 0 {
+		spec.GraphRiskRankWeight = DefaultGraphRiskRankWeight
+	}
+	if spec.GraphRiskGapWeight < 0 {
+		spec.GraphRiskGapWeight = DefaultGraphRiskGapWeight
+	}
+	if spec.GraphRiskTriangleWeight < 0 {
+		spec.GraphRiskTriangleWeight = DefaultGraphRiskTriangleWeight
+	}
+	if spec.GraphRiskUnilateralWeight < 0 {
+		spec.GraphRiskUnilateralWeight = DefaultGraphRiskUnilateralWeight
+	}
+	if spec.GraphMutualBoost <= 0 {
+		spec.GraphMutualBoost = DefaultGraphMutualBoost
+	}
+	if spec.GraphTriangleBoost <= 0 {
+		spec.GraphTriangleBoost = DefaultGraphTriangleBoost
+	}
+	if spec.GraphUnilateralPenalty < 0 {
+		spec.GraphUnilateralPenalty = DefaultGraphUnilateralPenalty
+	}
+	if spec.GraphRivalFloor <= 0 {
+		spec.GraphRivalFloor = DefaultGraphRivalFloor
+	}
+	if spec.RefineMode == "" {
+		spec.RefineMode = DefaultRefineMode
+	}
+	if spec.RefineCoreWeight <= 0 {
+		spec.RefineCoreWeight = DefaultRefineCoreWeight
+	}
+	if spec.RefineConfidenceThreshold <= 0 {
+		spec.RefineConfidenceThreshold = DefaultRefineConfidenceThreshold
+	}
+	if spec.RefineAltRatio <= 0 {
+		spec.RefineAltRatio = DefaultRefineAltRatio
+	}
+	if spec.RefineBridgeRatio <= 0 {
+		spec.RefineBridgeRatio = DefaultRefineBridgeRatio
+	}
+	if spec.RefineClusterConfidenceThreshold <= 0 {
+		spec.RefineClusterConfidenceThreshold = DefaultRefineClusterConfidenceThreshold
+	}
+	if spec.RefineLocalCoreWeight <= 0 {
+		spec.RefineLocalCoreWeight = DefaultRefineLocalCoreWeight
 	}
 	if spec.BootstrapSigma <= 0 {
 		spec.BootstrapSigma = DefaultBootstrapSigma
@@ -160,6 +264,7 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 	// lect-pair produces, and discarding the scorer. This keeps peak
 	// memory at O(workers × one scorer) rather than O(L² scorers).
 	conceptEdges := make(map[string][]cEdge, len(conceptNames))
+	conceptDistances := make(map[string][]float64, len(conceptNames))
 	var globalEdges []cEdge
 	var globalForms []wordlist.Record
 	var allDistances []float64
@@ -240,6 +345,13 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 				for c, es := range perConcept {
 					conceptEdges[c] = append(conceptEdges[c], es...)
 				}
+				for c, es := range perConcept {
+					ds := conceptDistances[c]
+					for _, e := range es {
+						ds = append(ds, e.d)
+					}
+					conceptDistances[c] = ds
+				}
 				if len(localGlobal) > 0 {
 					globalEdges = append(globalEdges, localGlobal...)
 				}
@@ -265,15 +377,11 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 		allDistances = append(allDistances, crossDists...)
 	}
 
-	threshold := spec.Threshold
-	if threshold <= 0 {
-		threshold = cluster.OtsuThreshold(allDistances, 0, 1, 64)
-		threshold = cluster.Clamp(threshold, spec.ThresholdMin, spec.ThresholdMax)
-	}
-	res.Threshold = threshold
+	familyThreshold := resolveFamilyThreshold(allDistances, spec)
+	res.Threshold = familyThreshold
 
 	if spec.ClusterScope == "global" {
-		res.Rows = clusterGlobal(fam, globalForms, globalEdges, threshold, spec.Seed, spec.Bootstrap, spec.BootstrapSigma)
+		res.Rows = clusterGlobal(fam, globalForms, globalEdges, familyThreshold, spec.Seed, spec.Bootstrap, spec.BootstrapSigma, spec)
 		return res
 	}
 
@@ -293,7 +401,8 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 			for cj := range cjobs {
 				forms := conceptForms[cj.concept]
 				edges := conceptEdges[cj.concept]
-				rows := clusterConcept(fam, cj.concept, forms, edges, threshold, spec.Seed, spec.Bootstrap, spec.BootstrapSigma)
+				threshold := resolveConceptThreshold(conceptDistances[cj.concept], familyThreshold, spec)
+				rows := clusterConcept(fam, cj.concept, forms, edges, threshold, spec.Seed, spec.Bootstrap, spec.BootstrapSigma, spec)
 				resCh <- conceptResult{concept: cj.concept, rows: rows}
 			}
 		}()
@@ -309,6 +418,33 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 	}
 	sort.Slice(res.Rows, func(i, j int) bool { return res.Rows[i].ID < res.Rows[j].ID })
 	return res
+}
+
+func resolveFamilyThreshold(distances []float64, spec Spec) float64 {
+	if spec.Threshold > 0 {
+		return spec.Threshold
+	}
+	threshold := cluster.OtsuThreshold(distances, 0, 1, 64)
+	return cluster.Clamp(threshold, spec.ThresholdMin, spec.ThresholdMax)
+}
+
+func resolveConceptThreshold(distances []float64, familyThreshold float64, spec Spec) float64 {
+	if spec.Threshold > 0 {
+		return spec.Threshold
+	}
+	if spec.ThresholdMode != "concept-shrink" {
+		return familyThreshold
+	}
+	local := cluster.OtsuThreshold(distances, 0, 1, 64)
+	local = cluster.Clamp(local, spec.ThresholdMin, spec.ThresholdMax)
+	shrink := spec.ThresholdShrink
+	if shrink < 0 {
+		shrink = 0
+	} else if shrink > 1 {
+		shrink = 1
+	}
+	threshold := shrink*familyThreshold + (1.0-shrink)*local
+	return cluster.Clamp(threshold, spec.ThresholdMin, spec.ThresholdMax)
 }
 
 type cEdge struct {
@@ -380,75 +516,102 @@ func computeCrossConceptEdges(forms []wordlist.Record, tokens map[string][]strin
 
 // clusterGlobal runs Infomap on one family-wide graph of cross-lect
 // form pairs. Cluster IDs get a "<family>:global:<n>" namespace.
-func clusterGlobal(fam string, forms []wordlist.Record, rawEdges []cEdge, threshold float64, seed uint64, bootstrap int, sigma float64) []wordlist.SidecarRow {
+func clusterGlobal(fam string, forms []wordlist.Record, rawEdges []cEdge, threshold float64, seed uint64, bootstrap int, sigma float64, spec Spec) []wordlist.SidecarRow {
 	n := len(forms)
-	part := runClustering(n, rawEdges, threshold, seed)
-	confs := clusterConfidences(part, rawEdges, threshold)
-	var boot []float64
+	part, graph := runClustering(n, rawEdges, threshold, seed, spec)
+	confs := membershipConfidences(graph, part)
+	boot := bootstrapSummary{Mean: make([]float64, n), Low: make([]float64, n), High: make([]float64, n)}
 	if bootstrap > 0 {
-		boot = bootstrapConfidences(n, rawEdges, part, threshold, bootstrap, sigma, seed)
-	} else {
-		boot = make([]float64, n)
+		boot = bootstrapConfidences(n, rawEdges, part, threshold, bootstrap, sigma, seed, spec)
 	}
 	rows := make([]wordlist.SidecarRow, n)
 	for i, f := range forms {
 		rows[i] = wordlist.SidecarRow{
-			ID:         f.ID,
-			CognatorID: fmt.Sprintf("%s:global:%d", fam, part[i]),
-			Confidence: confs[i],
-			Bootstrap:  boot[i],
+			ID:            f.ID,
+			CognatorID:    fmt.Sprintf("%s:global:%d", fam, part[i]),
+			Confidence:    confs[i],
+			Bootstrap:     boot.Mean[i],
+			BootstrapLow:  boot.Low[i],
+			BootstrapHigh: boot.High[i],
 		}
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].ID < rows[j].ID })
 	return rows
 }
 
-func clusterConcept(fam, concept string, forms []wordlist.Record, rawEdges []cEdge, threshold float64, seed uint64, bootstrap int, sigma float64) []wordlist.SidecarRow {
+func clusterConcept(fam, concept string, forms []wordlist.Record, rawEdges []cEdge, threshold float64, seed uint64, bootstrap int, sigma float64, spec Spec) []wordlist.SidecarRow {
 	n := len(forms)
-	part := runClustering(n, rawEdges, threshold, seed)
-	confs := clusterConfidences(part, rawEdges, threshold)
-	var boot []float64
+	part, graph := runClustering(n, rawEdges, threshold, seed, spec)
+	confs := membershipConfidences(graph, part)
+	boot := bootstrapSummary{Mean: make([]float64, n), Low: make([]float64, n), High: make([]float64, n)}
 	if bootstrap > 0 {
-		boot = bootstrapConfidences(n, rawEdges, part, threshold, bootstrap, sigma, seed)
-	} else {
-		boot = make([]float64, n)
+		boot = bootstrapConfidences(n, rawEdges, part, threshold, bootstrap, sigma, seed, spec)
 	}
 	rows := make([]wordlist.SidecarRow, n)
 	for i, f := range forms {
 		rows[i] = wordlist.SidecarRow{
-			ID:         f.ID,
-			CognatorID: fmt.Sprintf("%s:%s:%d", fam, concept, part[i]),
-			Confidence: confs[i],
-			Bootstrap:  boot[i],
+			ID:            f.ID,
+			CognatorID:    fmt.Sprintf("%s:%s:%d", fam, concept, part[i]),
+			Confidence:    confs[i],
+			Bootstrap:     boot.Mean[i],
+			BootstrapLow:  boot.Low[i],
+			BootstrapHigh: boot.High[i],
 		}
 	}
 	return rows
 }
 
-func runClustering(n int, rawEdges []cEdge, threshold float64, seed uint64) []int {
-	var edges []cluster.Edge
+func runClustering(n int, rawEdges []cEdge, threshold float64, seed uint64, spec Spec) ([]int, *cluster.Graph) {
+	pairs := make([]evidence.Pair, 0, len(rawEdges))
 	for _, e := range rawEdges {
-		if e.d >= threshold {
-			continue
-		}
-		w := 1.0 - e.d
-		if w <= 0 {
-			continue
-		}
-		edges = append(edges, cluster.Edge{A: e.i, B: e.j, Weight: w})
+		pairs = append(pairs, evidence.Pair{A: e.i, B: e.j, Distance: e.d})
 	}
+	edges := evidence.BuildGraphEdges(n, pairs, threshold, evidence.Spec{
+		Mode:              spec.GraphMode,
+		ExpansionMode:     spec.GraphExpansionMode,
+		TopK:              spec.GraphTopK,
+		AdaptiveMargin:    spec.GraphAdaptiveMargin,
+		AdaptiveEitherMax: spec.GraphAdaptiveEitherMax,
+		AdaptiveAmbiguity: spec.GraphAdaptiveAmbiguity,
+		MutualBoost:       spec.GraphMutualBoost,
+		TriangleBoost:     spec.GraphTriangleBoost,
+		ContrastivePenalty: spec.GraphContrastivePenalty,
+		ContrastiveFloor:   spec.GraphContrastiveFloor,
+		RiskRankWeight:     spec.GraphRiskRankWeight,
+		RiskGapWeight:      spec.GraphRiskGapWeight,
+		RiskTriangleWeight: spec.GraphRiskTriangleWeight,
+		RiskUnilateralWeight: spec.GraphRiskUnilateralWeight,
+		UnilateralPenalty: spec.GraphUnilateralPenalty,
+		RivalFloor:        spec.GraphRivalFloor,
+	})
 	g := cluster.NewGraph(n, edges)
-	return cluster.Infomap(g, seed)
+	part := cluster.Infomap(g, seed)
+	part = refinePartition(g, part, spec)
+	return part, g
 }
 
-func bootstrapConfidences(n int, rawEdges []cEdge, canonical []int, threshold float64, K int, sigma float64, baseSeed uint64) []float64 {
-	out := make([]float64, n)
+type bootstrapSummary struct {
+	Mean []float64
+	Low  []float64
+	High []float64
+}
+
+func bootstrapConfidences(n int, rawEdges []cEdge, canonical []int, threshold float64, K int, sigma float64, baseSeed uint64, spec Spec) bootstrapSummary {
+	out := bootstrapSummary{
+		Mean: make([]float64, n),
+		Low:  make([]float64, n),
+		High: make([]float64, n),
+	}
 	if K <= 0 || n == 0 {
 		return out
 	}
 	canonMembers := membershipSets(canonical)
 	rng := rand.New(rand.NewPCG(baseSeed, baseSeed^0xABCDEF0123456789))
 	perturbed := make([]cEdge, len(rawEdges))
+	samples := make([][]float64, n)
+	for i := range samples {
+		samples[i] = make([]float64, 0, K)
+	}
 	for r := 0; r < K; r++ {
 		for i, e := range rawEdges {
 			d := e.d + rng.NormFloat64()*sigma
@@ -459,16 +622,21 @@ func bootstrapConfidences(n int, rawEdges []cEdge, canonical []int, threshold fl
 			}
 			perturbed[i] = cEdge{i: e.i, j: e.j, d: d}
 		}
-		part := runClustering(n, perturbed, threshold, baseSeed+uint64(r)+1)
+		part, _ := runClustering(n, perturbed, threshold, baseSeed+uint64(r)+1, spec)
 		runMembers := membershipSets(part)
 		for i := 0; i < n; i++ {
 			canon := canonMembers[canonical[i]]
 			run := runMembers[part[i]]
-			out[i] += jaccardExcl(canon, run, i)
+			score := jaccardExcl(canon, run, i)
+			out.Mean[i] += score
+			samples[i] = append(samples[i], score)
 		}
 	}
-	for i := range out {
-		out[i] /= float64(K)
+	for i := 0; i < n; i++ {
+		out.Mean[i] /= float64(K)
+		sort.Float64s(samples[i])
+		out.Low[i] = quantileSorted(samples[i], 0.05)
+		out.High[i] = quantileSorted(samples[i], 0.95)
 	}
 	return out
 }
@@ -515,30 +683,361 @@ func jaccardExcl(a, b map[int]struct{}, excl int) float64 {
 	return float64(inter) / float64(union)
 }
 
-func clusterConfidences(part []int, rawEdges []cEdge, threshold float64) []float64 {
-	n := len(part)
-	wSum := make([]float64, n)
-	wCnt := make([]int, n)
-	for _, e := range rawEdges {
-		if part[e.i] != part[e.j] {
-			continue
-		}
-		if e.d >= threshold {
-			continue
-		}
-		sim := 1.0 - e.d
-		wSum[e.i] += sim
-		wSum[e.j] += sim
-		wCnt[e.i]++
-		wCnt[e.j]++
+func membershipConfidences(g *cluster.Graph, part []int) []float64 {
+	out := make([]float64, len(part))
+	if g == nil || len(part) == 0 {
+		return out
 	}
-	out := make([]float64, n)
-	for i := range out {
-		if wCnt[i] == 0 {
-			out[i] = 0
+	for i := range part {
+		var inSum, inCount float64
+		alt := map[int]float64{}
+		for _, adj := range g.Adj[i] {
+			if part[adj.Target] == part[i] {
+				inSum += adj.Weight
+				inCount++
+				continue
+			}
+			alt[part[adj.Target]] += adj.Weight
+		}
+		if inCount == 0 {
+			strongestAlt := maxMapValue(alt)
+			if strongestAlt <= 0 {
+				out[i] = 1.0
+			} else {
+				out[i] = 1.0 - strongestAlt
+			}
 			continue
 		}
-		out[i] = wSum[i] / float64(wCnt[i])
+		inMean := inSum / inCount
+		altMax := maxMapValue(alt)
+		if altMax <= 0 {
+			out[i] = 1.0
+			continue
+		}
+		out[i] = inMean / (inMean + altMax)
+	}
+	return out
+}
+
+func maxMapValue(m map[int]float64) float64 {
+	var best float64
+	for _, v := range m {
+		if v > best {
+			best = v
+		}
+	}
+	return best
+}
+
+func quantileSorted(xs []float64, q float64) float64 {
+	if len(xs) == 0 {
+		return 0
+	}
+	if q <= 0 {
+		return xs[0]
+	}
+	if q >= 1 {
+		return xs[len(xs)-1]
+	}
+	pos := q * float64(len(xs)-1)
+	lo := int(pos)
+	hi := lo + 1
+	if hi >= len(xs) {
+		return xs[lo]
+	}
+	frac := pos - float64(lo)
+	return xs[lo]*(1-frac) + xs[hi]*frac
+}
+
+func refinePartition(g *cluster.Graph, part []int, spec Spec) []int {
+	if g == nil || len(part) == 0 || spec.RefineMode == "none" {
+		return part
+	}
+	if spec.RefineMode == "core-cc" {
+		return refinePartitionCoreCC(g, part, spec.RefineCoreWeight)
+	}
+	if spec.RefineMode == "reassign" {
+		return refinePartitionReassign(g, part, spec.RefineConfidenceThreshold, spec.RefineAltRatio)
+	}
+	if spec.RefineMode == "bridge-cut" {
+		return refinePartitionBridgeCut(g, part, spec.RefineConfidenceThreshold, spec.RefineBridgeRatio)
+	}
+	if spec.RefineMode == "local-recluster" {
+		return refinePartitionLocalRecluster(g, part, spec.RefineClusterConfidenceThreshold, spec.RefineLocalCoreWeight)
+	}
+	return part
+}
+
+func refinePartitionCoreCC(g *cluster.Graph, part []int, coreWeight float64) []int {
+	members := membershipSets(part)
+	out := make([]int, len(part))
+	next := 0
+	for _, nodes := range members {
+		seen := map[int]bool{}
+		for start := range nodes {
+			if seen[start] {
+				continue
+			}
+			stack := []int{start}
+			seen[start] = true
+			component := []int{}
+			for len(stack) > 0 {
+				v := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				component = append(component, v)
+				for _, adj := range g.Adj[v] {
+					if part[adj.Target] != part[v] || adj.Weight < coreWeight || seen[adj.Target] {
+						continue
+					}
+					seen[adj.Target] = true
+					stack = append(stack, adj.Target)
+				}
+			}
+			for _, v := range component {
+				out[v] = next
+			}
+			next++
+		}
+	}
+	return out
+}
+
+func refinePartitionReassign(g *cluster.Graph, part []int, confidenceThreshold, altRatio float64) []int {
+	out := append([]int(nil), part...)
+	if len(out) == 0 {
+		return out
+	}
+	for pass := 0; pass < 2; pass++ {
+		changed := false
+		for i := range out {
+			inMean, bestAltMod, bestAltWeight := nodeSupportProfile(g, out, i)
+			conf := confidenceFromSupport(inMean, bestAltWeight)
+			if conf >= confidenceThreshold || bestAltMod < 0 {
+				continue
+			}
+			if inMean > 0 && bestAltWeight < inMean*altRatio {
+				continue
+			}
+			if inMean == 0 && bestAltWeight <= 0 {
+				continue
+			}
+			out[i] = bestAltMod
+			changed = true
+		}
+		if !changed {
+			break
+		}
+	}
+	return clusterPartitionRenumber(out)
+}
+
+func nodeSupportProfile(g *cluster.Graph, part []int, node int) (float64, int, float64) {
+	var inSum, inCount float64
+	alt := map[int]float64{}
+	for _, adj := range g.Adj[node] {
+		if part[adj.Target] == part[node] {
+			inSum += adj.Weight
+			inCount++
+			continue
+		}
+		alt[part[adj.Target]] += adj.Weight
+	}
+	inMean := 0.0
+	if inCount > 0 {
+		inMean = inSum / inCount
+	}
+	bestMod := -1
+	bestWeight := 0.0
+	for mod, w := range alt {
+		if w > bestWeight {
+			bestWeight = w
+			bestMod = mod
+		}
+	}
+	return inMean, bestMod, bestWeight
+}
+
+func confidenceFromSupport(inMean, altWeight float64) float64 {
+	if inMean <= 0 {
+		if altWeight <= 0 {
+			return 1.0
+		}
+		return 1.0 - altWeight
+	}
+	if altWeight <= 0 {
+		return 1.0
+	}
+	return inMean / (inMean + altWeight)
+}
+
+func clusterPartitionRenumber(part []int) []int {
+	m := map[int]int{}
+	out := make([]int, len(part))
+	for i, v := range part {
+		if _, ok := m[v]; !ok {
+			m[v] = len(m)
+		}
+		out[i] = m[v]
+	}
+	return out
+}
+
+func refinePartitionBridgeCut(g *cluster.Graph, part []int, confidenceThreshold, bridgeRatio float64) []int {
+	if g == nil || len(part) == 0 {
+		return part
+	}
+	members := membershipSets(part)
+	out := append([]int(nil), part...)
+	next := 0
+	for _, nodes := range members {
+		blocked := map[int]map[int]bool{}
+		for v := range nodes {
+			inMean, _, altWeight := nodeSupportProfile(g, part, v)
+			conf := confidenceFromSupport(inMean, altWeight)
+			// Bridge-cut is allowed either for globally low-confidence nodes
+			// or for nodes whose internal cohesion is itself weak.
+			if (conf >= confidenceThreshold && inMean >= confidenceThreshold) || inMean <= 0 {
+				continue
+			}
+			for _, adj := range g.Adj[v] {
+				if part[adj.Target] != part[v] {
+					continue
+				}
+				if adj.Weight >= inMean*bridgeRatio {
+					continue
+				}
+				if blocked[v] == nil {
+					blocked[v] = map[int]bool{}
+				}
+				if blocked[adj.Target] == nil {
+					blocked[adj.Target] = map[int]bool{}
+				}
+				blocked[v][adj.Target] = true
+				blocked[adj.Target][v] = true
+			}
+		}
+
+		seen := map[int]bool{}
+		for start := range nodes {
+			if seen[start] {
+				continue
+			}
+			stack := []int{start}
+			seen[start] = true
+			component := []int{}
+			for len(stack) > 0 {
+				v := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				component = append(component, v)
+				for _, adj := range g.Adj[v] {
+					if part[adj.Target] != part[v] || seen[adj.Target] {
+						continue
+					}
+					if blocked[v] != nil && blocked[v][adj.Target] {
+						continue
+					}
+					seen[adj.Target] = true
+					stack = append(stack, adj.Target)
+				}
+			}
+			for _, v := range component {
+				out[v] = next
+			}
+			next++
+		}
+	}
+	return out
+}
+
+func refinePartitionLocalRecluster(g *cluster.Graph, part []int, clusterConfidenceThreshold, localCoreWeight float64) []int {
+	if g == nil || len(part) == 0 {
+		return part
+	}
+	memberConf := membershipConfidences(g, part)
+	members := membershipSets(part)
+	out := append([]int(nil), part...)
+	next := 0
+	for _, nodes := range members {
+		indices := make([]int, 0, len(nodes))
+		var sumConf float64
+		for v := range nodes {
+			indices = append(indices, v)
+			sumConf += memberConf[v]
+		}
+		if len(indices) == 0 {
+			continue
+		}
+		meanConf := sumConf / float64(len(indices))
+		if len(indices) < 3 || meanConf >= clusterConfidenceThreshold {
+			for _, v := range indices {
+				out[v] = next
+			}
+			next++
+			continue
+		}
+
+		localIndex := map[int]int{}
+		for i, v := range indices {
+			localIndex[v] = i
+		}
+		localGraph := cluster.NewGraph(len(indices), subclusterEdges(g, indices, localIndex, localCoreWeight))
+		localPart := connectedComponents(localGraph)
+		for i, v := range indices {
+			out[v] = next + localPart[i]
+		}
+		maxLocal := 0
+		for _, p := range localPart {
+			if p > maxLocal {
+				maxLocal = p
+			}
+		}
+		next += maxLocal + 1
+	}
+	return out
+}
+
+func subclusterEdges(g *cluster.Graph, indices []int, localIndex map[int]int, minWeight float64) []cluster.Edge {
+	var edges []cluster.Edge
+	for _, v := range indices {
+		for _, adj := range g.Adj[v] {
+			j, ok := localIndex[adj.Target]
+			if !ok || adj.Weight < minWeight {
+				continue
+			}
+			i := localIndex[v]
+			if i >= j {
+				continue
+			}
+			edges = append(edges, cluster.Edge{A: i, B: j, Weight: adj.Weight})
+		}
+	}
+	return edges
+}
+
+func connectedComponents(g *cluster.Graph) []int {
+	out := make([]int, g.N)
+	for i := range out {
+		out[i] = -1
+	}
+	next := 0
+	for start := 0; start < g.N; start++ {
+		if out[start] >= 0 {
+			continue
+		}
+		stack := []int{start}
+		out[start] = next
+		for len(stack) > 0 {
+			v := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			for _, adj := range g.Adj[v] {
+				if out[adj.Target] >= 0 {
+					continue
+				}
+				out[adj.Target] = next
+				stack = append(stack, adj.Target)
+			}
+		}
+		next++
 	}
 	return out
 }

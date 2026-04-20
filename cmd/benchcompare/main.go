@@ -197,7 +197,7 @@ func writeMD(path string, j []joined) error {
 
 	fmt.Fprintln(f, "# Cognator vs. lingpy: head-to-head on arcaverborum CoreCog")
 	fmt.Fprintln(f)
-	fmt.Fprintln(f, "Both systems scored under their natural defaults (cognator: framework-native prior+learned pipeline, Otsu-selected per-family threshold, 3 EM iterations; lingpy: LexStat scorer with runs=1000 permutation, SCA-classes, fixed threshold=0.55, Infomap).")
+	fmt.Fprintln(f, "Both systems are summarized from the paired result files passed to this command. See the corresponding run artifacts for the exact Cognator and LingPy configurations used in this comparison.")
 	fmt.Fprintln(f)
 	fmt.Fprintf(f, "Datasets where both succeeded: **%d**.\n\n", bothN)
 	if bothN > 0 {

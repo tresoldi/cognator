@@ -27,10 +27,12 @@ type Record struct {
 
 // SidecarRow is one output form — clustering result with confidence.
 type SidecarRow struct {
-	ID         string
-	CognatorID string
-	Confidence float64
-	Bootstrap  float64
+	ID            string
+	CognatorID    string
+	Confidence    float64
+	Bootstrap     float64
+	BootstrapLow  float64
+	BootstrapHigh float64
 }
 
 // ReadTable loads a wordlist from path. The delimiter is chosen from
@@ -165,7 +167,14 @@ func WriteSidecar(path string, rows []SidecarRow) error {
 	defer f.Close()
 	w := csv.NewWriter(f)
 	w.Comma = '\t'
-	if err := w.Write([]string{"ID", "Cognator_ID", "Cognator_Confidence", "Cognator_Bootstrap"}); err != nil {
+	if err := w.Write([]string{
+		"ID",
+		"Cognator_ID",
+		"Cognator_Confidence",
+		"Cognator_Bootstrap",
+		"Cognator_Bootstrap_Low",
+		"Cognator_Bootstrap_High",
+	}); err != nil {
 		return err
 	}
 	for _, row := range rows {
@@ -174,6 +183,8 @@ func WriteSidecar(path string, rows []SidecarRow) error {
 			row.CognatorID,
 			fmt.Sprintf("%.6f", row.Confidence),
 			fmt.Sprintf("%.6f", row.Bootstrap),
+			fmt.Sprintf("%.6f", row.BootstrapLow),
+			fmt.Sprintf("%.6f", row.BootstrapHigh),
 		}); err != nil {
 			return err
 		}
