@@ -59,7 +59,10 @@ func TrainPosterior(srcLect, tgtLect string, pairs []FormPair, scorer align.Scor
 // permutation-based conditional derived from a shuffle run; the same
 // null is attached to every iteration's table so log-odds stay
 // comparable across passes.
-func TrainPosteriorIterated(srcLect, tgtLect string, pairs []FormPair, bundle *merkmal.Bundle, iterations int, prior *DirichletPrior, null *NullDistribution) *PosteriorTable {
+//
+// scaleMode selects the per-row α₀ scaling mode (see
+// PosteriorTable.AttachScaling). Empty string keeps the flat α₀.
+func TrainPosteriorIterated(srcLect, tgtLect string, pairs []FormPair, bundle *merkmal.Bundle, iterations int, prior *DirichletPrior, null *NullDistribution, scaleMode string) *PosteriorTable {
 	if iterations < 1 {
 		iterations = 1
 	}
@@ -69,6 +72,9 @@ func TrainPosteriorIterated(srcLect, tgtLect string, pairs []FormPair, bundle *m
 		table = TrainPosterior(srcLect, tgtLect, pairs, scorer, prior)
 		if null != nil {
 			table.AttachShuffleNull(null)
+		}
+		if scaleMode != "" {
+			table.AttachScaling(scaleMode)
 		}
 		scorer = PosteriorScorer(bundle, table)
 	}

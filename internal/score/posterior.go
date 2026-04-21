@@ -150,6 +150,14 @@ type PosteriorTable struct {
 	// Attach via AttachShuffleNull; composes with any α₀.
 	shuffleNull        *NullDistribution
 	shuffleNullRowSums map[string]float64
+
+	// scaleMode, when set, turns the flat α₀ into a per-row
+	// α₀_eff(σ) = α₀ · scalingFactor(σ). See AttachScaling for the
+	// supported modes and docs/roadmap.md Model §5 for the motivating
+	// failure (large families over-merge under a flat α₀ because MLE
+	// dominates uniformly regardless of row data volume).
+	scaleMode      string
+	medianRowTotal float64
 }
 
 // NewPosteriorTable returns an empty table attached to the given prior.
@@ -187,6 +195,64 @@ func (t *PosteriorTable) Add(source, target string) {
 // Prior returns the attached DirichletPrior.
 func (t *PosteriorTable) Prior() *DirichletPrior { return t.prior }
 
+// AttachScaling enables per-row α₀_eff(σ) scaling. Supported modes:
+//
+//   - ""                 : flat α₀ (default)
+//   - "sparse-boost"     : α₀_eff(σ) = α₀ · max(1, median_row_total / n(σ, ·));
+//     amplifies the prior for sparse rows, leaves
+//     rich rows at baseline
+//   - "rich-boost"       : α₀_eff(σ) = α₀ · max(1, n(σ, ·) / median_row_total);
+//     amplifies the prior for rich rows, leaves
+//     sparse rows at baseline — addresses the
+//     large-family over-merge failure mode
+//
+// Must be called after all Add()s are done; the median is cached at
+// attach time so subsequent scoring is lock-free.
+func (t *PosteriorTable) AttachScaling(mode string) {
+	t.scaleMode = mode
+	t.medianRowTotal = 0
+	if mode == "" || len(t.rowTotal) == 0 {
+		return
+	}
+	totals := make([]float64, 0, len(t.rowTotal))
+	for _, v := range t.rowTotal {
+		if v > 0 {
+			totals = append(totals, float64(v))
+		}
+	}
+	if len(totals) == 0 {
+		return
+	}
+	sort.Float64s(totals)
+	t.medianRowTotal = totals[len(totals)/2]
+}
+
+// scalingFactor returns α₀_eff(σ) / α₀ under the active mode.
+func (t *PosteriorTable) scalingFactor(source string) float64 {
+	if t.scaleMode == "" || t.medianRowTotal <= 0 {
+		return 1.0
+	}
+	n := float64(t.rowTotal[source])
+	if n <= 0 {
+		return 1.0
+	}
+	switch t.scaleMode {
+	case "sparse-boost":
+		ratio := t.medianRowTotal / n
+		if ratio < 1 {
+			ratio = 1
+		}
+		return ratio
+	case "rich-boost":
+		ratio := n / t.medianRowTotal
+		if ratio < 1 {
+			ratio = 1
+		}
+		return ratio
+	}
+	return 1.0
+}
+
 // AttachShuffleNull installs a precomputed shuffle-based null to be
 // used by LogOdds. Recomputing row sums up front means LogOdds stays
 // a cheap map lookup under concurrent access. Pass nil to clear.
@@ -223,11 +289,15 @@ func (t *PosteriorTable) Count(source, target string) int {
 // PosteriorMean returns E[P(target | source)] under Dirichlet(α + n).
 // Graphemes outside the prior's inventory inherit only the observed
 // counts; Alpha returns 0 for them and rowTotal still reflects their
-// conditioning mass.
+// conditioning mass. When AttachScaling has enabled a per-row mode,
+// both α(σ, τ) and α₀ are multiplied by the same per-row factor, so
+// the sum Σ_τ α_eff(σ, τ) = α₀_eff(σ) still holds and the blend
+// ratio α₀_eff / (α₀_eff + n) behaves as documented in AttachScaling.
 func (t *PosteriorTable) PosteriorMean(source, target string) float64 {
-	alpha := t.prior.Alpha(source, target)
+	scale := t.scalingFactor(source)
+	alpha := t.prior.Alpha(source, target) * scale
 	observed := float64(t.Count(source, target))
-	denom := t.prior.Concentration + float64(t.rowTotal[source])
+	denom := t.prior.Concentration*scale + float64(t.rowTotal[source])
 	if denom <= 0 {
 		return 0
 	}

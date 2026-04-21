@@ -399,24 +399,26 @@ Migration:
   because the goal is deleting three empirical constants, not chasing the last
   0.01 on a tuning run
 
-Follow-up refinements if the constant α₀ is not the right knob:
+Follow-up refinements (both implemented as opt-in flags):
 
-- **Shuffle-null integration.** Replace the target-marginal null in
-  `PosteriorTable.LogOdds` with the existing shuffle-permutation null
-  when `--null-mode=shuffle`. Makes the posterior-odds ratio a proper
-  Bayes factor against a random-pairing baseline rather than against
-  whatever target marginals the corpus happens to have. Composes with
-  the core α₀ knob.
-- **Per-row α₀ scaling.** Replace the scalar α₀ with an effective
-  concentration α₀(σ) that shrinks for rich-data rows — e.g.
-  α₀_eff = α₀_base · max(1, median_row_count / n(σ, ·)). Rows with
-  thousands of observations then behave like MLE; rows with a handful
-  still lean on the prior. Adds a new empirical constant (α₀_base)
-  but separates the small-data and rich-data regimes, which is
-  exactly the failure mode that a flat α₀ shows on large families
-  like peirosaustroasiatic. Only land this if the shuffle-null
-  integration and a simple α₀ sweep both fail to close the gap on
-  Dev-Core.
+- **Shuffle-null integration.** *(Landed.)* `--null-mode=shuffle`
+  composes with `--scorer=posterior`. The permutation-based
+  conditional null fires in `PosteriorTable.LogOdds` when attached.
+  On Dev-Core, shuffle was uniformly worse than marginal across every
+  α₀ tested (flat ~0.76 vs marginal's 0.81+) — too noisy without
+  smoothing. Left available for experimentation.
+- **Per-row α₀ scaling.** *(Landed.)* `--dirichlet-scale
+  {"", sparse-boost, rich-boost}` in cmd/bench and cmd/cognator.
+  A Dev-Core A/B at α₀=50 found:
+  - `sparse-boost` (α₀_eff = α₀ · max(1, median/n(σ))): **+0.0018 F**
+    over flat. Amplifies prior for sparse rows as the roadmap
+    predicted.
+  - `rich-boost` (α₀_eff = α₀ · max(1, n(σ)/median)): −0.0070 F.
+    Regularizes rich rows too aggressively; recall collapses.
+  Small sparse-boost gain doesn't close the gap to learned
+  (0.8139 vs 0.8216 target). Default stays flat; sparse-boost is
+  the recommended non-default scaling mode for users who want to
+  squeeze more out of the posterior scorer.
 
 Future step (do not start before the core is promoted): `α + n` is a sampleable
 posterior. Replacing the current Gaussian-distance-perturbation bootstrap with

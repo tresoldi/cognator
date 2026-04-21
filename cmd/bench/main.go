@@ -109,6 +109,7 @@ func main() {
 		scorerMode                = flag.String("scorer", "learned", "'learned' (default; CorrespondenceTable + lambda blend) or 'posterior' (Dirichlet-prior PosteriorTable, asymmetric-by-construction)")
 		dirichletConcentration    = flag.Float64("dirichlet-concentration", 0, "α₀ for --scorer=posterior (0 falls back to score.DefaultDirichletConcentration)")
 		dirichletSharpness        = flag.Float64("dirichlet-sharpness", 0, "k for --scorer=posterior softmax over merkmal distances (0 falls back to default)")
+		dirichletScale            = flag.String("dirichlet-scale", "", "per-row α₀ scaling for --scorer=posterior: '' (flat α₀, default), 'sparse-boost' (amplify for sparse rows), 'rich-boost' (amplify for rich rows)")
 		filter                    = flag.String("datasets", "", "comma list of families; empty = all")
 		minCognacy                = flag.Int("min-cognacy", 50, "skip families with fewer than N Cognacy-annotated forms")
 		maxLects                  = flag.Int("max-lects", 250, "skip families with more than N distinct lects (0 = no limit; memory guard)")
@@ -218,6 +219,7 @@ func main() {
 		ScorerMode:                *scorerMode,
 		DirichletConcentration:    *dirichletConcentration,
 		DirichletSharpness:        *dirichletSharpness,
+		DirichletScaleMode:        *dirichletScale,
 	}
 	effective := pipeline.ResolveDefaults(spec)
 	workerCount := *parallelFam

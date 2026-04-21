@@ -244,6 +244,101 @@ func TestAttachShuffleNullShrinksLogOddsWhenNullAnticipatesObservation(t *testin
 	}
 }
 
+func TestAttachScalingSparseBoostRaisesPriorWeightOnSparseRow(t *testing.T) {
+	b := loadTestBundle(t)
+	inv := []string{"a", "e", "i", "o", "u", Gap}
+	prior := NewDirichletPrior(b, 5.0, 4.0, inv)
+	tab := NewPosteriorTable("S", "T", prior)
+	// Fat row: 100 observations of (a, e).
+	for i := 0; i < 100; i++ {
+		tab.Add("a", "e")
+	}
+	// Sparse row: 1 observation of (i, o).
+	tab.Add("i", "o")
+	// Other rows to give the median a reasonable value.
+	for i := 0; i < 10; i++ {
+		tab.Add("e", "i")
+	}
+
+	// Without scaling, the sparse row's posterior mean is dominated
+	// by that single observation plus a small prior contribution.
+	flat := tab.PosteriorMean("i", "o")
+
+	tab.AttachScaling("sparse-boost")
+	boosted := tab.PosteriorMean("i", "o")
+
+	// On the sparse "i" row, sparse-boost should amplify the prior's
+	// influence, pulling the posterior toward the merkmal prior's
+	// base measure. For target "o" (far from source "i" by merkmal
+	// distance) the posterior mean should DROP relative to flat.
+	if !(boosted < flat) {
+		t.Fatalf("sparse-boost should shrink posterior toward prior for sparse rows; flat=%v boosted=%v", flat, boosted)
+	}
+
+	// The fat row should be untouched.
+	tabFlat := NewPosteriorTable("S", "T", prior)
+	for i := 0; i < 100; i++ {
+		tabFlat.Add("a", "e")
+	}
+	tabFlat.Add("i", "o")
+	for i := 0; i < 10; i++ {
+		tabFlat.Add("e", "i")
+	}
+	tabBoosted := NewPosteriorTable("S", "T", prior)
+	for i := 0; i < 100; i++ {
+		tabBoosted.Add("a", "e")
+	}
+	tabBoosted.Add("i", "o")
+	for i := 0; i < 10; i++ {
+		tabBoosted.Add("e", "i")
+	}
+	tabBoosted.AttachScaling("sparse-boost")
+	// The fat "a" row is at or above median; sparse-boost leaves it alone.
+	if !approxEqual(tabFlat.PosteriorMean("a", "e"), tabBoosted.PosteriorMean("a", "e"), 1e-9) {
+		t.Fatalf("sparse-boost should leave rich rows untouched: flat=%v boosted=%v",
+			tabFlat.PosteriorMean("a", "e"), tabBoosted.PosteriorMean("a", "e"))
+	}
+}
+
+func TestAttachScalingRichBoostRegularizesRichRow(t *testing.T) {
+	b := loadTestBundle(t)
+	inv := []string{"a", "e", "i", "o", "u", Gap}
+	prior := NewDirichletPrior(b, 5.0, 4.0, inv)
+	tab := NewPosteriorTable("S", "T", prior)
+	// Rich row: many observations on (a, e).
+	for i := 0; i < 100; i++ {
+		tab.Add("a", "e")
+	}
+	// Smaller rows to establish median.
+	for i := 0; i < 5; i++ {
+		tab.Add("e", "i")
+		tab.Add("i", "u")
+	}
+	flat := tab.PosteriorMean("a", "e")
+	tab.AttachScaling("rich-boost")
+	boosted := tab.PosteriorMean("a", "e")
+	// Rich-boost should pull the fat row's posterior mean toward the
+	// prior (away from MLE=1.0), so boosted < flat.
+	if !(boosted < flat) {
+		t.Fatalf("rich-boost should shrink rich-row posterior toward prior; flat=%v boosted=%v", flat, boosted)
+	}
+}
+
+func TestAttachScalingEmptyStringLeavesTableUnchanged(t *testing.T) {
+	b := loadTestBundle(t)
+	inv := []string{"a", "e", Gap}
+	prior := NewDirichletPrior(b, 5.0, 4.0, inv)
+	tab := NewPosteriorTable("S", "T", prior)
+	for i := 0; i < 10; i++ {
+		tab.Add("a", "e")
+	}
+	before := tab.PosteriorMean("a", "e")
+	tab.AttachScaling("")
+	if got := tab.PosteriorMean("a", "e"); got != before {
+		t.Fatalf("AttachScaling(\"\") should be a no-op: before=%v after=%v", before, got)
+	}
+}
+
 func TestTrainPosteriorIteratedSharpensCorrespondences(t *testing.T) {
 	b := loadTestBundle(t)
 	// Ten pairs of the form p*k ↔ b*g where * is a vowel, so the
@@ -262,7 +357,7 @@ func TestTrainPosteriorIteratedSharpensCorrespondences(t *testing.T) {
 		}
 	}
 	prior := NewDirichletPrior(b, 5.0, 4.0, InventoryFromPairs(pairs))
-	tab := TrainPosteriorIterated("A", "B", pairs, b, 3, prior, nil)
+	tab := TrainPosteriorIterated("A", "B", pairs, b, 3, prior, nil, "")
 	// After 3 iterations the posterior should strongly prefer p→b and
 	// k→g over any competing target. We check dominance rather than
 	// absolute values so the test is robust to α₀ choices.

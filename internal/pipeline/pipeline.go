@@ -62,6 +62,7 @@ type Spec struct {
 	ScorerMode                string  // "learned" (default; legacy CorrespondenceTable + lambda blend) | "posterior" (Dirichlet-prior PosteriorTable)
 	DirichletConcentration    float64 // α₀ for the Dirichlet-prior scorer; 0 falls back to DefaultDirichletConcentration
 	DirichletSharpness        float64 // k for the softmax over merkmal distances in the Dirichlet base measure; 0 falls back to DefaultDirichletSharpness
+	DirichletScaleMode        string  // "" (flat α₀, default) | "sparse-boost" | "rich-boost"; per-row α₀ scaling, see score.PosteriorTable.AttachScaling
 }
 
 // Result is the end-to-end output.
@@ -309,7 +310,7 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 						nullSpec.MaxRuns = spec.NullMaxRuns
 						null = score.ComputeShuffleNull(fps, priorForWorkers, nullSpec)
 					}
-					tab := score.TrainPosteriorIterated(jb.a, jb.b, fps, b, spec.Iterations, prior, null)
+					tab := score.TrainPosteriorIterated(jb.a, jb.b, fps, b, spec.Iterations, prior, null, spec.DirichletScaleMode)
 					scorer = score.PosteriorScorer(b, tab)
 				default:
 					if len(fps) < spec.MinPairs {
