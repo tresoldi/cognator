@@ -14,6 +14,7 @@ import (
 
 	"github.com/tresoldi/cognator/internal/align"
 	"github.com/tresoldi/cognator/internal/cluster"
+	"github.com/tresoldi/cognator/internal/confidence"
 	"github.com/tresoldi/cognator/internal/evidence"
 	"github.com/tresoldi/cognator/internal/merkmal"
 	"github.com/tresoldi/cognator/internal/score"
@@ -529,7 +530,7 @@ func computeCrossConceptEdges(forms []wordlist.Record, tokens map[string][]strin
 func clusterGlobal(fam string, forms []wordlist.Record, rawEdges []cEdge, threshold float64, seed uint64, bootstrap int, sigma float64, spec Spec) []wordlist.SidecarRow {
 	n := len(forms)
 	part, graph := runClustering(n, rawEdges, threshold, seed, spec)
-	diagnostics := membershipDiagnostics(graph, part)
+	diagnostics := confidence.Diagnostics(graph, part)
 	boot := bootstrapSummary{Mean: make([]float64, n), Low: make([]float64, n), High: make([]float64, n)}
 	if bootstrap > 0 {
 		boot = bootstrapConfidences(n, rawEdges, part, threshold, bootstrap, sigma, seed, spec)
@@ -557,7 +558,7 @@ func clusterGlobal(fam string, forms []wordlist.Record, rawEdges []cEdge, thresh
 func clusterConcept(fam, concept string, forms []wordlist.Record, rawEdges []cEdge, threshold float64, seed uint64, bootstrap int, sigma float64, spec Spec) []wordlist.SidecarRow {
 	n := len(forms)
 	part, graph := runClustering(n, rawEdges, threshold, seed, spec)
-	diagnostics := membershipDiagnostics(graph, part)
+	diagnostics := confidence.Diagnostics(graph, part)
 	boot := bootstrapSummary{Mean: make([]float64, n), Low: make([]float64, n), High: make([]float64, n)}
 	if bootstrap > 0 {
 		boot = bootstrapConfidences(n, rawEdges, part, threshold, bootstrap, sigma, seed, spec)
@@ -623,7 +624,7 @@ func bootstrapConfidences(n int, rawEdges []cEdge, canonical []int, threshold fl
 	if K <= 0 || n == 0 {
 		return out
 	}
-	canonMembers := membershipSets(canonical)
+	canonMembers := confidence.MembershipSets(canonical)
 	rng := rand.New(rand.NewPCG(baseSeed, baseSeed^0xABCDEF0123456789))
 	perturbed := make([]cEdge, len(rawEdges))
 	samples := make([][]float64, n)
@@ -641,7 +642,7 @@ func bootstrapConfidences(n int, rawEdges []cEdge, canonical []int, threshold fl
 			perturbed[i] = cEdge{i: e.i, j: e.j, d: d}
 		}
 		part, _ := runClustering(n, perturbed, threshold, baseSeed+uint64(r)+1, spec)
-		runMembers := membershipSets(part)
+		runMembers := confidence.MembershipSets(part)
 		for i := 0; i < n; i++ {
 			canon := canonMembers[canonical[i]]
 			run := runMembers[part[i]]
@@ -655,19 +656,6 @@ func bootstrapConfidences(n int, rawEdges []cEdge, canonical []int, threshold fl
 		sort.Float64s(samples[i])
 		out.Low[i] = quantileSorted(samples[i], 0.05)
 		out.High[i] = quantileSorted(samples[i], 0.95)
-	}
-	return out
-}
-
-func membershipSets(part []int) map[int]map[int]struct{} {
-	out := map[int]map[int]struct{}{}
-	for i, m := range part {
-		s, ok := out[m]
-		if !ok {
-			s = map[int]struct{}{}
-			out[m] = s
-		}
-		s[i] = struct{}{}
 	}
 	return out
 }
@@ -701,52 +689,6 @@ func jaccardExcl(a, b map[int]struct{}, excl int) float64 {
 	return float64(inter) / float64(union)
 }
 
-type membershipDiagnostic struct {
-	Confidence         float64
-	AssignedSupport    float64
-	AlternativeSupport float64
-	SupportMargin      float64
-	ClusterSize        int // # forms in this node's predicted cluster, including self
-	CandidateNeighbors int // # candidate-graph neighbors for this node, regardless of cluster
-}
-
-func membershipDiagnostics(g *cluster.Graph, part []int) []membershipDiagnostic {
-	out := make([]membershipDiagnostic, len(part))
-	if g == nil || len(part) == 0 {
-		return out
-	}
-	clusterSize := map[int]int{}
-	for _, p := range part {
-		clusterSize[p]++
-	}
-	for i := range part {
-		profile := nodeSupportProfile(g, part, i)
-		neighbors := 0
-		if i < len(g.Adj) {
-			neighbors = len(g.Adj[i])
-		}
-		out[i] = membershipDiagnostic{
-			Confidence:         profile.ConfidenceTotal(),
-			AssignedSupport:    profile.InTotal,
-			AlternativeSupport: profile.BestAltTotal,
-			SupportMargin:      profile.InTotal - profile.BestAltTotal,
-			ClusterSize:        clusterSize[part[i]],
-			CandidateNeighbors: neighbors,
-		}
-	}
-	return out
-}
-
-func maxMapValue(m map[int]float64) float64 {
-	var best float64
-	for _, v := range m {
-		if v > best {
-			best = v
-		}
-	}
-	return best
-}
-
 func quantileSorted(xs []float64, q float64) float64 {
 	if len(xs) == 0 {
 		return 0
@@ -777,91 +719,17 @@ func refinePartition(g *cluster.Graph, part []int, spec Spec) []int {
 	return part
 }
 
-type supportProfile struct {
-	InMean       float64
-	InTotal      float64
-	InCount      int
-	BestAltMod   int
-	BestAltMean  float64
-	BestAltTotal float64
-	BestAltCount int
-}
-
-func nodeSupportProfile(g *cluster.Graph, part []int, node int) supportProfile {
-	var profile supportProfile
-	profile.BestAltMod = -1
-	alt := map[int]float64{}
-	altCount := map[int]int{}
-	for _, adj := range g.Adj[node] {
-		if part[adj.Target] == part[node] {
-			profile.InTotal += adj.Weight
-			profile.InCount++
-			continue
-		}
-		alt[part[adj.Target]] += adj.Weight
-		altCount[part[adj.Target]]++
-	}
-	if profile.InCount > 0 {
-		profile.InMean = profile.InTotal / float64(profile.InCount)
-	}
-	for mod, total := range alt {
-		if total > profile.BestAltTotal {
-			profile.BestAltTotal = total
-			profile.BestAltMod = mod
-			profile.BestAltCount = altCount[mod]
-		}
-	}
-	if profile.BestAltCount > 0 {
-		profile.BestAltMean = profile.BestAltTotal / float64(profile.BestAltCount)
-	}
-	return profile
-}
-
-func confidenceFromSupport(inMean, altWeight float64) float64 {
-	if inMean <= 0 {
-		if altWeight <= 0 {
-			return 1.0
-		}
-		return 1.0 - altWeight
-	}
-	if altWeight <= 0 {
-		return 1.0
-	}
-	return inMean / (inMean + altWeight)
-}
-
-func (p supportProfile) ConfidenceMean() float64 {
-	return confidenceFromSupport(p.InMean, p.BestAltMean)
-}
-
-func (p supportProfile) ConfidenceTotal() float64 {
-	if p.InTotal <= 0 {
-		if p.BestAltTotal <= 0 {
-			return 1.0
-		}
-		conf := 1.0 - p.BestAltTotal
-		if conf < 0 {
-			return 0
-		}
-		return conf
-	}
-	if p.BestAltTotal <= 0 {
-		return 1.0
-	}
-	return p.InTotal / (p.InTotal + p.BestAltTotal)
-}
-
 func refinePartitionBridgeCut(g *cluster.Graph, part []int, confidenceThreshold, bridgeRatio float64) []int {
 	if g == nil || len(part) == 0 {
 		return part
 	}
-	members := membershipSets(part)
+	members := confidence.MembershipSets(part)
 	out := append([]int(nil), part...)
 	next := 0
 	for _, nodes := range members {
 		blocked := map[int]map[int]bool{}
 		for v := range nodes {
-			profile := nodeSupportProfile(g, part, v)
+			profile := confidence.NodeProfile(g, part, v)
 			conf := profile.ConfidenceMean()
 			// Bridge-cut is allowed either for globally low-confidence nodes
 			// or for nodes whose internal cohesion is itself weak.
