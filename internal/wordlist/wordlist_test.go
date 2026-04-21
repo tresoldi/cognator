@@ -99,8 +99,8 @@ func TestReadSkipsEmptySegments(t *testing.T) {
 func TestWriteSidecarTSV(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "out.tsv")
 	rows := []SidecarRow{
-		{ID: "w1", CognatorID: "romance:NIGHT:1", Confidence: 0.91, Bootstrap: 0.88, BootstrapLow: 0.71, BootstrapHigh: 0.96},
-		{ID: "w2", CognatorID: "romance:NIGHT:1", Confidence: 0.91, Bootstrap: 0.88, BootstrapLow: 0.71, BootstrapHigh: 0.96},
+		{ID: "w1", CognatorID: "romance:NIGHT:1", Confidence: 0.91, AssignedSupport: 1.2, AlternativeSupport: 0.3, SupportMargin: 0.9, Bootstrap: 0.88, BootstrapLow: 0.71, BootstrapHigh: 0.96},
+		{ID: "w2", CognatorID: "romance:NIGHT:1", Confidence: 0.91, AssignedSupport: 1.2, AlternativeSupport: 0.3, SupportMargin: 0.9, Bootstrap: 0.88, BootstrapLow: 0.71, BootstrapHigh: 0.96},
 	}
 	if err := WriteSidecar(path, rows); err != nil {
 		t.Fatalf("WriteSidecar: %v", err)
@@ -110,11 +110,11 @@ func TestWriteSidecarTSV(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(data)
-	wantHeader := "ID\tCognator_ID\tCognator_Confidence\tCognator_Bootstrap\tCognator_Bootstrap_Low\tCognator_Bootstrap_High\n"
+	wantHeader := "ID\tCognator_ID\tCognator_Confidence\tCognator_Assigned_Support\tCognator_Alternative_Support\tCognator_Support_Margin\tCognator_Bootstrap\tCognator_Bootstrap_Low\tCognator_Bootstrap_High\n"
 	if !strings.HasPrefix(got, wantHeader) {
 		t.Errorf("header wrong, got %q", got)
 	}
-	if !strings.Contains(got, "\tromance:NIGHT:1\t0.910000\t0.880000\t0.710000\t0.960000\n") {
+	if !strings.Contains(got, "\tromance:NIGHT:1\t0.910000\t1.200000\t0.300000\t0.900000\t0.880000\t0.710000\t0.960000\n") {
 		t.Errorf("row format wrong: %q", got)
 	}
 }

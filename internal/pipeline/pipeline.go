@@ -531,7 +531,7 @@ func computeCrossConceptEdges(forms []wordlist.Record, tokens map[string][]strin
 func clusterGlobal(fam string, forms []wordlist.Record, rawEdges []cEdge, threshold float64, seed uint64, bootstrap int, sigma float64, spec Spec) []wordlist.SidecarRow {
 	n := len(forms)
 	part, graph := runClustering(n, rawEdges, threshold, seed, spec)
-	confs := membershipConfidences(graph, part)
+	diagnostics := membershipDiagnostics(graph, part)
 	boot := bootstrapSummary{Mean: make([]float64, n), Low: make([]float64, n), High: make([]float64, n)}
 	if bootstrap > 0 {
 		boot = bootstrapConfidences(n, rawEdges, part, threshold, bootstrap, sigma, seed, spec)
@@ -539,12 +539,15 @@ func clusterGlobal(fam string, forms []wordlist.Record, rawEdges []cEdge, thresh
 	rows := make([]wordlist.SidecarRow, n)
 	for i, f := range forms {
 		rows[i] = wordlist.SidecarRow{
-			ID:            f.ID,
-			CognatorID:    fmt.Sprintf("%s:global:%d", fam, part[i]),
-			Confidence:    confs[i],
-			Bootstrap:     boot.Mean[i],
-			BootstrapLow:  boot.Low[i],
-			BootstrapHigh: boot.High[i],
+			ID:                 f.ID,
+			CognatorID:         fmt.Sprintf("%s:global:%d", fam, part[i]),
+			Confidence:         diagnostics[i].Confidence,
+			AssignedSupport:    diagnostics[i].AssignedSupport,
+			AlternativeSupport: diagnostics[i].AlternativeSupport,
+			SupportMargin:      diagnostics[i].SupportMargin,
+			Bootstrap:          boot.Mean[i],
+			BootstrapLow:       boot.Low[i],
+			BootstrapHigh:      boot.High[i],
 		}
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].ID < rows[j].ID })
@@ -554,7 +557,7 @@ func clusterGlobal(fam string, forms []wordlist.Record, rawEdges []cEdge, thresh
 func clusterConcept(fam, concept string, forms []wordlist.Record, rawEdges []cEdge, threshold float64, seed uint64, bootstrap int, sigma float64, spec Spec) []wordlist.SidecarRow {
 	n := len(forms)
 	part, graph := runClustering(n, rawEdges, threshold, seed, spec)
-	confs := membershipConfidences(graph, part)
+	diagnostics := membershipDiagnostics(graph, part)
 	boot := bootstrapSummary{Mean: make([]float64, n), Low: make([]float64, n), High: make([]float64, n)}
 	if bootstrap > 0 {
 		boot = bootstrapConfidences(n, rawEdges, part, threshold, bootstrap, sigma, seed, spec)
@@ -562,12 +565,15 @@ func clusterConcept(fam, concept string, forms []wordlist.Record, rawEdges []cEd
 	rows := make([]wordlist.SidecarRow, n)
 	for i, f := range forms {
 		rows[i] = wordlist.SidecarRow{
-			ID:            f.ID,
-			CognatorID:    fmt.Sprintf("%s:%s:%d", fam, concept, part[i]),
-			Confidence:    confs[i],
-			Bootstrap:     boot.Mean[i],
-			BootstrapLow:  boot.Low[i],
-			BootstrapHigh: boot.High[i],
+			ID:                 f.ID,
+			CognatorID:         fmt.Sprintf("%s:%s:%d", fam, concept, part[i]),
+			Confidence:         diagnostics[i].Confidence,
+			AssignedSupport:    diagnostics[i].AssignedSupport,
+			AlternativeSupport: diagnostics[i].AlternativeSupport,
+			SupportMargin:      diagnostics[i].SupportMargin,
+			Bootstrap:          boot.Mean[i],
+			BootstrapLow:       boot.Low[i],
+			BootstrapHigh:      boot.High[i],
 		}
 	}
 	return rows
@@ -698,12 +704,34 @@ func jaccardExcl(a, b map[int]struct{}, excl int) float64 {
 }
 
 func membershipConfidences(g *cluster.Graph, part []int) []float64 {
-	out := make([]float64, len(part))
+	diagnostics := membershipDiagnostics(g, part)
+	out := make([]float64, len(diagnostics))
+	for i := range diagnostics {
+		out[i] = diagnostics[i].Confidence
+	}
+	return out
+}
+
+type membershipDiagnostic struct {
+	Confidence         float64
+	AssignedSupport    float64
+	AlternativeSupport float64
+	SupportMargin      float64
+}
+
+func membershipDiagnostics(g *cluster.Graph, part []int) []membershipDiagnostic {
+	out := make([]membershipDiagnostic, len(part))
 	if g == nil || len(part) == 0 {
 		return out
 	}
 	for i := range part {
-		out[i] = nodeSupportProfile(g, part, i).ConfidenceTotal()
+		profile := nodeSupportProfile(g, part, i)
+		out[i] = membershipDiagnostic{
+			Confidence:         profile.ConfidenceTotal(),
+			AssignedSupport:    profile.InTotal,
+			AlternativeSupport: profile.BestAltTotal,
+			SupportMargin:      profile.InTotal - profile.BestAltTotal,
+		}
 	}
 	return out
 }

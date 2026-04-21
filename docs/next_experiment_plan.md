@@ -304,3 +304,26 @@ Next direction:
 - keep clustering fixed at the frozen support/adaptive/bridge-cut baseline
 - expose alternative-cluster support as confidence and diagnostics output
 - use those diagnostics to measure whether low-confidence forms concentrate in actual errors before designing any further reassignment policy
+
+## Confidence Output: Alternative-Support Diagnostics
+
+Implementation direction:
+- keep the promoted clustering policy unchanged
+- compute diagnostics after the final partition is chosen
+- write diagnostics to sidecar and benchmark prediction outputs
+
+New per-form diagnostics:
+- `assigned_support`: total edge support from the form to members of its assigned cluster
+- `alternative_support`: strongest total edge support from the form to any competing cluster
+- `support_margin`: `assigned_support - alternative_support`
+- `confidence`: bounded score derived from assigned versus alternative support
+
+Interpretation:
+- high assigned support and low alternative support means the form is a stable cluster member
+- low or negative support margin means the form is a likely boundary case
+- these values are diagnostic confidence evidence, not a reassignment rule
+
+Next validation:
+- run the frozen baseline with prediction output on `Dev-Core`
+- join predictions to pairwise or form-level error labels
+- test whether low `confidence` and low `support_margin` concentrate among false-positive and false-negative decisions

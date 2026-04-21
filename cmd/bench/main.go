@@ -44,15 +44,18 @@ type result struct {
 }
 
 type prediction struct {
-	EvalID        string
-	Dataset       string
-	Concept       string
-	Gold          string
-	Pred          string
-	Confidence    float64
-	Bootstrap     float64
-	BootstrapLow  float64
-	BootstrapHigh float64
+	EvalID             string
+	Dataset            string
+	Concept            string
+	Gold               string
+	Pred               string
+	Confidence         float64
+	AssignedSupport    float64
+	AlternativeSupport float64
+	SupportMargin      float64
+	Bootstrap          float64
+	BootstrapLow       float64
+	BootstrapHigh      float64
 }
 
 func main() {
@@ -450,15 +453,18 @@ func runFamily(name string, recs []wordlist.Record, b *merkmal.Bundle, spec pipe
 			continue
 		}
 		predictions = append(predictions, prediction{
-			EvalID:        row.ID,
-			Dataset:       name,
-			Concept:       rec.Concept,
-			Gold:          truth[row.ID],
-			Pred:          row.CognatorID,
-			Confidence:    row.Confidence,
-			Bootstrap:     row.Bootstrap,
-			BootstrapLow:  row.BootstrapLow,
-			BootstrapHigh: row.BootstrapHigh,
+			EvalID:             row.ID,
+			Dataset:            name,
+			Concept:            rec.Concept,
+			Gold:               truth[row.ID],
+			Pred:               row.CognatorID,
+			Confidence:         row.Confidence,
+			AssignedSupport:    row.AssignedSupport,
+			AlternativeSupport: row.AlternativeSupport,
+			SupportMargin:      row.SupportMargin,
+			Bootstrap:          row.Bootstrap,
+			BootstrapLow:       row.BootstrapLow,
+			BootstrapHigh:      row.BootstrapHigh,
 		})
 	}
 	return r, predictions
@@ -581,11 +587,12 @@ func writePredictions(path string, rows []prediction, runLabel string) error {
 		return err
 	}
 	defer f.Close()
-	fmt.Fprintln(f, "eval_id\tdataset\tconcept\tgold\tpred\tconfidence\tbootstrap\tbootstrap_low\tbootstrap_high\trun_label")
+	fmt.Fprintln(f, "eval_id\tdataset\tconcept\tgold\tpred\tconfidence\tassigned_support\talternative_support\tsupport_margin\tbootstrap\tbootstrap_low\tbootstrap_high\trun_label")
 	for _, row := range rows {
-		fmt.Fprintf(f, "%s\t%s\t%s\t%s\t%s\t%.6f\t%.6f\t%.6f\t%.6f\t%s\n",
+		fmt.Fprintf(f, "%s\t%s\t%s\t%s\t%s\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%s\n",
 			row.EvalID, row.Dataset, row.Concept, row.Gold, row.Pred,
-			row.Confidence, row.Bootstrap, row.BootstrapLow, row.BootstrapHigh, runLabel)
+			row.Confidence, row.AssignedSupport, row.AlternativeSupport, row.SupportMargin,
+			row.Bootstrap, row.BootstrapLow, row.BootstrapHigh, runLabel)
 	}
 	return nil
 }
