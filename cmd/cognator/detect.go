@@ -50,6 +50,9 @@ func detectCmd(args []string) {
 	scope := fs.String("cluster-scope", "concept", "'concept' (default) or 'global' (cross-concept)")
 	alignMode := fs.String("alignment-mode", "combined", "'global' or 'combined' (default; global+local+overlap)")
 	classReduce := fs.Bool("class-reduce", true, "strip IPA modifiers upstream for SCA-style densification (default true)")
+	scorerMode := fs.String("scorer", "learned", "'learned' (default) or 'posterior' (Dirichlet-prior scorer, asymmetric-by-construction)")
+	dirichletConcentration := fs.Float64("dirichlet-concentration", 0, "α₀ for --scorer=posterior (0 = default)")
+	dirichletSharpness := fs.Float64("dirichlet-sharpness", 0, "k for --scorer=posterior softmax over merkmal distances (0 = default)")
 	preset := fs.String("preset", "", "apply a named preset (e.g. 'support-adaptive-bridge'); explicit flags override preset values")
 	if err := fs.Parse(args); err != nil {
 		os.Exit(2)
@@ -121,6 +124,9 @@ func detectCmd(args []string) {
 		ClusterScope:              *scope,
 		AlignmentMode:             *alignMode,
 		ClassReduce:               *classReduce,
+		ScorerMode:                *scorerMode,
+		DirichletConcentration:    *dirichletConcentration,
+		DirichletSharpness:        *dirichletSharpness,
 	}
 	res := pipeline.Detect(recs, b, spec)
 	log.Printf("detection complete: %d rows, threshold=%.3f, %d OOV types, %s elapsed",

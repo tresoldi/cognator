@@ -104,6 +104,9 @@ func main() {
 		classReduce               = flag.Bool("class-reduce", true, "NFD-strip IPA modifiers upstream")
 		nullMode                  = flag.String("null-mode", "marginal", "'marginal' (default) or 'shuffle' (permutation-based null, slower but more accurate)")
 		nullMaxRuns               = flag.Int("null-max-runs", 200, "cap on shuffle runs per lect-pair; adaptive stopping may end earlier")
+		scorerMode                = flag.String("scorer", "learned", "'learned' (default; CorrespondenceTable + lambda blend) or 'posterior' (Dirichlet-prior PosteriorTable, asymmetric-by-construction)")
+		dirichletConcentration    = flag.Float64("dirichlet-concentration", 0, "α₀ for --scorer=posterior (0 falls back to score.DefaultDirichletConcentration)")
+		dirichletSharpness        = flag.Float64("dirichlet-sharpness", 0, "k for --scorer=posterior softmax over merkmal distances (0 falls back to default)")
 		filter                    = flag.String("datasets", "", "comma list of families; empty = all")
 		minCognacy                = flag.Int("min-cognacy", 50, "skip families with fewer than N Cognacy-annotated forms")
 		maxLects                  = flag.Int("max-lects", 250, "skip families with more than N distinct lects (0 = no limit; memory guard)")
@@ -210,6 +213,9 @@ func main() {
 		ClassReduce:               *classReduce,
 		NullMode:                  *nullMode,
 		NullMaxRuns:               *nullMaxRuns,
+		ScorerMode:                *scorerMode,
+		DirichletConcentration:    *dirichletConcentration,
+		DirichletSharpness:        *dirichletSharpness,
 	}
 	effective := pipeline.ResolveDefaults(spec)
 	workerCount := *parallelFam

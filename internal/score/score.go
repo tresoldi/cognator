@@ -65,8 +65,8 @@ type CorrespondenceTable struct {
 	// Shuffle null (nil if not trained with ComputeShuffleNull):
 	// per-grapheme-pair expected count averaged over shuffle runs,
 	// plus the per-run total column count for normalization.
-	shuffleExpected   map[string]map[string]float64
-	totalShuffleCols  int
+	shuffleExpected  map[string]map[string]float64
+	totalShuffleCols int
 }
 
 // NullDistribution is a precomputed shuffle-based null: the expected
@@ -74,8 +74,8 @@ type CorrespondenceTable struct {
 // target forms. Attach to a CorrespondenceTable via Train's `null`
 // argument. Total is the per-run mean column count.
 type NullDistribution struct {
-	Expected          map[string]map[string]float64
-	TotalColumnsMean  int
+	Expected         map[string]map[string]float64
+	TotalColumnsMean int
 }
 
 // Train aligns every form-pair under prior and tallies grapheme-pair
@@ -303,7 +303,7 @@ func PairByConceptIndexed(idx *LectIndex, srcLect, tgtLect string) []FormPair {
 			for _, t := range tgtForms {
 				out = append(out, FormPair{
 					Source: s.Graphemes, Target: t.Graphemes,
-					Concept: concept,
+					Concept:  concept,
 					SourceID: s.ID, TargetID: t.ID,
 				})
 			}

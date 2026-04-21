@@ -113,4 +113,10 @@ var (
 	DefaultGraphMode          = "threshold"
 	DefaultGraphExpansionMode = "either"
 	DefaultRefineMode         = "none"
+	// DefaultScorerMode keeps the legacy LearnedScorer path as the
+	// default so the --scorer=posterior experiment is strictly opt-in
+	// until it wins its own promotion test. score.DefaultDirichletConcentration
+	// and score.DefaultDirichletSharpness live alongside the posterior
+	// implementation.
+	DefaultScorerMode = "learned"
 )

@@ -58,6 +58,9 @@ type Spec struct {
 	ClassReduce               bool    // strip IPA modifiers/diacritics upstream (NFD-strip heuristic)
 	NullMode                  string  // "marginal" (default, cheap) | "shuffle" (permutation-based, more accurate on sparse pairs)
 	NullMaxRuns               int     // cap on shuffle runs per lect-pair (default 200; adaptive stopping usually stops earlier)
+	ScorerMode                string  // "learned" (default; legacy CorrespondenceTable + lambda blend) | "posterior" (Dirichlet-prior PosteriorTable)
+	DirichletConcentration    float64 // α₀ for the Dirichlet-prior scorer; 0 falls back to DefaultDirichletConcentration
+	DirichletSharpness        float64 // k for the softmax over merkmal distances in the Dirichlet base measure; 0 falls back to DefaultDirichletSharpness
 }
 
 // Result is the end-to-end output.
@@ -161,6 +164,15 @@ func ResolveDefaults(spec Spec) Spec {
 	}
 	if spec.NullMaxRuns <= 0 {
 		spec.NullMaxRuns = DefaultNullMaxRuns
+	}
+	if spec.ScorerMode == "" {
+		spec.ScorerMode = DefaultScorerMode
+	}
+	if spec.DirichletConcentration <= 0 {
+		spec.DirichletConcentration = score.DefaultDirichletConcentration
+	}
+	if spec.DirichletSharpness <= 0 {
+		spec.DirichletSharpness = score.DefaultDirichletSharpness
 	}
 	return spec
 }
@@ -287,17 +299,24 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 					continue
 				}
 				var scorer align.Scorer
-				if len(fps) < spec.MinPairs {
-					scorer = priorForWorkers
-				} else {
-					var null *score.NullDistribution
-					if spec.NullMode == "shuffle" {
-						nullSpec := score.DefaultShuffleNullSpec(spec.Seed + uint64(len(fps)))
-						nullSpec.MaxRuns = spec.NullMaxRuns
-						null = score.ComputeShuffleNull(fps, priorForWorkers, nullSpec)
+				switch spec.ScorerMode {
+				case "posterior":
+					prior := score.NewDirichletPrior(b, spec.DirichletConcentration, spec.DirichletSharpness, score.InventoryFromPairs(fps))
+					tab := score.TrainPosteriorIterated(jb.a, jb.b, fps, b, spec.Iterations, prior)
+					scorer = score.PosteriorScorer(b, tab)
+				default:
+					if len(fps) < spec.MinPairs {
+						scorer = priorForWorkers
+					} else {
+						var null *score.NullDistribution
+						if spec.NullMode == "shuffle" {
+							nullSpec := score.DefaultShuffleNullSpec(spec.Seed + uint64(len(fps)))
+							nullSpec.MaxRuns = spec.NullMaxRuns
+							null = score.ComputeShuffleNull(fps, priorForWorkers, nullSpec)
+						}
+						tab := score.TrainIteratedWithShuffle(jb.a, jb.b, fps, b, spec.Iterations, spec.Lambda, null)
+						scorer = score.LearnedScorerOf(b, tab, spec.Lambda)
 					}
-					tab := score.TrainIteratedWithShuffle(jb.a, jb.b, fps, b, spec.Iterations, spec.Lambda, null)
-					scorer = score.LearnedScorerOf(b, tab, spec.Lambda)
 				}
 				distFn := align.Distance
 				if spec.AlignmentMode == "combined" {
