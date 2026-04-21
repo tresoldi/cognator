@@ -37,10 +37,6 @@ func detectCmd(args []string) {
 	graphContrastiveFloor := fs.Float64("graph-contrastive-floor", 0.05, "ignore rival gaps up to this size before contrastive penalty activates")
 	graphRiskRankWeight := fs.Float64("graph-risk-rank-weight", 0.5, "weight of endpoint-rank risk in calibrated edge-risk score")
 	graphRiskGapWeight := fs.Float64("graph-risk-gap-weight", 0.5, "weight of best-rival gap risk in calibrated edge-risk score")
-	graphRiskTriangleWeight := fs.Float64("graph-risk-triangle-weight", 0.0, "weight of low triangle-support risk in calibrated edge-risk score")
-	graphRiskUnilateralWeight := fs.Float64("graph-risk-unilateral-weight", 0.0, "weight of non-mutual expansion risk in calibrated edge-risk score")
-	graphRiskDensityWeight := fs.Float64("graph-risk-density-weight", 0.0, "weight of low local-neighborhood density risk in calibrated edge-risk score")
-	graphRiskDispersionWeight := fs.Float64("graph-risk-dispersion-weight", 0.0, "weight of concept-level ambiguity/dispersion risk in calibrated edge-risk score")
 	graphUnilateralPenalty := fs.Float64("graph-unilateral-penalty", 0.0, "penalty on non-mutual expanded edges when endpoints have stronger rivals")
 	graphRivalFloor := fs.Float64("graph-rival-floor", 0.6, "rival-support floor at which unilateral penalty activates")
 	refineMode := fs.String("refine-mode", "none", "'none' (default), 'core-cc', 'reassign', 'alt-reassign', 'bridge-cut', 'bridge-alt-reassign', 'alt-reassign-bridge', 'alt-bridge-cut', or 'local-recluster'")
@@ -100,10 +96,6 @@ func detectCmd(args []string) {
 		GraphContrastiveFloor:            *graphContrastiveFloor,
 		GraphRiskRankWeight:              *graphRiskRankWeight,
 		GraphRiskGapWeight:               *graphRiskGapWeight,
-		GraphRiskTriangleWeight:          *graphRiskTriangleWeight,
-		GraphRiskUnilateralWeight:        *graphRiskUnilateralWeight,
-		GraphRiskDensityWeight:           *graphRiskDensityWeight,
-		GraphRiskDispersionWeight:        *graphRiskDispersionWeight,
 		GraphUnilateralPenalty:           *graphUnilateralPenalty,
 		GraphRivalFloor:                  *graphRivalFloor,
 		RefineMode:                       *refineMode,

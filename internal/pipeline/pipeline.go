@@ -43,10 +43,6 @@ type Spec struct {
 	GraphContrastiveFloor            float64 // ignore small rival gaps before contrastive penalty activates
 	GraphRiskRankWeight              float64 // weight of endpoint-rank risk in calibrated edge-risk score
 	GraphRiskGapWeight               float64 // weight of best-rival gap risk in calibrated edge-risk score
-	GraphRiskTriangleWeight          float64 // weight of low triangle-support risk in calibrated edge-risk score
-	GraphRiskUnilateralWeight        float64 // weight of non-mutual expansion risk in calibrated edge-risk score
-	GraphRiskDensityWeight           float64 // weight of low local-neighborhood density risk in calibrated edge-risk score
-	GraphRiskDispersionWeight        float64 // weight of concept-level ambiguity/dispersion risk in calibrated edge-risk score
 	GraphUnilateralPenalty           float64 // penalty on non-mutual expanded edges when endpoints have stronger rivals
 	GraphRivalFloor                  float64 // rival-support floor at which unilateral penalty activates
 	RefineMode                       string  // "none" (default) | "core-cc" | "reassign" | "bridge-cut" | "local-recluster"
@@ -130,18 +126,6 @@ func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
 	}
 	if spec.GraphRiskGapWeight < 0 {
 		spec.GraphRiskGapWeight = DefaultGraphRiskGapWeight
-	}
-	if spec.GraphRiskTriangleWeight < 0 {
-		spec.GraphRiskTriangleWeight = DefaultGraphRiskTriangleWeight
-	}
-	if spec.GraphRiskUnilateralWeight < 0 {
-		spec.GraphRiskUnilateralWeight = DefaultGraphRiskUnilateralWeight
-	}
-	if spec.GraphRiskDensityWeight < 0 {
-		spec.GraphRiskDensityWeight = DefaultGraphRiskDensityWeight
-	}
-	if spec.GraphRiskDispersionWeight < 0 {
-		spec.GraphRiskDispersionWeight = DefaultGraphRiskDispersionWeight
 	}
 	if spec.GraphMutualBoost <= 0 {
 		spec.GraphMutualBoost = DefaultGraphMutualBoost
@@ -585,24 +569,20 @@ func runClustering(n int, rawEdges []cEdge, threshold float64, seed uint64, spec
 		pairs = append(pairs, evidence.Pair{A: e.i, B: e.j, Distance: e.d})
 	}
 	edges := evidence.BuildGraphEdges(n, pairs, threshold, evidence.Spec{
-		Mode:                 spec.GraphMode,
-		ExpansionMode:        spec.GraphExpansionMode,
-		TopK:                 spec.GraphTopK,
-		AdaptiveMargin:       spec.GraphAdaptiveMargin,
-		AdaptiveEitherMax:    spec.GraphAdaptiveEitherMax,
-		AdaptiveAmbiguity:    spec.GraphAdaptiveAmbiguity,
-		MutualBoost:          spec.GraphMutualBoost,
-		TriangleBoost:        spec.GraphTriangleBoost,
-		ContrastivePenalty:   spec.GraphContrastivePenalty,
-		ContrastiveFloor:     spec.GraphContrastiveFloor,
-		RiskRankWeight:       spec.GraphRiskRankWeight,
-		RiskGapWeight:        spec.GraphRiskGapWeight,
-		RiskTriangleWeight:   spec.GraphRiskTriangleWeight,
-		RiskUnilateralWeight: spec.GraphRiskUnilateralWeight,
-		RiskDensityWeight:    spec.GraphRiskDensityWeight,
-		RiskDispersionWeight: spec.GraphRiskDispersionWeight,
-		UnilateralPenalty:    spec.GraphUnilateralPenalty,
-		RivalFloor:           spec.GraphRivalFloor,
+		Mode:               spec.GraphMode,
+		ExpansionMode:      spec.GraphExpansionMode,
+		TopK:               spec.GraphTopK,
+		AdaptiveMargin:     spec.GraphAdaptiveMargin,
+		AdaptiveEitherMax:  spec.GraphAdaptiveEitherMax,
+		AdaptiveAmbiguity:  spec.GraphAdaptiveAmbiguity,
+		MutualBoost:        spec.GraphMutualBoost,
+		TriangleBoost:      spec.GraphTriangleBoost,
+		ContrastivePenalty: spec.GraphContrastivePenalty,
+		ContrastiveFloor:   spec.GraphContrastiveFloor,
+		RiskRankWeight:     spec.GraphRiskRankWeight,
+		RiskGapWeight:      spec.GraphRiskGapWeight,
+		UnilateralPenalty:  spec.GraphUnilateralPenalty,
+		RivalFloor:         spec.GraphRivalFloor,
 	})
 	g := cluster.NewGraph(n, edges)
 	part := cluster.Infomap(g, seed)

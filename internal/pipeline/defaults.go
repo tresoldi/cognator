@@ -68,15 +68,13 @@ const (
 	// the contrastive penalty starts to activate.
 	DefaultGraphContrastiveFloor = 0.05
 
-	// DefaultGraphRisk* weights define the calibrated edge-risk blend
-	// used by the contrastive penalty. By default we preserve the
-	// previous behavior by averaging rank and rival-gap risk only.
-	DefaultGraphRiskRankWeight       = 0.5
-	DefaultGraphRiskGapWeight        = 0.5
-	DefaultGraphRiskTriangleWeight   = 0.0
-	DefaultGraphRiskUnilateralWeight = 0.0
-	DefaultGraphRiskDensityWeight    = 0.0
-	DefaultGraphRiskDispersionWeight = 0.0
+	// DefaultGraphRiskRankWeight and DefaultGraphRiskGapWeight define
+	// the calibrated edge-risk blend used by the contrastive penalty.
+	// Rank and rival-gap are the only two risk features that earned
+	// promotion; triangle/unilateral/density/dispersion variants
+	// regressed on Dev-Full and were removed.
+	DefaultGraphRiskRankWeight = 0.5
+	DefaultGraphRiskGapWeight  = 0.5
 
 	// DefaultGraphMutualBoost raises the weight of mutual top-k edges
 	// toward 1.0 in support mode.

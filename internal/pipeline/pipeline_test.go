@@ -32,7 +32,7 @@ func syntheticCorpus() []wordlist.Record {
 		mapFunc func(stem string) string
 	}
 	lects := []reflex{
-		{"lectA", func(s string) string { return s }},                                 // canonical
+		{"lectA", func(s string) string { return s }}, // canonical
 		{"lectB", func(s string) string { return rewrite(s, map[string]string{"k": "g"}) }},
 		{"lectC", func(s string) string { return rewrite(s, map[string]string{"p": "b"}) }},
 	}
