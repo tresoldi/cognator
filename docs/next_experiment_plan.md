@@ -327,3 +327,10 @@ Next validation:
 - run the frozen baseline with prediction output on `Dev-Core`
 - join predictions to pairwise or form-level error labels
 - test whether low `confidence` and low `support_margin` concentrate among false-positive and false-negative decisions
+
+Diagnostic-only holdout check:
+- running the frozen baseline on holdout confirms that confidence diagnostics are enriched for errors
+- the dev-derived thresholds are not stable enough to drive clustering or hard abstention rules
+- `confidence <= 0.767` drops from about 0.93 error-involvement precision on dev to about 0.84 on holdout
+- moderate `alternative_support` remains useful but drops from about 0.95 precision on dev to about 0.81 on holdout
+- conclusion: use confidence diagnostics for paper reporting, error triage, and manual review queues; do not use fixed thresholds as automatic model behavior yet
