@@ -355,6 +355,25 @@ Migration:
   because the goal is deleting three empirical constants, not chasing the last
   0.01 on a tuning run
 
+Follow-up refinements if the constant α₀ is not the right knob:
+
+- **Shuffle-null integration.** Replace the target-marginal null in
+  `PosteriorTable.LogOdds` with the existing shuffle-permutation null
+  when `--null-mode=shuffle`. Makes the posterior-odds ratio a proper
+  Bayes factor against a random-pairing baseline rather than against
+  whatever target marginals the corpus happens to have. Composes with
+  the core α₀ knob.
+- **Per-row α₀ scaling.** Replace the scalar α₀ with an effective
+  concentration α₀(σ) that shrinks for rich-data rows — e.g.
+  α₀_eff = α₀_base · max(1, median_row_count / n(σ, ·)). Rows with
+  thousands of observations then behave like MLE; rows with a handful
+  still lean on the prior. Adds a new empirical constant (α₀_base)
+  but separates the small-data and rich-data regimes, which is
+  exactly the failure mode that a flat α₀ shows on large families
+  like peirosaustroasiatic. Only land this if the shuffle-null
+  integration and a simple α₀ sweep both fail to close the gap on
+  Dev-Core.
+
 Future step (do not start before the core is promoted): `α + n` is a sampleable
 posterior. Replacing the current Gaussian-distance-perturbation bootstrap with
 a posterior-sample bootstrap would make the confidence intervals honest

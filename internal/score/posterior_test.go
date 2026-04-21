@@ -193,6 +193,57 @@ func TestTrainPosteriorAccumulatesAlignmentColumns(t *testing.T) {
 	}
 }
 
+func TestAttachShuffleNullShrinksLogOddsWhenNullAnticipatesObservation(t *testing.T) {
+	b := loadTestBundle(t)
+	inv := []string{"a", "e", "i", "o", "u", Gap}
+	prior := NewDirichletPrior(b, 5.0, 4.0, inv)
+	tab := NewPosteriorTable("S", "T", prior)
+	// Observed: a→e always. Spread out other source rows so that the
+	// observed target marginal does not itself collapse to e.
+	for i := 0; i < 30; i++ {
+		tab.Add("a", "e")
+	}
+	for i := 0; i < 10; i++ {
+		tab.Add("i", "i")
+		tab.Add("o", "o")
+		tab.Add("u", "u")
+	}
+
+	// Null A: shuffle says (a, e) is rare under random pairing (near
+	// uniform on targets). Posterior dominates null → large LogOdds.
+	lowNull := &NullDistribution{
+		Expected: map[string]map[string]float64{
+			"a": {"e": 6.0, "a": 6.0, "i": 6.0, "o": 6.0, "u": 6.0},
+		},
+		TotalColumnsMean: 30,
+	}
+	tab.AttachShuffleNull(lowNull)
+	loLow := tab.LogOdds("a", "e")
+
+	// Null B: shuffle says (a, e) is already *expected* under random
+	// pairing. Posterior barely exceeds null → small LogOdds.
+	highNull := &NullDistribution{
+		Expected: map[string]map[string]float64{
+			"a": {"e": 28.0, "a": 0.5, "i": 0.5, "o": 0.5, "u": 0.5},
+		},
+		TotalColumnsMean: 30,
+	}
+	tab.AttachShuffleNull(highNull)
+	loHigh := tab.LogOdds("a", "e")
+
+	if loHigh >= loLow {
+		t.Fatalf("shuffle null that anticipates (a,e) should shrink LogOdds relative to a flat null; highNull=%v lowNull=%v", loHigh, loLow)
+	}
+
+	tab.AttachShuffleNull(nil)
+	marginalLO := tab.LogOdds("a", "e")
+	if marginalLO == loLow || marginalLO == loHigh {
+		// Not strictly wrong, but the marginal path should give yet
+		// another value here since it uses corpus-wide target totals.
+		t.Fatalf("clearing the shuffle null should route through the marginal path (marginal=%v lowNull=%v highNull=%v)", marginalLO, loLow, loHigh)
+	}
+}
+
 func TestTrainPosteriorIteratedSharpensCorrespondences(t *testing.T) {
 	b := loadTestBundle(t)
 	// Ten pairs of the form p*k ↔ b*g where * is a vowel, so the
@@ -211,7 +262,7 @@ func TestTrainPosteriorIteratedSharpensCorrespondences(t *testing.T) {
 		}
 	}
 	prior := NewDirichletPrior(b, 5.0, 4.0, InventoryFromPairs(pairs))
-	tab := TrainPosteriorIterated("A", "B", pairs, b, 3, prior)
+	tab := TrainPosteriorIterated("A", "B", pairs, b, 3, prior, nil)
 	// After 3 iterations the posterior should strongly prefer p→b and
 	// k→g over any competing target. We check dominance rather than
 	// absolute values so the test is robust to α₀ choices.
@@ -246,8 +297,8 @@ func TestInventoryFromPairsIncludesGap(t *testing.T) {
 func TestDefaultDirichletConstants(t *testing.T) {
 	// Guard the documented defaults — changing them should be a
 	// deliberate act visible in the diff.
-	if !approxEqual(DefaultDirichletConcentration, 5.0, 1e-12) {
-		t.Errorf("DefaultDirichletConcentration = %v, want 5.0", DefaultDirichletConcentration)
+	if !approxEqual(DefaultDirichletConcentration, 50.0, 1e-12) {
+		t.Errorf("DefaultDirichletConcentration = %v, want 50.0", DefaultDirichletConcentration)
 	}
 	if !approxEqual(DefaultDirichletSharpness, 4.0, 1e-12) {
 		t.Errorf("DefaultDirichletSharpness = %v, want 4.0", DefaultDirichletSharpness)

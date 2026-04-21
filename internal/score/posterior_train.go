@@ -54,7 +54,12 @@ func TrainPosterior(srcLect, tgtLect string, pairs []FormPair, scorer align.Scor
 // iterations align under the posterior scorer derived from the
 // previous pass's counts. With iterations=1 this is equivalent to
 // TrainPosterior under the prior scorer.
-func TrainPosteriorIterated(srcLect, tgtLect string, pairs []FormPair, bundle *merkmal.Bundle, iterations int, prior *DirichletPrior) *PosteriorTable {
+//
+// Pass a non-nil null to swap the target-marginal null for the
+// permutation-based conditional derived from a shuffle run; the same
+// null is attached to every iteration's table so log-odds stay
+// comparable across passes.
+func TrainPosteriorIterated(srcLect, tgtLect string, pairs []FormPair, bundle *merkmal.Bundle, iterations int, prior *DirichletPrior, null *NullDistribution) *PosteriorTable {
 	if iterations < 1 {
 		iterations = 1
 	}
@@ -62,6 +67,9 @@ func TrainPosteriorIterated(srcLect, tgtLect string, pairs []FormPair, bundle *m
 	var table *PosteriorTable
 	for i := 0; i < iterations; i++ {
 		table = TrainPosterior(srcLect, tgtLect, pairs, scorer, prior)
+		if null != nil {
+			table.AttachShuffleNull(null)
+		}
 		scorer = PosteriorScorer(bundle, table)
 	}
 	return table

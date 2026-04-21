@@ -302,7 +302,13 @@ func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Sp
 				switch spec.ScorerMode {
 				case "posterior":
 					prior := score.NewDirichletPrior(b, spec.DirichletConcentration, spec.DirichletSharpness, score.InventoryFromPairs(fps))
-					tab := score.TrainPosteriorIterated(jb.a, jb.b, fps, b, spec.Iterations, prior)
+					var null *score.NullDistribution
+					if spec.NullMode == "shuffle" {
+						nullSpec := score.DefaultShuffleNullSpec(spec.Seed + uint64(len(fps)))
+						nullSpec.MaxRuns = spec.NullMaxRuns
+						null = score.ComputeShuffleNull(fps, priorForWorkers, nullSpec)
+					}
+					tab := score.TrainPosteriorIterated(jb.a, jb.b, fps, b, spec.Iterations, prior, null)
 					scorer = score.PosteriorScorer(b, tab)
 				default:
 					if len(fps) < spec.MinPairs {

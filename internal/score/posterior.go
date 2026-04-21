@@ -12,11 +12,15 @@ import (
 // Dirichlet prior over correspondence distributions. Interpretation:
 // "the prior is worth α₀ observations per source row." Small-sample
 // regime (n(σ,·) ≪ α₀) recovers the merkmal-similarity prior;
-// rich-sample regime recovers the maximum-likelihood estimate. 5.0 is
-// the initial empirical pick — comparable to MinPairs=5 in the
-// legacy scorer, which is the point at which the learned signal
-// earns trust there.
-const DefaultDirichletConcentration = 5.0
+// rich-sample regime recovers the maximum-likelihood estimate.
+//
+// Chosen from a Dev-Core sweep over α₀ ∈ {1, 2, 5, 10, 20, 50, 100,
+// 200} with --scorer=posterior --preset=support-adaptive-bridge:
+// mean F peaks at α₀=50 (0.8121), above α₀=5 (0.7945) and α₀=200
+// (0.8023). Large families like peirosaustroasiatic need a stronger
+// prior than the initial α₀=5 pick suggested — many observations
+// per row still benefit from regularization against over-merging.
+const DefaultDirichletConcentration = 50.0
 
 // DefaultDirichletSharpness controls how strongly merkmal distance
 // shapes the base measure π(σ, τ) = softmax_τ(-k · d_merkmal(σ, τ)).
@@ -139,6 +143,13 @@ type PosteriorTable struct {
 	targetTotal map[string]int
 	columns     int
 	totalPairs  int
+
+	// shuffleNull, when non-nil, replaces the target-marginal null in
+	// LogOdds with a permutation-based conditional P_null(target |
+	// source) derived from random re-pairings of the source forms.
+	// Attach via AttachShuffleNull; composes with any α₀.
+	shuffleNull        *NullDistribution
+	shuffleNullRowSums map[string]float64
 }
 
 // NewPosteriorTable returns an empty table attached to the given prior.
@@ -176,6 +187,25 @@ func (t *PosteriorTable) Add(source, target string) {
 // Prior returns the attached DirichletPrior.
 func (t *PosteriorTable) Prior() *DirichletPrior { return t.prior }
 
+// AttachShuffleNull installs a precomputed shuffle-based null to be
+// used by LogOdds. Recomputing row sums up front means LogOdds stays
+// a cheap map lookup under concurrent access. Pass nil to clear.
+func (t *PosteriorTable) AttachShuffleNull(n *NullDistribution) {
+	t.shuffleNull = n
+	t.shuffleNullRowSums = nil
+	if n == nil {
+		return
+	}
+	t.shuffleNullRowSums = make(map[string]float64, len(n.Expected))
+	for src, row := range n.Expected {
+		var sum float64
+		for _, v := range row {
+			sum += v
+		}
+		t.shuffleNullRowSums[src] = sum
+	}
+}
+
 // TotalPairs returns the number of form-pairs that contributed counts.
 func (t *PosteriorTable) TotalPairs() int { return t.totalPairs }
 
@@ -204,10 +234,23 @@ func (t *PosteriorTable) PosteriorMean(source, target string) float64 {
 	return (alpha + observed) / denom
 }
 
-// nullProbability returns P(target) under a target-marginal null.
-// Empty corpora fall back to a uniform distribution over the prior's
+// nullConditional returns P_null(target | source) under the attached
+// null model. When a shuffle null is attached it uses the per-row
+// expected counts (the permutation-based conditional); otherwise it
+// falls back to the target marginal observed during training. Empty
+// corpora fall back to a uniform distribution over the prior's
 // inventory so LogOdds never divides by zero.
-func (t *PosteriorTable) nullProbability(target string) float64 {
+func (t *PosteriorTable) nullConditional(source, target string) float64 {
+	if t.shuffleNull != nil {
+		rowSum := t.shuffleNullRowSums[source]
+		if rowSum > 0 {
+			if row, ok := t.shuffleNull.Expected[source]; ok {
+				if v, ok := row[target]; ok && v > 0 {
+					return v / rowSum
+				}
+			}
+		}
+	}
 	if t.columns > 0 {
 		if count, ok := t.targetTotal[target]; ok && count > 0 {
 			return float64(count) / float64(t.columns)
@@ -221,16 +264,17 @@ func (t *PosteriorTable) nullProbability(target string) float64 {
 	return 0
 }
 
-// LogOdds returns log₂ PosteriorMean(source, target) / P_null(target).
-// P_null is the target marginal when observed, else uniform over the
-// prior's inventory. Unlike the legacy CorrespondenceTable.LogOdds
-// this is a proper log-posterior-odds — no extra smoothing parameter.
+// LogOdds returns log₂ PosteriorMean(source, target) / P_null(target |
+// source). The null is the permutation-based conditional when a
+// shuffle null is attached, else the target marginal. Unlike the
+// legacy CorrespondenceTable.LogOdds this is a proper
+// log-posterior-odds — no extra smoothing parameter.
 func (t *PosteriorTable) LogOdds(source, target string) float64 {
 	post := t.PosteriorMean(source, target)
 	if post <= 0 {
 		return 0
 	}
-	null := t.nullProbability(target)
+	null := t.nullConditional(source, target)
 	if null <= 0 {
 		return 0
 	}
