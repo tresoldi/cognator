@@ -191,7 +191,8 @@ be written into benchmark metadata. This will reduce accidental benchmark drift.
 ### 4. Separate Experimental Flags From Stable Flags
 
 The CLI currently exposes many experimental graph-risk and refinement knobs.
-That is useful for research but noisy for users.
+That is useful for research but noisy for users, and several of the knobs
+point at modes that already lost their promotion tests.
 
 Proposed structure:
 
@@ -199,6 +200,24 @@ Proposed structure:
 - `--preset` for known recipes
 - `--experimental-*` prefix or config-only access for unstable features
 - benchmark metadata that records all effective values
+
+Concrete deletion targets (modes that ran the promotion ladder and lost):
+
+- `--refine-mode` values beyond `none` and `bridge-cut`: the `reassign`,
+  `alt-reassign`, `bridge-alt-reassign`, `alt-reassign-bridge`, `alt-bridge-cut`,
+  `local-recluster`, and `core-cc` variants all regressed on Dev-Full. Keep the
+  git history, remove the code (~300 LOC of `refinePartition*` in
+  `internal/pipeline/pipeline.go`).
+- `--graph-risk-triangle-weight`, `--graph-risk-unilateral-weight`,
+  `--graph-risk-density-weight`, `--graph-risk-dispersion-weight`: all four
+  default to 0 and never earned promotion. The rank/gap pair suffices.
+- `--refine-alt-cluster-threshold`, `--refine-cluster-confidence-threshold`,
+  `--refine-local-core-weight`: gate parameters for refinement modes being
+  removed above.
+
+The corresponding `Spec` fields and `Default*` constants go with them. KISS
+and YAGNI: three similar lines beat a premature abstraction, and dead
+experimental knobs beat neither.
 
 ## Model Roadmap
 
@@ -266,6 +285,104 @@ Ideas:
 - distinguish "stable singleton" from "unsupported singleton with competitors"
 - add a separate singleton-risk diagnostic
 - avoid mapping all no-internal-support cases into a single confidence behavior
+
+### 5. Bayesian Scoring Layer (Asymmetric By Construction)
+
+The current correspondence scorer has three separate empirical constants —
+`Lambda` (learned/prior blend), `MinPairs` (sparse-pair fallback), and
+`tanhScale` (log-odds squashing) — plus a smoothing `alpha` in `LogOdds`.
+A Dirichlet-prior formulation replaces all four with one principled
+concentration parameter and produces a proper log-posterior-odds score.
+
+Model:
+
+```
+P(τ | σ) ~ Dirichlet(α(σ, ·))
+α(σ, τ) = α₀ · π(σ, τ)
+π(σ, τ) = softmax_τ(-k · d_merkmal(σ, τ))        # proper distribution per σ
+P_posterior(τ | σ) = (α(σ, τ) + n(σ, τ)) / (α₀ + n(σ, ·))
+score(σ, τ) = log₂ P_posterior(τ | σ) / P_null(τ)
+```
+
+- `α₀` is the single prior concentration. "The prior is worth α₀ observations
+  per source row." Small-sample regime (`n(σ, ·) ≪ α₀`) → posterior ≈
+  merkmal-similarity prior; rich-sample regime → posterior ≈ MLE. The blend is
+  the math, not a tuned knob.
+- `P_null` comes from the shuffle null when trained, else the target marginal.
+  Both are already available in `internal/score`.
+- Asymmetry is first-class: `α_forward(σ, τ) ≠ α_reverse(τ, σ)` because the
+  prior is parameterized per direction. This is the first time the framework's
+  "asymmetry is real" principle lands as a first-class modeling choice instead
+  of surviving only in the ordered lect-pair bookkeeping.
+
+API direction:
+
+```go
+// internal/score/posterior.go
+
+type DirichletPrior struct {
+    Bundle        *merkmal.Bundle
+    Concentration float64 // α₀
+    Sharpness     float64 // k (inherits from priorSharpness)
+}
+
+type PosteriorTable struct { /* counts, rowTotal, prior, nullMarginal */ }
+
+func (t *PosteriorTable) PosteriorMean(source, target string) float64
+func (t *PosteriorTable) LogOdds(source, target string) float64
+
+func TrainPosterior(src, tgt string, pairs []FormPair,
+                    prior *DirichletPrior, null *NullDistribution) *PosteriorTable
+```
+
+What vanishes from `Spec` and `defaults.go`:
+
+- `Lambda` (absorbed into `α₀`)
+- `MinPairs` (prior dominates naturally on sparse pairs)
+- `tanhScale` (no squashing needed under a proper posterior-odds)
+
+What stays:
+
+- `priorSharpness` survives as `DirichletPrior.Sharpness` with a cleaner
+  interpretation (softmax temperature over merkmal distances)
+- `DefaultConcentration` is new (α₀), one constant replacing three
+
+Migration:
+
+- land `PosteriorTable` alongside `CorrespondenceTable`; no breaking changes
+- A/B on Dev-Core
+- promote if Dev-Core F ≥ current − 0.005; principle beats marginal F here
+  because the goal is deleting three empirical constants, not chasing the last
+  0.01 on a tuning run
+
+Future step (do not start before the core is promoted): `α + n` is a sampleable
+posterior. Replacing the current Gaussian-distance-perturbation bootstrap with
+a posterior-sample bootstrap would make the confidence intervals honest
+Bayesian credible intervals rather than heuristic stability indices.
+
+### 6. Regulae Integration (Longer-Term Methods)
+
+The current scorer is grapheme-to-grapheme under Needleman-Wunsch. The
+framework's stated target is phrase-based correspondence learning via
+`regulae`. This is a larger change than the Bayesian scoring layer and should
+not block it.
+
+Plan sketch:
+
+- keep cognator's concept-graph and clustering layers unchanged
+- replace the per-lect-pair `PosteriorTable` with a regulae-backed model for
+  the dominant lect pairs (by form count) once regulae is mature enough
+- fall back to `PosteriorTable` for long-tail pairs where regulae training
+  data is too thin
+- expect gains on families where sound changes are phrase-conditioned rather
+  than context-free (Grimm-style environments, Romance palatalization,
+  Austronesian reflex sets)
+
+Promotion criterion:
+
+- must improve Dev-Core mean F1 on at least one clearly phrase-conditioned
+  family without degrading context-free families
+- regulae must be pinned to a specific release tag, not a floating import
 
 ## Performance Roadmap
 
@@ -357,12 +474,41 @@ Track A until the primary quality target is met.
 
 ## Immediate Next Steps
 
-1. Add a named preset for the frozen research baseline.
-2. Add benchmark metadata that records all effective pipeline settings.
-3. Implement an evidence export/import format for one family and one split.
-4. Move membership confidence code out of `internal/pipeline`.
-5. Add calibration curves/risk bands for confidence outputs.
-6. Design one selective merge-control experiment that uses alternative support
-   for split proposals, not direct reassignment.
-7. Add a spot-check report for the holdout families with the largest gaps:
-   `blustaustronesian` and `syrjaenenuralic`.
+Prioritized. Earlier items unblock later ones.
+
+1. **Tidy pass.** Delete the refinement modes and risk weights that lost their
+   promotion tests (see Architecture Roadmap §4 for the concrete list). Add a
+   `--preset=research-20260421` alias for the frozen baseline. Record all
+   effective pipeline settings in benchmark metadata. Day of work, unblocks
+   clean diffs for everything below.
+
+2. **Evidence serialization.** Add an evidence export/import format scoped to
+   one family and one split first (see Performance Roadmap §1). This turns
+   downstream graph-policy and scoring sweeps from minutes to seconds and
+   would have saved days in the graph-calibration work already done. Do this
+   before any new scoring or refinement experiments.
+
+3. **Bayesian scoring layer.** Implement `PosteriorTable` alongside the
+   existing `CorrespondenceTable` (see Model Roadmap §5). A/B on Dev-Core;
+   promote if F ≥ current − 0.005. The win is deleting `Lambda`, `MinPairs`,
+   and `tanhScale` and making asymmetric scoring first-class — not chasing F.
+
+4. **Confidence calibration.** Move membership confidence out of
+   `internal/pipeline`. Add calibration curves and risk bands on Dev-Core,
+   evaluate transfer on Dev-Full. If the Bayesian scoring layer lands first,
+   the posterior-sample bootstrap becomes a natural source of honest credible
+   intervals; if not, use the existing bootstrap output.
+
+5. **Selective merge control.** One experiment using alternative-support as a
+   split-proposal signal rather than a reassignment rule — the only Family-2
+   direction that hasn't been tried and that respects the "don't change
+   assignments without a principled gain" conclusion.
+
+6. **Spot-check reports** for the holdout families with the largest gaps
+   (`blustaustronesian`, `syrjaenenuralic`, `lundgrenomagoa`). Useful for the
+   paper's error analysis regardless of which of the above lands first.
+
+Out of scope for this cycle: full package split (`internal/refine`,
+`internal/calibrate`, `internal/confidence`), regulae integration (see Model
+Roadmap §6), mid-family memory streaming, Infomap backend swap. Revisit after
+items 1–4 land and the promoted baseline shifts.
