@@ -287,8 +287,9 @@ Follow-ups:
   default scorer — credible intervals are the natural long-form
   output for the q4 "low" band that would still benefit from
   uncertainty annotation.
-- Move membership-confidence code out of `internal/pipeline` into
-  `internal/confidence`. Pure refactor; output schema is now stable.
+- *(Landed.)* Membership-confidence code lives in
+  `internal/confidence`; pipeline consumes it across the package
+  boundary. Output schema is stable.
 
 Candidate output (shape is settled; multi-stratum semantics still
 shifting):
