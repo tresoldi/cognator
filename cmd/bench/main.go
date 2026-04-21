@@ -60,60 +60,55 @@ type prediction struct {
 
 func main() {
 	var (
-		in                               = flag.String("in", "/tmp/arcaverborum_corecog/arcaverborum-A-corecog-20251008/forms.csv", "arcaverborum-shape CSV/TSV")
-		evalTable                        = flag.String("eval-table", "", "benchmark evaluation TSV exported by scripts/export_arcaverborum_eval.py")
-		splitFile                        = flag.String("split-file", "", "optional file with one dataset/family per line")
-		track                            = flag.String("track", "", "optional track label for logging/metadata (informational)")
-		predOut                          = flag.String("pred-out", "", "optional per-form prediction TSV output")
-		runLabel                         = flag.String("run-label", "", "optional run label written to prediction output")
-		bundle                           = flag.String("bundle", "tests/fixtures/merkmal/descriptive", "merkmal bundle directory")
-		outTSV                           = flag.String("out-tsv", "benchmark/results.tsv", "per-dataset TSV output")
-		outMD                            = flag.String("out-md", "benchmark/results.md", "markdown summary output")
-		iters                            = flag.Int("iterations", 3, "EM iterations per lect-pair")
-		lambda                           = flag.Float64("lambda", 0.5, "learned/prior blend (0.0=prior only, 1.0=learned only)")
-		scope                            = flag.String("cluster-scope", "concept", "'concept' or 'global'")
-		thresholdOver                    = flag.Float64("threshold", 0, "override threshold (0 = Otsu per-dataset)")
-		thresholdMode                    = flag.String("threshold-mode", "family", "'family' (default) or 'concept-shrink'")
-		thresholdMin                     = flag.Float64("threshold-min", 0, "Otsu clamp floor (0 = default 0.2)")
-		thresholdMax                     = flag.Float64("threshold-max", 0, "Otsu clamp ceiling (0 = default 0.8)")
-		thresholdShrink                  = flag.Float64("threshold-shrink", 0.5, "shrinkage toward family prior in concept-shrink mode")
-		graphMode                        = flag.String("graph-mode", "threshold", "'threshold' (default) or 'support'")
-		graphExpansionMode               = flag.String("graph-expansion-mode", "either", "'either' (default), 'mutual', or 'adaptive' top-k expansion in support graph mode")
-		graphTopK                        = flag.Int("graph-top-k", 2, "nearest-neighbor candidate expansion in support graph mode")
-		graphAdaptiveMargin              = flag.Float64("graph-adaptive-margin", 0.1, "minimum top1-vs-top2 support gap needed to keep unilateral expansion edges in adaptive mode")
-		graphAdaptiveEitherMax           = flag.Float64("graph-adaptive-either-max", 0.15, "if ambiguity share is at or below this, adaptive mode falls back to either expansion for the concept graph")
-		graphAdaptiveAmbiguity           = flag.Float64("graph-adaptive-ambiguity", 0.5, "if this share of nodes is ambiguous, adaptive mode falls back to mutual expansion for the concept graph")
-		graphMutualBoost                 = flag.Float64("graph-mutual-boost", 0.2, "weight boost for mutual top-k edges in support graph mode")
-		graphTriangleBoost               = flag.Float64("graph-triangle-boost", 0.3, "weight boost for triangle-supported edges in support graph mode")
-		graphContrastivePenalty          = flag.Float64("graph-contrastive-penalty", 0.0, "penalty for edges dominated by stronger local rivals")
-		graphContrastiveFloor            = flag.Float64("graph-contrastive-floor", 0.05, "ignore rival gaps up to this size before contrastive penalty activates")
-		graphRiskRankWeight              = flag.Float64("graph-risk-rank-weight", 0.5, "weight of endpoint-rank risk in calibrated edge-risk score")
-		graphRiskGapWeight               = flag.Float64("graph-risk-gap-weight", 0.5, "weight of best-rival gap risk in calibrated edge-risk score")
-		graphUnilateralPenalty           = flag.Float64("graph-unilateral-penalty", 0.0, "penalty on non-mutual expanded edges when endpoints have stronger rivals")
-		graphRivalFloor                  = flag.Float64("graph-rival-floor", 0.6, "rival-support floor at which unilateral penalty activates")
-		refineMode                       = flag.String("refine-mode", "none", "'none' (default), 'core-cc', 'reassign', 'alt-reassign', 'bridge-cut', 'bridge-alt-reassign', 'alt-reassign-bridge', 'alt-bridge-cut', or 'local-recluster'")
-		refineCoreWeight                 = flag.Float64("refine-core-weight", 0.75, "minimum internal edge weight for core-connectivity refinement")
-		refineConfidenceThreshold        = flag.Float64("refine-confidence-threshold", 0.55, "only reassign nodes below this confidence")
-		refineAltRatio                   = flag.Float64("refine-alt-ratio", 1.1, "alternative cluster support must exceed in-cluster support by this ratio for reassignment")
-		refineAltClusterThreshold        = flag.Float64("refine-alt-cluster-threshold", 0.0, "minimum target-cluster internal cohesion for alternative-cluster reassignment (0 = disabled)")
-		refineBridgeRatio                = flag.Float64("refine-bridge-ratio", 0.7, "cut weak in-cluster edges incident to low-confidence nodes below this fraction of node mean support")
-		refineClusterConfidenceThreshold = flag.Float64("refine-cluster-confidence-threshold", 0.75, "only locally recluster clusters whose mean confidence falls below this value")
-		refineLocalCoreWeight            = flag.Float64("refine-local-core-weight", 0.8, "edge floor used during selective local reclustering")
-		bootstrap                        = flag.Int("bootstrap", 0, "bootstrap runs for confidence intervals (0 = off)")
-		bootstrapSigma                   = flag.Float64("bootstrap-sigma", 0.05, "stddev of distance perturbation for bootstrap confidence")
-		seed                             = flag.Uint64("seed", 1, "RNG seed")
-		jobs                             = flag.Int("jobs", 0, "workers per family (0 = GOMAXPROCS)")
-		parallelFam                      = flag.Int("parallel-families", 2, "concurrent families")
-		alignMode                        = flag.String("alignment-mode", "combined", "'global' or 'combined' (global+local+overlap, default)")
-		classReduce                      = flag.Bool("class-reduce", true, "NFD-strip IPA modifiers upstream")
-		nullMode                         = flag.String("null-mode", "marginal", "'marginal' (default) or 'shuffle' (permutation-based null, slower but more accurate)")
-		nullMaxRuns                      = flag.Int("null-max-runs", 200, "cap on shuffle runs per lect-pair; adaptive stopping may end earlier")
-		filter                           = flag.String("datasets", "", "comma list of families; empty = all")
-		minCognacy                       = flag.Int("min-cognacy", 50, "skip families with fewer than N Cognacy-annotated forms")
-		maxLects                         = flag.Int("max-lects", 250, "skip families with more than N distinct lects (0 = no limit; memory guard)")
-		maxForms                         = flag.Int("max-forms", 15000, "skip families with more than N forms (0 = no limit; memory guard — mid-family NW edge transients can balloon 30x sys on L²-heavy families)")
-		memProfile                       = flag.String("mem-profile", "", "write post-run heap profile to this file (go tool pprof)")
-		memProfileEach                   = flag.String("mem-profile-each", "", "write a heap profile after EACH family to this dir (filename = family.prof)")
+		in                        = flag.String("in", "/tmp/arcaverborum_corecog/arcaverborum-A-corecog-20251008/forms.csv", "arcaverborum-shape CSV/TSV")
+		evalTable                 = flag.String("eval-table", "", "benchmark evaluation TSV exported by scripts/export_arcaverborum_eval.py")
+		splitFile                 = flag.String("split-file", "", "optional file with one dataset/family per line")
+		track                     = flag.String("track", "", "optional track label for logging/metadata (informational)")
+		predOut                   = flag.String("pred-out", "", "optional per-form prediction TSV output")
+		runLabel                  = flag.String("run-label", "", "optional run label written to prediction output")
+		bundle                    = flag.String("bundle", "tests/fixtures/merkmal/descriptive", "merkmal bundle directory")
+		outTSV                    = flag.String("out-tsv", "benchmark/results.tsv", "per-dataset TSV output")
+		outMD                     = flag.String("out-md", "benchmark/results.md", "markdown summary output")
+		iters                     = flag.Int("iterations", 3, "EM iterations per lect-pair")
+		lambda                    = flag.Float64("lambda", 0.5, "learned/prior blend (0.0=prior only, 1.0=learned only)")
+		scope                     = flag.String("cluster-scope", "concept", "'concept' or 'global'")
+		thresholdOver             = flag.Float64("threshold", 0, "override threshold (0 = Otsu per-dataset)")
+		thresholdMode             = flag.String("threshold-mode", "family", "'family' (default) or 'concept-shrink'")
+		thresholdMin              = flag.Float64("threshold-min", 0, "Otsu clamp floor (0 = default 0.2)")
+		thresholdMax              = flag.Float64("threshold-max", 0, "Otsu clamp ceiling (0 = default 0.8)")
+		thresholdShrink           = flag.Float64("threshold-shrink", 0.5, "shrinkage toward family prior in concept-shrink mode")
+		graphMode                 = flag.String("graph-mode", "threshold", "'threshold' (default) or 'support'")
+		graphExpansionMode        = flag.String("graph-expansion-mode", "either", "'either' (default), 'mutual', or 'adaptive' top-k expansion in support graph mode")
+		graphTopK                 = flag.Int("graph-top-k", 2, "nearest-neighbor candidate expansion in support graph mode")
+		graphAdaptiveMargin       = flag.Float64("graph-adaptive-margin", 0.1, "minimum top1-vs-top2 support gap needed to keep unilateral expansion edges in adaptive mode")
+		graphAdaptiveEitherMax    = flag.Float64("graph-adaptive-either-max", 0.15, "if ambiguity share is at or below this, adaptive mode falls back to either expansion for the concept graph")
+		graphAdaptiveAmbiguity    = flag.Float64("graph-adaptive-ambiguity", 0.5, "if this share of nodes is ambiguous, adaptive mode falls back to mutual expansion for the concept graph")
+		graphMutualBoost          = flag.Float64("graph-mutual-boost", 0.2, "weight boost for mutual top-k edges in support graph mode")
+		graphTriangleBoost        = flag.Float64("graph-triangle-boost", 0.3, "weight boost for triangle-supported edges in support graph mode")
+		graphContrastivePenalty   = flag.Float64("graph-contrastive-penalty", 0.0, "penalty for edges dominated by stronger local rivals")
+		graphContrastiveFloor     = flag.Float64("graph-contrastive-floor", 0.05, "ignore rival gaps up to this size before contrastive penalty activates")
+		graphRiskRankWeight       = flag.Float64("graph-risk-rank-weight", 0.5, "weight of endpoint-rank risk in calibrated edge-risk score")
+		graphRiskGapWeight        = flag.Float64("graph-risk-gap-weight", 0.5, "weight of best-rival gap risk in calibrated edge-risk score")
+		graphUnilateralPenalty    = flag.Float64("graph-unilateral-penalty", 0.0, "penalty on non-mutual expanded edges when endpoints have stronger rivals")
+		graphRivalFloor           = flag.Float64("graph-rival-floor", 0.6, "rival-support floor at which unilateral penalty activates")
+		refineMode                = flag.String("refine-mode", "none", "'none' (default) or 'bridge-cut'")
+		refineConfidenceThreshold = flag.Float64("refine-confidence-threshold", 0.55, "bridge-cut activates for nodes below this confidence")
+		refineBridgeRatio         = flag.Float64("refine-bridge-ratio", 0.7, "cut weak in-cluster edges incident to low-confidence nodes below this fraction of node mean support")
+		bootstrap                 = flag.Int("bootstrap", 0, "bootstrap runs for confidence intervals (0 = off)")
+		bootstrapSigma            = flag.Float64("bootstrap-sigma", 0.05, "stddev of distance perturbation for bootstrap confidence")
+		seed                      = flag.Uint64("seed", 1, "RNG seed")
+		jobs                      = flag.Int("jobs", 0, "workers per family (0 = GOMAXPROCS)")
+		parallelFam               = flag.Int("parallel-families", 2, "concurrent families")
+		alignMode                 = flag.String("alignment-mode", "combined", "'global' or 'combined' (global+local+overlap, default)")
+		classReduce               = flag.Bool("class-reduce", true, "NFD-strip IPA modifiers upstream")
+		nullMode                  = flag.String("null-mode", "marginal", "'marginal' (default) or 'shuffle' (permutation-based null, slower but more accurate)")
+		nullMaxRuns               = flag.Int("null-max-runs", 200, "cap on shuffle runs per lect-pair; adaptive stopping may end earlier")
+		filter                    = flag.String("datasets", "", "comma list of families; empty = all")
+		minCognacy                = flag.Int("min-cognacy", 50, "skip families with fewer than N Cognacy-annotated forms")
+		maxLects                  = flag.Int("max-lects", 250, "skip families with more than N distinct lects (0 = no limit; memory guard)")
+		maxForms                  = flag.Int("max-forms", 15000, "skip families with more than N forms (0 = no limit; memory guard — mid-family NW edge transients can balloon 30x sys on L²-heavy families)")
+		memProfile                = flag.String("mem-profile", "", "write post-run heap profile to this file (go tool pprof)")
+		memProfileEach            = flag.String("mem-profile-each", "", "write a heap profile after EACH family to this dir (filename = family.prof)")
 	)
 	flag.Parse()
 
@@ -176,44 +171,39 @@ func main() {
 			defer wg.Done()
 			defer func() { <-sem }()
 			results[i], predictionsByFamily[i] = runFamily(name, byFam[name], b, pipeline.Spec{
-				Iterations:                       *iters,
-				Lambda:                           *lambda,
-				Threshold:                        *thresholdOver,
-				ThresholdMode:                    *thresholdMode,
-				ThresholdMin:                     *thresholdMin,
-				ThresholdMax:                     *thresholdMax,
-				ThresholdShrink:                  *thresholdShrink,
-				GraphMode:                        *graphMode,
-				GraphExpansionMode:               *graphExpansionMode,
-				GraphTopK:                        *graphTopK,
-				GraphAdaptiveMargin:              *graphAdaptiveMargin,
-				GraphAdaptiveEitherMax:           *graphAdaptiveEitherMax,
-				GraphAdaptiveAmbiguity:           *graphAdaptiveAmbiguity,
-				GraphMutualBoost:                 *graphMutualBoost,
-				GraphTriangleBoost:               *graphTriangleBoost,
-				GraphContrastivePenalty:          *graphContrastivePenalty,
-				GraphContrastiveFloor:            *graphContrastiveFloor,
-				GraphRiskRankWeight:              *graphRiskRankWeight,
-				GraphRiskGapWeight:               *graphRiskGapWeight,
-				GraphUnilateralPenalty:           *graphUnilateralPenalty,
-				GraphRivalFloor:                  *graphRivalFloor,
-				RefineMode:                       *refineMode,
-				RefineCoreWeight:                 *refineCoreWeight,
-				RefineConfidenceThreshold:        *refineConfidenceThreshold,
-				RefineAltRatio:                   *refineAltRatio,
-				RefineAltClusterThreshold:        *refineAltClusterThreshold,
-				RefineBridgeRatio:                *refineBridgeRatio,
-				RefineClusterConfidenceThreshold: *refineClusterConfidenceThreshold,
-				RefineLocalCoreWeight:            *refineLocalCoreWeight,
-				Bootstrap:                        *bootstrap,
-				BootstrapSigma:                   *bootstrapSigma,
-				Seed:                             *seed,
-				Jobs:                             *jobs,
-				ClusterScope:                     *scope,
-				AlignmentMode:                    *alignMode,
-				ClassReduce:                      *classReduce,
-				NullMode:                         *nullMode,
-				NullMaxRuns:                      *nullMaxRuns,
+				Iterations:                *iters,
+				Lambda:                    *lambda,
+				Threshold:                 *thresholdOver,
+				ThresholdMode:             *thresholdMode,
+				ThresholdMin:              *thresholdMin,
+				ThresholdMax:              *thresholdMax,
+				ThresholdShrink:           *thresholdShrink,
+				GraphMode:                 *graphMode,
+				GraphExpansionMode:        *graphExpansionMode,
+				GraphTopK:                 *graphTopK,
+				GraphAdaptiveMargin:       *graphAdaptiveMargin,
+				GraphAdaptiveEitherMax:    *graphAdaptiveEitherMax,
+				GraphAdaptiveAmbiguity:    *graphAdaptiveAmbiguity,
+				GraphMutualBoost:          *graphMutualBoost,
+				GraphTriangleBoost:        *graphTriangleBoost,
+				GraphContrastivePenalty:   *graphContrastivePenalty,
+				GraphContrastiveFloor:     *graphContrastiveFloor,
+				GraphRiskRankWeight:       *graphRiskRankWeight,
+				GraphRiskGapWeight:        *graphRiskGapWeight,
+				GraphUnilateralPenalty:    *graphUnilateralPenalty,
+				GraphRivalFloor:           *graphRivalFloor,
+				RefineMode:                *refineMode,
+				RefineConfidenceThreshold: *refineConfidenceThreshold,
+				RefineBridgeRatio:         *refineBridgeRatio,
+				Bootstrap:                 *bootstrap,
+				BootstrapSigma:            *bootstrapSigma,
+				Seed:                      *seed,
+				Jobs:                      *jobs,
+				ClusterScope:              *scope,
+				AlignmentMode:             *alignMode,
+				ClassReduce:               *classReduce,
+				NullMode:                  *nullMode,
+				NullMaxRuns:               *nullMaxRuns,
 			}, *minCognacy, *maxLects, *maxForms)
 			r := results[i]
 			if r.Skipped != "" {

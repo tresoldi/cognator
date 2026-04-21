@@ -39,14 +39,9 @@ func detectCmd(args []string) {
 	graphRiskGapWeight := fs.Float64("graph-risk-gap-weight", 0.5, "weight of best-rival gap risk in calibrated edge-risk score")
 	graphUnilateralPenalty := fs.Float64("graph-unilateral-penalty", 0.0, "penalty on non-mutual expanded edges when endpoints have stronger rivals")
 	graphRivalFloor := fs.Float64("graph-rival-floor", 0.6, "rival-support floor at which unilateral penalty activates")
-	refineMode := fs.String("refine-mode", "none", "'none' (default), 'core-cc', 'reassign', 'alt-reassign', 'bridge-cut', 'bridge-alt-reassign', 'alt-reassign-bridge', 'alt-bridge-cut', or 'local-recluster'")
-	refineCoreWeight := fs.Float64("refine-core-weight", 0.75, "minimum internal edge weight for core-connectivity refinement")
-	refineConfidenceThreshold := fs.Float64("refine-confidence-threshold", 0.55, "only reassign nodes below this confidence")
-	refineAltRatio := fs.Float64("refine-alt-ratio", 1.1, "alternative cluster support must exceed in-cluster support by this ratio for reassignment")
-	refineAltClusterThreshold := fs.Float64("refine-alt-cluster-threshold", 0.0, "minimum target-cluster internal cohesion for alternative-cluster reassignment (0 = disabled)")
+	refineMode := fs.String("refine-mode", "none", "'none' (default) or 'bridge-cut'")
+	refineConfidenceThreshold := fs.Float64("refine-confidence-threshold", 0.55, "bridge-cut activates for nodes below this confidence")
 	refineBridgeRatio := fs.Float64("refine-bridge-ratio", 0.7, "cut weak in-cluster edges incident to low-confidence nodes below this fraction of node mean support")
-	refineClusterConfidenceThreshold := fs.Float64("refine-cluster-confidence-threshold", 0.75, "only locally recluster clusters whose mean confidence falls below this value")
-	refineLocalCoreWeight := fs.Float64("refine-local-core-weight", 0.8, "edge floor used during selective local reclustering")
 	boot := fs.Int("bootstrap", 0, "bootstrap runs for confidence (0 = off)")
 	bootSigma := fs.Float64("bootstrap-sigma", 0.05, "stddev of distance perturbation")
 	seed := fs.Uint64("seed", 1, "RNG seed")
@@ -77,42 +72,37 @@ func detectCmd(args []string) {
 		len(recs), *in, b.System, b.Manifest.GraphemeCount)
 
 	spec := pipeline.Spec{
-		Iterations:                       *iters,
-		Lambda:                           *lambda,
-		Threshold:                        *threshold,
-		ThresholdMode:                    *thresholdMode,
-		ThresholdMin:                     *threshMin,
-		ThresholdMax:                     *threshMax,
-		ThresholdShrink:                  *thresholdShrink,
-		GraphMode:                        *graphMode,
-		GraphExpansionMode:               *graphExpansionMode,
-		GraphTopK:                        *graphTopK,
-		GraphAdaptiveMargin:              *graphAdaptiveMargin,
-		GraphAdaptiveEitherMax:           *graphAdaptiveEitherMax,
-		GraphAdaptiveAmbiguity:           *graphAdaptiveAmbiguity,
-		GraphMutualBoost:                 *graphMutualBoost,
-		GraphTriangleBoost:               *graphTriangleBoost,
-		GraphContrastivePenalty:          *graphContrastivePenalty,
-		GraphContrastiveFloor:            *graphContrastiveFloor,
-		GraphRiskRankWeight:              *graphRiskRankWeight,
-		GraphRiskGapWeight:               *graphRiskGapWeight,
-		GraphUnilateralPenalty:           *graphUnilateralPenalty,
-		GraphRivalFloor:                  *graphRivalFloor,
-		RefineMode:                       *refineMode,
-		RefineCoreWeight:                 *refineCoreWeight,
-		RefineConfidenceThreshold:        *refineConfidenceThreshold,
-		RefineAltRatio:                   *refineAltRatio,
-		RefineAltClusterThreshold:        *refineAltClusterThreshold,
-		RefineBridgeRatio:                *refineBridgeRatio,
-		RefineClusterConfidenceThreshold: *refineClusterConfidenceThreshold,
-		RefineLocalCoreWeight:            *refineLocalCoreWeight,
-		Bootstrap:                        *boot,
-		BootstrapSigma:                   *bootSigma,
-		Seed:                             *seed,
-		Jobs:                             *jobs,
-		ClusterScope:                     *scope,
-		AlignmentMode:                    *alignMode,
-		ClassReduce:                      *classReduce,
+		Iterations:                *iters,
+		Lambda:                    *lambda,
+		Threshold:                 *threshold,
+		ThresholdMode:             *thresholdMode,
+		ThresholdMin:              *threshMin,
+		ThresholdMax:              *threshMax,
+		ThresholdShrink:           *thresholdShrink,
+		GraphMode:                 *graphMode,
+		GraphExpansionMode:        *graphExpansionMode,
+		GraphTopK:                 *graphTopK,
+		GraphAdaptiveMargin:       *graphAdaptiveMargin,
+		GraphAdaptiveEitherMax:    *graphAdaptiveEitherMax,
+		GraphAdaptiveAmbiguity:    *graphAdaptiveAmbiguity,
+		GraphMutualBoost:          *graphMutualBoost,
+		GraphTriangleBoost:        *graphTriangleBoost,
+		GraphContrastivePenalty:   *graphContrastivePenalty,
+		GraphContrastiveFloor:     *graphContrastiveFloor,
+		GraphRiskRankWeight:       *graphRiskRankWeight,
+		GraphRiskGapWeight:        *graphRiskGapWeight,
+		GraphUnilateralPenalty:    *graphUnilateralPenalty,
+		GraphRivalFloor:           *graphRivalFloor,
+		RefineMode:                *refineMode,
+		RefineConfidenceThreshold: *refineConfidenceThreshold,
+		RefineBridgeRatio:         *refineBridgeRatio,
+		Bootstrap:                 *boot,
+		BootstrapSigma:            *bootSigma,
+		Seed:                      *seed,
+		Jobs:                      *jobs,
+		ClusterScope:              *scope,
+		AlignmentMode:             *alignMode,
+		ClassReduce:               *classReduce,
 	}
 	res := pipeline.Detect(recs, b, spec)
 	log.Printf("detection complete: %d rows, threshold=%.3f, %d OOV types, %s elapsed",

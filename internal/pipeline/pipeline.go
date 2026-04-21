@@ -24,45 +24,40 @@ import (
 // Spec is the user-visible configuration for a cognator run.
 // Zero values fall back to documented defaults.
 type Spec struct {
-	Iterations                       int     // EM passes per lect-pair (default 3)
-	Lambda                           float64 // learned/prior blend (default 0.5)
-	Threshold                        float64 // manual override; 0 → Otsu auto-threshold
-	ThresholdMode                    string  // "family" (default) | "concept-shrink"
-	ThresholdMin                     float64 // Otsu clamp floor (default 0.2)
-	ThresholdMax                     float64 // Otsu clamp ceiling (default 0.8)
-	ThresholdShrink                  float64 // shrinkage toward family prior in "concept-shrink" mode (default 0.5)
-	GraphMode                        string  // "threshold" (default) | "support"
-	GraphExpansionMode               string  // "either" (default) | "mutual" | "adaptive" for top-k expansion
-	GraphTopK                        int     // top-k nearest-neighbor candidate expansion in support mode (default 2)
-	GraphAdaptiveMargin              float64 // top1-vs-top2 support gap needed to sponsor unilateral expansion in adaptive mode
-	GraphAdaptiveEitherMax           float64 // ambiguity-share ceiling below which adaptive mode reuses either expansion
-	GraphAdaptiveAmbiguity           float64 // ambiguous-node share above which adaptive mode falls back to mutual expansion
-	GraphMutualBoost                 float64 // weight boost for mutual top-k edges (default 0.2)
-	GraphTriangleBoost               float64 // weight boost for triangle-supported edges (default 0.3)
-	GraphContrastivePenalty          float64 // optional penalty for edges dominated by stronger local competitors
-	GraphContrastiveFloor            float64 // ignore small rival gaps before contrastive penalty activates
-	GraphRiskRankWeight              float64 // weight of endpoint-rank risk in calibrated edge-risk score
-	GraphRiskGapWeight               float64 // weight of best-rival gap risk in calibrated edge-risk score
-	GraphUnilateralPenalty           float64 // penalty on non-mutual expanded edges when endpoints have stronger rivals
-	GraphRivalFloor                  float64 // rival-support floor at which unilateral penalty activates
-	RefineMode                       string  // "none" (default) | "core-cc" | "reassign" | "bridge-cut" | "local-recluster"
-	RefineCoreWeight                 float64 // minimum internal edge weight for core-connectivity refinement
-	RefineConfidenceThreshold        float64 // only reassign nodes below this confidence
-	RefineAltRatio                   float64 // strongest alternative support must beat in-cluster support by this ratio
-	RefineAltClusterThreshold        float64 // minimum internal cohesion required for alternative-cluster reassignment
-	RefineBridgeRatio                float64 // weak-edge cutoff relative to node mean for bridge cutting
-	RefineClusterConfidenceThreshold float64 // flag clusters below this mean confidence for local reclustering
-	RefineLocalCoreWeight            float64 // edge floor used by local reclustering on flagged clusters
-	Seed                             uint64  // Infomap RNG seed
-	Jobs                             int     // concurrent workers; 0 → GOMAXPROCS
-	Bootstrap                        int     // confidence bootstrap runs (default 0 = off)
-	BootstrapSigma                   float64 // stddev of edge-distance perturbation (default 0.05)
-	ClusterScope                     string  // "concept" (default) | "global"
-	MinPairs                         int     // skip training a scorer if the pair has <N form-pairs; use prior (default 5)
-	AlignmentMode                    string  // "global" | "combined" (default; global + local + overlap)
-	ClassReduce                      bool    // strip IPA modifiers/diacritics upstream (NFD-strip heuristic)
-	NullMode                         string  // "marginal" (default, cheap) | "shuffle" (permutation-based, more accurate on sparse pairs)
-	NullMaxRuns                      int     // cap on shuffle runs per lect-pair (default 200; adaptive stopping usually stops earlier)
+	Iterations                int     // EM passes per lect-pair (default 3)
+	Lambda                    float64 // learned/prior blend (default 0.5)
+	Threshold                 float64 // manual override; 0 → Otsu auto-threshold
+	ThresholdMode             string  // "family" (default) | "concept-shrink"
+	ThresholdMin              float64 // Otsu clamp floor (default 0.2)
+	ThresholdMax              float64 // Otsu clamp ceiling (default 0.8)
+	ThresholdShrink           float64 // shrinkage toward family prior in "concept-shrink" mode (default 0.5)
+	GraphMode                 string  // "threshold" (default) | "support"
+	GraphExpansionMode        string  // "either" (default) | "mutual" | "adaptive" for top-k expansion
+	GraphTopK                 int     // top-k nearest-neighbor candidate expansion in support mode (default 2)
+	GraphAdaptiveMargin       float64 // top1-vs-top2 support gap needed to sponsor unilateral expansion in adaptive mode
+	GraphAdaptiveEitherMax    float64 // ambiguity-share ceiling below which adaptive mode reuses either expansion
+	GraphAdaptiveAmbiguity    float64 // ambiguous-node share above which adaptive mode falls back to mutual expansion
+	GraphMutualBoost          float64 // weight boost for mutual top-k edges (default 0.2)
+	GraphTriangleBoost        float64 // weight boost for triangle-supported edges (default 0.3)
+	GraphContrastivePenalty   float64 // optional penalty for edges dominated by stronger local competitors
+	GraphContrastiveFloor     float64 // ignore small rival gaps before contrastive penalty activates
+	GraphRiskRankWeight       float64 // weight of endpoint-rank risk in calibrated edge-risk score
+	GraphRiskGapWeight        float64 // weight of best-rival gap risk in calibrated edge-risk score
+	GraphUnilateralPenalty    float64 // penalty on non-mutual expanded edges when endpoints have stronger rivals
+	GraphRivalFloor           float64 // rival-support floor at which unilateral penalty activates
+	RefineMode                string  // "none" (default) | "bridge-cut"
+	RefineConfidenceThreshold float64 // bridge-cut activates for nodes below this confidence
+	RefineBridgeRatio         float64 // weak-edge cutoff relative to node mean for bridge cutting
+	Seed                      uint64  // Infomap RNG seed
+	Jobs                      int     // concurrent workers; 0 → GOMAXPROCS
+	Bootstrap                 int     // confidence bootstrap runs (default 0 = off)
+	BootstrapSigma            float64 // stddev of edge-distance perturbation (default 0.05)
+	ClusterScope              string  // "concept" (default) | "global"
+	MinPairs                  int     // skip training a scorer if the pair has <N form-pairs; use prior (default 5)
+	AlignmentMode             string  // "global" | "combined" (default; global + local + overlap)
+	ClassReduce               bool    // strip IPA modifiers/diacritics upstream (NFD-strip heuristic)
+	NullMode                  string  // "marginal" (default, cheap) | "shuffle" (permutation-based, more accurate on sparse pairs)
+	NullMaxRuns               int     // cap on shuffle runs per lect-pair (default 200; adaptive stopping usually stops earlier)
 }
 
 // Result is the end-to-end output.
@@ -142,26 +137,11 @@ func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
 	if spec.RefineMode == "" {
 		spec.RefineMode = DefaultRefineMode
 	}
-	if spec.RefineCoreWeight <= 0 {
-		spec.RefineCoreWeight = DefaultRefineCoreWeight
-	}
 	if spec.RefineConfidenceThreshold <= 0 {
 		spec.RefineConfidenceThreshold = DefaultRefineConfidenceThreshold
 	}
-	if spec.RefineAltRatio <= 0 {
-		spec.RefineAltRatio = DefaultRefineAltRatio
-	}
-	if spec.RefineAltClusterThreshold < 0 {
-		spec.RefineAltClusterThreshold = DefaultRefineAltClusterThreshold
-	}
 	if spec.RefineBridgeRatio <= 0 {
 		spec.RefineBridgeRatio = DefaultRefineBridgeRatio
-	}
-	if spec.RefineClusterConfidenceThreshold <= 0 {
-		spec.RefineClusterConfidenceThreshold = DefaultRefineClusterConfidenceThreshold
-	}
-	if spec.RefineLocalCoreWeight <= 0 {
-		spec.RefineLocalCoreWeight = DefaultRefineLocalCoreWeight
 	}
 	if spec.BootstrapSigma <= 0 {
 		spec.BootstrapSigma = DefaultBootstrapSigma
@@ -683,15 +663,6 @@ func jaccardExcl(a, b map[int]struct{}, excl int) float64 {
 	return float64(inter) / float64(union)
 }
 
-func membershipConfidences(g *cluster.Graph, part []int) []float64 {
-	diagnostics := membershipDiagnostics(g, part)
-	out := make([]float64, len(diagnostics))
-	for i := range diagnostics {
-		out[i] = diagnostics[i].Confidence
-	}
-	return out
-}
-
 type membershipDiagnostic struct {
 	Confidence         float64
 	AssignedSupport    float64
@@ -750,96 +721,10 @@ func refinePartition(g *cluster.Graph, part []int, spec Spec) []int {
 	if g == nil || len(part) == 0 || spec.RefineMode == "none" {
 		return part
 	}
-	if spec.RefineMode == "core-cc" {
-		return refinePartitionCoreCC(g, part, spec.RefineCoreWeight)
-	}
-	if spec.RefineMode == "reassign" {
-		return refinePartitionReassign(g, part, spec.RefineConfidenceThreshold, spec.RefineAltRatio)
-	}
-	if spec.RefineMode == "alt-reassign" {
-		return refinePartitionAltReassign(g, part, spec.RefineConfidenceThreshold, spec.RefineAltRatio, spec.RefineAltClusterThreshold)
-	}
 	if spec.RefineMode == "bridge-cut" {
 		return refinePartitionBridgeCut(g, part, spec.RefineConfidenceThreshold, spec.RefineBridgeRatio)
 	}
-	if spec.RefineMode == "bridge-alt-reassign" {
-		bridged := refinePartitionBridgeCut(g, part, spec.RefineConfidenceThreshold, spec.RefineBridgeRatio)
-		return refinePartitionAltReassign(g, bridged, spec.RefineConfidenceThreshold, spec.RefineAltRatio, spec.RefineAltClusterThreshold)
-	}
-	if spec.RefineMode == "alt-reassign-bridge" {
-		reassigned := refinePartitionAltReassign(g, part, spec.RefineConfidenceThreshold, spec.RefineAltRatio, spec.RefineAltClusterThreshold)
-		return refinePartitionBridgeCut(g, reassigned, spec.RefineConfidenceThreshold, spec.RefineBridgeRatio)
-	}
-	if spec.RefineMode == "alt-bridge-cut" {
-		return refinePartitionAltBridgeCut(g, part, spec.RefineConfidenceThreshold, spec.RefineBridgeRatio)
-	}
-	if spec.RefineMode == "local-recluster" {
-		return refinePartitionLocalRecluster(g, part, spec.RefineClusterConfidenceThreshold, spec.RefineLocalCoreWeight)
-	}
 	return part
-}
-
-func refinePartitionCoreCC(g *cluster.Graph, part []int, coreWeight float64) []int {
-	members := membershipSets(part)
-	out := make([]int, len(part))
-	next := 0
-	for _, nodes := range members {
-		seen := map[int]bool{}
-		for start := range nodes {
-			if seen[start] {
-				continue
-			}
-			stack := []int{start}
-			seen[start] = true
-			component := []int{}
-			for len(stack) > 0 {
-				v := stack[len(stack)-1]
-				stack = stack[:len(stack)-1]
-				component = append(component, v)
-				for _, adj := range g.Adj[v] {
-					if part[adj.Target] != part[v] || adj.Weight < coreWeight || seen[adj.Target] {
-						continue
-					}
-					seen[adj.Target] = true
-					stack = append(stack, adj.Target)
-				}
-			}
-			for _, v := range component {
-				out[v] = next
-			}
-			next++
-		}
-	}
-	return out
-}
-
-func refinePartitionReassign(g *cluster.Graph, part []int, confidenceThreshold, altRatio float64) []int {
-	out := append([]int(nil), part...)
-	if len(out) == 0 {
-		return out
-	}
-	for pass := 0; pass < 2; pass++ {
-		changed := false
-		for i := range out {
-			profile := nodeSupportProfile(g, out, i)
-			conf := profile.ConfidenceMean()
-			if conf >= confidenceThreshold || profile.BestAltMod < 0 {
-				continue
-			}
-			if profile.InMean > 0 && profile.BestAltMean < profile.InMean*altRatio {
-				continue
-			}
-			if profile.InMean == 0 && profile.BestAltMean <= 0 {
-				continue
-			}
-			out[i] = profile.BestAltMod
-			changed = true
-		}
-		if !changed {
-			break
-		}
-	}
-	return clusterPartitionRenumber(out)
 }
 
 type supportProfile struct {
@@ -916,71 +801,6 @@ func (p supportProfile) ConfidenceTotal() float64 {
 	return p.InTotal / (p.InTotal + p.BestAltTotal)
 }
 
-func refinePartitionAltReassign(g *cluster.Graph, part []int, confidenceThreshold, altRatio, altClusterThreshold float64) []int {
-	out := append([]int(nil), part...)
-	if len(out) == 0 {
-		return out
-	}
-	for pass := 0; pass < 2; pass++ {
-		changed := false
-		for i := range out {
-			profile := nodeSupportProfile(g, out, i)
-			conf := profile.ConfidenceTotal()
-			if conf >= confidenceThreshold || profile.BestAltMod < 0 {
-				continue
-			}
-			if profile.InTotal > 0 && profile.BestAltTotal < profile.InTotal*altRatio {
-				continue
-			}
-			if profile.InTotal == 0 && profile.BestAltTotal <= 0 {
-				continue
-			}
-			if altClusterThreshold > 0 && clusterCohesion(g, out, profile.BestAltMod) < altClusterThreshold {
-				continue
-			}
-			out[i] = profile.BestAltMod
-			changed = true
-		}
-		if !changed {
-			break
-		}
-	}
-	return clusterPartitionRenumber(out)
-}
-
-func clusterCohesion(g *cluster.Graph, part []int, mod int) float64 {
-	var sum float64
-	var count int
-	for i, p := range part {
-		if p != mod {
-			continue
-		}
-		for _, adj := range g.Adj[i] {
-			if adj.Target <= i || part[adj.Target] != mod {
-				continue
-			}
-			sum += adj.Weight
-			count++
-		}
-	}
-	if count == 0 {
-		return 0
-	}
-	return sum / float64(count)
-}
-
-func clusterPartitionRenumber(part []int) []int {
-	m := map[int]int{}
-	out := make([]int, len(part))
-	for i, v := range part {
-		if _, ok := m[v]; !ok {
-			m[v] = len(m)
-		}
-		out[i] = m[v]
-	}
-	return out
-}
-
 func refinePartitionBridgeCut(g *cluster.Graph, part []int, confidenceThreshold, bridgeRatio float64) []int {
 	if g == nil || len(part) == 0 {
 		return part
@@ -1046,172 +866,6 @@ func refinePartitionBridgeCut(g *cluster.Graph, part []int, confidenceThreshold,
 		}
 	}
 	return out
-}
-
-func refinePartitionAltBridgeCut(g *cluster.Graph, part []int, confidenceThreshold, bridgeRatio float64) []int {
-	if g == nil || len(part) == 0 {
-		return part
-	}
-	members := membershipSets(part)
-	out := append([]int(nil), part...)
-	next := 0
-	for _, nodes := range members {
-		blocked := map[int]map[int]bool{}
-		for v := range nodes {
-			profile := nodeSupportProfile(g, part, v)
-			conf := profile.ConfidenceTotal()
-			if conf >= confidenceThreshold || profile.InMean <= 0 || profile.BestAltTotal <= 0 {
-				continue
-			}
-			cutFloor := maxFloat(profile.InMean*bridgeRatio, profile.BestAltMean)
-			for _, adj := range g.Adj[v] {
-				if part[adj.Target] != part[v] {
-					continue
-				}
-				if adj.Weight >= cutFloor {
-					continue
-				}
-				if blocked[v] == nil {
-					blocked[v] = map[int]bool{}
-				}
-				if blocked[adj.Target] == nil {
-					blocked[adj.Target] = map[int]bool{}
-				}
-				blocked[v][adj.Target] = true
-				blocked[adj.Target][v] = true
-			}
-		}
-
-		seen := map[int]bool{}
-		for start := range nodes {
-			if seen[start] {
-				continue
-			}
-			stack := []int{start}
-			seen[start] = true
-			component := []int{}
-			for len(stack) > 0 {
-				v := stack[len(stack)-1]
-				stack = stack[:len(stack)-1]
-				component = append(component, v)
-				for _, adj := range g.Adj[v] {
-					if part[adj.Target] != part[v] || seen[adj.Target] {
-						continue
-					}
-					if blocked[v] != nil && blocked[v][adj.Target] {
-						continue
-					}
-					seen[adj.Target] = true
-					stack = append(stack, adj.Target)
-				}
-			}
-			for _, v := range component {
-				out[v] = next
-			}
-			next++
-		}
-	}
-	return out
-}
-
-func refinePartitionLocalRecluster(g *cluster.Graph, part []int, clusterConfidenceThreshold, localCoreWeight float64) []int {
-	if g == nil || len(part) == 0 {
-		return part
-	}
-	memberConf := membershipConfidences(g, part)
-	members := membershipSets(part)
-	out := append([]int(nil), part...)
-	next := 0
-	for _, nodes := range members {
-		indices := make([]int, 0, len(nodes))
-		var sumConf float64
-		for v := range nodes {
-			indices = append(indices, v)
-			sumConf += memberConf[v]
-		}
-		if len(indices) == 0 {
-			continue
-		}
-		meanConf := sumConf / float64(len(indices))
-		if len(indices) < 3 || meanConf >= clusterConfidenceThreshold {
-			for _, v := range indices {
-				out[v] = next
-			}
-			next++
-			continue
-		}
-
-		localIndex := map[int]int{}
-		for i, v := range indices {
-			localIndex[v] = i
-		}
-		localGraph := cluster.NewGraph(len(indices), subclusterEdges(g, indices, localIndex, localCoreWeight))
-		localPart := connectedComponents(localGraph)
-		for i, v := range indices {
-			out[v] = next + localPart[i]
-		}
-		maxLocal := 0
-		for _, p := range localPart {
-			if p > maxLocal {
-				maxLocal = p
-			}
-		}
-		next += maxLocal + 1
-	}
-	return out
-}
-
-func subclusterEdges(g *cluster.Graph, indices []int, localIndex map[int]int, minWeight float64) []cluster.Edge {
-	var edges []cluster.Edge
-	for _, v := range indices {
-		for _, adj := range g.Adj[v] {
-			j, ok := localIndex[adj.Target]
-			if !ok || adj.Weight < minWeight {
-				continue
-			}
-			i := localIndex[v]
-			if i >= j {
-				continue
-			}
-			edges = append(edges, cluster.Edge{A: i, B: j, Weight: adj.Weight})
-		}
-	}
-	return edges
-}
-
-func connectedComponents(g *cluster.Graph) []int {
-	out := make([]int, g.N)
-	for i := range out {
-		out[i] = -1
-	}
-	next := 0
-	for start := 0; start < g.N; start++ {
-		if out[start] >= 0 {
-			continue
-		}
-		stack := []int{start}
-		out[start] = next
-		for len(stack) > 0 {
-			v := stack[len(stack)-1]
-			stack = stack[:len(stack)-1]
-			for _, adj := range g.Adj[v] {
-				if out[adj.Target] >= 0 {
-					continue
-				}
-				out[adj.Target] = next
-				stack = append(stack, adj.Target)
-			}
-		}
-		next++
-	}
-	return out
-}
-
-func maxFloat(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func groupByFamily(recs []wordlist.Record) map[string][]wordlist.Record {

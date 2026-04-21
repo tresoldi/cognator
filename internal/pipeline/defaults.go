@@ -93,38 +93,14 @@ const (
 	// unilateral-edge penalty starts to activate.
 	DefaultGraphRivalFloor = 0.6
 
-	// DefaultRefineCoreWeight is the minimum internal edge weight used
-	// by the post-cluster core-connectivity refinement.
-	DefaultRefineCoreWeight = 0.75
-
-	// DefaultRefineConfidenceThreshold gates node reassignment to only
-	// the least confident members of a cluster.
+	// DefaultRefineConfidenceThreshold gates bridge-cut to only the
+	// least confident cluster members.
 	DefaultRefineConfidenceThreshold = 0.55
-
-	// DefaultRefineAltRatio requires the strongest alternative cluster
-	// support to exceed the current in-cluster mean by this factor
-	// before reassignment is allowed. Alt-support refinement modes
-	// apply the same ratio against total assigned-vs-alternative support.
-	DefaultRefineAltRatio = 1.1
-
-	// DefaultRefineAltClusterThreshold keeps alternative-cluster
-	// reassignment ungated unless explicitly enabled. When enabled,
-	// the target alternative cluster must have at least this mean
-	// internal edge weight before accepting a reassignment.
-	DefaultRefineAltClusterThreshold = 0.0
 
 	// DefaultRefineBridgeRatio removes weak in-cluster edges incident
 	// to low-confidence nodes when the edge falls below this fraction
 	// of the node's mean in-cluster support.
 	DefaultRefineBridgeRatio = 0.7
-
-	// DefaultRefineClusterConfidenceThreshold triggers local reclustering
-	// only for clusters whose mean member confidence falls below this value.
-	DefaultRefineClusterConfidenceThreshold = 0.75
-
-	// DefaultRefineLocalCoreWeight is the edge floor used by local
-	// reclustering on flagged clusters.
-	DefaultRefineLocalCoreWeight = 0.8
 )
 
 // Default string values (const-incompatible via Go's zero-value rules,
