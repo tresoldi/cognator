@@ -71,10 +71,12 @@ const (
 	// DefaultGraphRisk* weights define the calibrated edge-risk blend
 	// used by the contrastive penalty. By default we preserve the
 	// previous behavior by averaging rank and rival-gap risk only.
-	DefaultGraphRiskRankWeight = 0.5
-	DefaultGraphRiskGapWeight = 0.5
-	DefaultGraphRiskTriangleWeight = 0.0
+	DefaultGraphRiskRankWeight       = 0.5
+	DefaultGraphRiskGapWeight        = 0.5
+	DefaultGraphRiskTriangleWeight   = 0.0
 	DefaultGraphRiskUnilateralWeight = 0.0
+	DefaultGraphRiskDensityWeight    = 0.0
+	DefaultGraphRiskDispersionWeight = 0.0
 
 	// DefaultGraphMutualBoost raises the weight of mutual top-k edges
 	// toward 1.0 in support mode.
@@ -103,8 +105,15 @@ const (
 
 	// DefaultRefineAltRatio requires the strongest alternative cluster
 	// support to exceed the current in-cluster mean by this factor
-	// before reassignment is allowed.
+	// before reassignment is allowed. Alt-support refinement modes
+	// apply the same ratio against total assigned-vs-alternative support.
 	DefaultRefineAltRatio = 1.1
+
+	// DefaultRefineAltClusterThreshold keeps alternative-cluster
+	// reassignment ungated unless explicitly enabled. When enabled,
+	// the target alternative cluster must have at least this mean
+	// internal edge weight before accepting a reassignment.
+	DefaultRefineAltClusterThreshold = 0.0
 
 	// DefaultRefineBridgeRatio removes weak in-cluster edges incident
 	// to low-confidence nodes when the edge falls below this fraction

@@ -18,22 +18,24 @@ type Pair struct {
 
 // Spec controls graph construction from pairwise distances.
 type Spec struct {
-	Mode              string  // "threshold" (default) | "support"
-	ExpansionMode     string  // "either" (default) | "mutual" | "adaptive"
-	TopK              int     // nearest-neighbor candidate expansion in support mode
-	AdaptiveMargin    float64 // minimum top1-vs-top2 support gap needed to sponsor unilateral expansion in adaptive mode
-	AdaptiveEitherMax float64 // if ambiguity share is at or below this, adaptive mode falls back to either expansion
-	AdaptiveAmbiguity float64 // if this share of active nodes is ambiguous, adaptive mode falls back to mutual expansion
-	MutualBoost       float64 // additive weight boost for mutual top-k edges
-	TriangleBoost     float64 // additive weight boost scaled by triangle support
-	ContrastivePenalty float64 // penalty applied to edges dominated by stronger local rivals
-	ContrastiveFloor   float64 // ignore rival gaps up to this size before contrastive penalty activates
-	RiskRankWeight     float64 // weight of endpoint-rank risk in calibrated edge-risk score
-	RiskGapWeight      float64 // weight of best-rival gap risk in calibrated edge-risk score
-	RiskTriangleWeight float64 // weight of low triangle-support risk in calibrated edge-risk score
+	Mode                 string  // "threshold" (default) | "support"
+	ExpansionMode        string  // "either" (default) | "mutual" | "adaptive"
+	TopK                 int     // nearest-neighbor candidate expansion in support mode
+	AdaptiveMargin       float64 // minimum top1-vs-top2 support gap needed to sponsor unilateral expansion in adaptive mode
+	AdaptiveEitherMax    float64 // if ambiguity share is at or below this, adaptive mode falls back to either expansion
+	AdaptiveAmbiguity    float64 // if this share of active nodes is ambiguous, adaptive mode falls back to mutual expansion
+	MutualBoost          float64 // additive weight boost for mutual top-k edges
+	TriangleBoost        float64 // additive weight boost scaled by triangle support
+	ContrastivePenalty   float64 // penalty applied to edges dominated by stronger local rivals
+	ContrastiveFloor     float64 // ignore rival gaps up to this size before contrastive penalty activates
+	RiskRankWeight       float64 // weight of endpoint-rank risk in calibrated edge-risk score
+	RiskGapWeight        float64 // weight of best-rival gap risk in calibrated edge-risk score
+	RiskTriangleWeight   float64 // weight of low triangle-support risk in calibrated edge-risk score
 	RiskUnilateralWeight float64 // weight of non-mutual expansion risk in calibrated edge-risk score
-	UnilateralPenalty float64 // penalty applied to expanded non-mutual edges when both endpoints have strong alternatives
-	RivalFloor        float64 // minimum rival-support level before unilateral penalty activates
+	RiskDensityWeight    float64 // weight of low local-neighborhood density risk in calibrated edge-risk score
+	RiskDispersionWeight float64 // weight of concept-level ambiguity/dispersion risk in calibrated edge-risk score
+	UnilateralPenalty    float64 // penalty applied to expanded non-mutual edges when both endpoints have strong alternatives
+	RivalFloor           float64 // minimum rival-support level before unilateral penalty activates
 }
 
 type rankedNeighbor struct {
@@ -44,6 +46,11 @@ type rankedNeighbor struct {
 type nodeProfile struct {
 	bestWeight   float64
 	secondWeight float64
+}
+
+type conceptContext struct {
+	densityRisk    []float64
+	dispersionRisk float64
 }
 
 // BuildGraphEdges converts pairwise distances into weighted graph edges.
@@ -97,6 +104,8 @@ func supportEdges(n int, pairs []Pair, threshold float64, spec Spec) []cluster.E
 	riskGapWeight := spec.RiskGapWeight
 	riskTriangleWeight := spec.RiskTriangleWeight
 	riskUnilateralWeight := spec.RiskUnilateralWeight
+	riskDensityWeight := spec.RiskDensityWeight
+	riskDispersionWeight := spec.RiskDispersionWeight
 	if riskRankWeight < 0 {
 		riskRankWeight = 0
 	}
@@ -109,7 +118,13 @@ func supportEdges(n int, pairs []Pair, threshold float64, spec Spec) []cluster.E
 	if riskUnilateralWeight < 0 {
 		riskUnilateralWeight = 0
 	}
-	if riskRankWeight+riskGapWeight+riskTriangleWeight+riskUnilateralWeight == 0 {
+	if riskDensityWeight < 0 {
+		riskDensityWeight = 0
+	}
+	if riskDispersionWeight < 0 {
+		riskDispersionWeight = 0
+	}
+	if riskRankWeight+riskGapWeight+riskTriangleWeight+riskUnilateralWeight+riskDensityWeight+riskDispersionWeight == 0 {
 		riskRankWeight = 0.5
 		riskGapWeight = 0.5
 	}
@@ -207,6 +222,7 @@ func supportEdges(n int, pairs []Pair, threshold float64, spec Spec) []cluster.E
 			}
 		}
 	}
+	context := summarizeConceptContext(n, neighbors, topKSet, profiles, adaptiveMargin)
 
 	policy := expansionMode
 	if expansionMode == "adaptive" {
@@ -267,7 +283,10 @@ func supportEdges(n int, pairs []Pair, threshold float64, spec Spec) []cluster.E
 			weight += triangleBoost * tri * (1.0 - weight)
 		}
 		if contrastivePenalty > 0 {
-			risk := calibratedEdgeRisk(p.A, p.B, base, tri, expandedOnly, mutualTopK, fullRank, profiles, topK, contrastiveFloor, riskRankWeight, riskGapWeight, riskTriangleWeight, riskUnilateralWeight)
+			risk := calibratedEdgeRisk(
+				p.A, p.B, base, tri, expandedOnly, mutualTopK, fullRank, profiles, topK, contrastiveFloor, context,
+				riskRankWeight, riskGapWeight, riskTriangleWeight, riskUnilateralWeight, riskDensityWeight, riskDispersionWeight,
+			)
 			if risk > 0 {
 				weight *= 1.0 - contrastivePenalty*risk
 			}
@@ -405,7 +424,59 @@ func ambiguousShare(profiles []nodeProfile, margin float64) float64 {
 	return float64(ambiguous) / float64(active)
 }
 
-func calibratedEdgeRisk(a, b int, base, tri float64, expandedOnly, mutualTopK bool, fullRank []map[int]int, profiles []nodeProfile, topK int, floor float64, rankW, gapW, triW, unilateralW float64) float64 {
+func summarizeConceptContext(n int, neighbors [][]rankedNeighbor, topKSet []map[int]struct{}, profiles []nodeProfile, margin float64) conceptContext {
+	ctx := conceptContext{densityRisk: make([]float64, n)}
+	for i := 0; i < n; i++ {
+		if len(neighbors[i]) == 0 {
+			ctx.densityRisk[i] = 1
+			continue
+		}
+		var sum float64
+		for _, nb := range neighbors[i] {
+			sum += similarity(nb.distance)
+		}
+		mean := sum / float64(len(neighbors[i]))
+		risk := 1.0 - mean
+		if risk < 0 {
+			risk = 0
+		}
+		if risk > 1 {
+			risk = 1
+		}
+		ctx.densityRisk[i] = risk
+	}
+	ambRisk := ambiguousShare(profiles, margin)
+	mutualRisk := 1.0 - mutualTopKShare(topKSet)
+	ctx.dispersionRisk = 0.5*ambRisk + 0.5*mutualRisk
+	if ctx.dispersionRisk < 0 {
+		ctx.dispersionRisk = 0
+	}
+	if ctx.dispersionRisk > 1 {
+		ctx.dispersionRisk = 1
+	}
+	return ctx
+}
+
+func mutualTopKShare(topKSet []map[int]struct{}) float64 {
+	var total, mutual int
+	for src, peers := range topKSet {
+		for dst := range peers {
+			total++
+			if dst < 0 || dst >= len(topKSet) {
+				continue
+			}
+			if contains(topKSet[dst], src) {
+				mutual++
+			}
+		}
+	}
+	if total == 0 {
+		return 1
+	}
+	return float64(mutual) / float64(total)
+}
+
+func calibratedEdgeRisk(a, b int, base, tri float64, expandedOnly, mutualTopK bool, fullRank []map[int]int, profiles []nodeProfile, topK int, floor float64, context conceptContext, rankW, gapW, triW, unilateralW, densityW, dispersionW float64) float64 {
 	rankRisk, gapRisk := endpointRiskFeatures(a, b, base, fullRank, profiles, topK, floor)
 	rankRiskB, gapRiskB := endpointRiskFeatures(b, a, base, fullRank, profiles, topK, floor)
 	rankMean := 0.5 * (rankRisk + rankRiskB)
@@ -418,11 +489,16 @@ func calibratedEdgeRisk(a, b int, base, tri float64, expandedOnly, mutualTopK bo
 	if expandedOnly && !mutualTopK {
 		unilateralRisk = 1.0
 	}
-	totalW := rankW + gapW + triW + unilateralW
+	densityRisk := 0.0
+	if len(context.densityRisk) > 0 {
+		densityRisk = 0.5 * (context.densityRisk[a] + context.densityRisk[b])
+	}
+	dispersionRisk := context.dispersionRisk
+	totalW := rankW + gapW + triW + unilateralW + densityW + dispersionW
 	if totalW <= 0 {
 		return 0
 	}
-	score := rankW*rankMean + gapW*gapMean + triW*triangleRisk + unilateralW*unilateralRisk
+	score := rankW*rankMean + gapW*gapMean + triW*triangleRisk + unilateralW*unilateralRisk + densityW*densityRisk + dispersionW*dispersionRisk
 	risk := score / totalW
 	if risk < 0 {
 		return 0

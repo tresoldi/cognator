@@ -45,12 +45,15 @@ type Spec struct {
 	GraphRiskGapWeight               float64 // weight of best-rival gap risk in calibrated edge-risk score
 	GraphRiskTriangleWeight          float64 // weight of low triangle-support risk in calibrated edge-risk score
 	GraphRiskUnilateralWeight        float64 // weight of non-mutual expansion risk in calibrated edge-risk score
+	GraphRiskDensityWeight           float64 // weight of low local-neighborhood density risk in calibrated edge-risk score
+	GraphRiskDispersionWeight        float64 // weight of concept-level ambiguity/dispersion risk in calibrated edge-risk score
 	GraphUnilateralPenalty           float64 // penalty on non-mutual expanded edges when endpoints have stronger rivals
 	GraphRivalFloor                  float64 // rival-support floor at which unilateral penalty activates
 	RefineMode                       string  // "none" (default) | "core-cc" | "reassign" | "bridge-cut" | "local-recluster"
 	RefineCoreWeight                 float64 // minimum internal edge weight for core-connectivity refinement
 	RefineConfidenceThreshold        float64 // only reassign nodes below this confidence
 	RefineAltRatio                   float64 // strongest alternative support must beat in-cluster support by this ratio
+	RefineAltClusterThreshold        float64 // minimum internal cohesion required for alternative-cluster reassignment
 	RefineBridgeRatio                float64 // weak-edge cutoff relative to node mean for bridge cutting
 	RefineClusterConfidenceThreshold float64 // flag clusters below this mean confidence for local reclustering
 	RefineLocalCoreWeight            float64 // edge floor used by local reclustering on flagged clusters
@@ -134,6 +137,12 @@ func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
 	if spec.GraphRiskUnilateralWeight < 0 {
 		spec.GraphRiskUnilateralWeight = DefaultGraphRiskUnilateralWeight
 	}
+	if spec.GraphRiskDensityWeight < 0 {
+		spec.GraphRiskDensityWeight = DefaultGraphRiskDensityWeight
+	}
+	if spec.GraphRiskDispersionWeight < 0 {
+		spec.GraphRiskDispersionWeight = DefaultGraphRiskDispersionWeight
+	}
 	if spec.GraphMutualBoost <= 0 {
 		spec.GraphMutualBoost = DefaultGraphMutualBoost
 	}
@@ -157,6 +166,9 @@ func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
 	}
 	if spec.RefineAltRatio <= 0 {
 		spec.RefineAltRatio = DefaultRefineAltRatio
+	}
+	if spec.RefineAltClusterThreshold < 0 {
+		spec.RefineAltClusterThreshold = DefaultRefineAltClusterThreshold
 	}
 	if spec.RefineBridgeRatio <= 0 {
 		spec.RefineBridgeRatio = DefaultRefineBridgeRatio
@@ -567,22 +579,24 @@ func runClustering(n int, rawEdges []cEdge, threshold float64, seed uint64, spec
 		pairs = append(pairs, evidence.Pair{A: e.i, B: e.j, Distance: e.d})
 	}
 	edges := evidence.BuildGraphEdges(n, pairs, threshold, evidence.Spec{
-		Mode:              spec.GraphMode,
-		ExpansionMode:     spec.GraphExpansionMode,
-		TopK:              spec.GraphTopK,
-		AdaptiveMargin:    spec.GraphAdaptiveMargin,
-		AdaptiveEitherMax: spec.GraphAdaptiveEitherMax,
-		AdaptiveAmbiguity: spec.GraphAdaptiveAmbiguity,
-		MutualBoost:       spec.GraphMutualBoost,
-		TriangleBoost:     spec.GraphTriangleBoost,
-		ContrastivePenalty: spec.GraphContrastivePenalty,
-		ContrastiveFloor:   spec.GraphContrastiveFloor,
-		RiskRankWeight:     spec.GraphRiskRankWeight,
-		RiskGapWeight:      spec.GraphRiskGapWeight,
-		RiskTriangleWeight: spec.GraphRiskTriangleWeight,
+		Mode:                 spec.GraphMode,
+		ExpansionMode:        spec.GraphExpansionMode,
+		TopK:                 spec.GraphTopK,
+		AdaptiveMargin:       spec.GraphAdaptiveMargin,
+		AdaptiveEitherMax:    spec.GraphAdaptiveEitherMax,
+		AdaptiveAmbiguity:    spec.GraphAdaptiveAmbiguity,
+		MutualBoost:          spec.GraphMutualBoost,
+		TriangleBoost:        spec.GraphTriangleBoost,
+		ContrastivePenalty:   spec.GraphContrastivePenalty,
+		ContrastiveFloor:     spec.GraphContrastiveFloor,
+		RiskRankWeight:       spec.GraphRiskRankWeight,
+		RiskGapWeight:        spec.GraphRiskGapWeight,
+		RiskTriangleWeight:   spec.GraphRiskTriangleWeight,
 		RiskUnilateralWeight: spec.GraphRiskUnilateralWeight,
-		UnilateralPenalty: spec.GraphUnilateralPenalty,
-		RivalFloor:        spec.GraphRivalFloor,
+		RiskDensityWeight:    spec.GraphRiskDensityWeight,
+		RiskDispersionWeight: spec.GraphRiskDispersionWeight,
+		UnilateralPenalty:    spec.GraphUnilateralPenalty,
+		RivalFloor:           spec.GraphRivalFloor,
 	})
 	g := cluster.NewGraph(n, edges)
 	part := cluster.Infomap(g, seed)
@@ -689,32 +703,7 @@ func membershipConfidences(g *cluster.Graph, part []int) []float64 {
 		return out
 	}
 	for i := range part {
-		var inSum, inCount float64
-		alt := map[int]float64{}
-		for _, adj := range g.Adj[i] {
-			if part[adj.Target] == part[i] {
-				inSum += adj.Weight
-				inCount++
-				continue
-			}
-			alt[part[adj.Target]] += adj.Weight
-		}
-		if inCount == 0 {
-			strongestAlt := maxMapValue(alt)
-			if strongestAlt <= 0 {
-				out[i] = 1.0
-			} else {
-				out[i] = 1.0 - strongestAlt
-			}
-			continue
-		}
-		inMean := inSum / inCount
-		altMax := maxMapValue(alt)
-		if altMax <= 0 {
-			out[i] = 1.0
-			continue
-		}
-		out[i] = inMean / (inMean + altMax)
+		out[i] = nodeSupportProfile(g, part, i).ConfidenceTotal()
 	}
 	return out
 }
@@ -759,8 +748,22 @@ func refinePartition(g *cluster.Graph, part []int, spec Spec) []int {
 	if spec.RefineMode == "reassign" {
 		return refinePartitionReassign(g, part, spec.RefineConfidenceThreshold, spec.RefineAltRatio)
 	}
+	if spec.RefineMode == "alt-reassign" {
+		return refinePartitionAltReassign(g, part, spec.RefineConfidenceThreshold, spec.RefineAltRatio, spec.RefineAltClusterThreshold)
+	}
 	if spec.RefineMode == "bridge-cut" {
 		return refinePartitionBridgeCut(g, part, spec.RefineConfidenceThreshold, spec.RefineBridgeRatio)
+	}
+	if spec.RefineMode == "bridge-alt-reassign" {
+		bridged := refinePartitionBridgeCut(g, part, spec.RefineConfidenceThreshold, spec.RefineBridgeRatio)
+		return refinePartitionAltReassign(g, bridged, spec.RefineConfidenceThreshold, spec.RefineAltRatio, spec.RefineAltClusterThreshold)
+	}
+	if spec.RefineMode == "alt-reassign-bridge" {
+		reassigned := refinePartitionAltReassign(g, part, spec.RefineConfidenceThreshold, spec.RefineAltRatio, spec.RefineAltClusterThreshold)
+		return refinePartitionBridgeCut(g, reassigned, spec.RefineConfidenceThreshold, spec.RefineBridgeRatio)
+	}
+	if spec.RefineMode == "alt-bridge-cut" {
+		return refinePartitionAltBridgeCut(g, part, spec.RefineConfidenceThreshold, spec.RefineBridgeRatio)
 	}
 	if spec.RefineMode == "local-recluster" {
 		return refinePartitionLocalRecluster(g, part, spec.RefineClusterConfidenceThreshold, spec.RefineLocalCoreWeight)
@@ -810,18 +813,18 @@ func refinePartitionReassign(g *cluster.Graph, part []int, confidenceThreshold, 
 	for pass := 0; pass < 2; pass++ {
 		changed := false
 		for i := range out {
-			inMean, bestAltMod, bestAltWeight := nodeSupportProfile(g, out, i)
-			conf := confidenceFromSupport(inMean, bestAltWeight)
-			if conf >= confidenceThreshold || bestAltMod < 0 {
+			profile := nodeSupportProfile(g, out, i)
+			conf := profile.ConfidenceMean()
+			if conf >= confidenceThreshold || profile.BestAltMod < 0 {
 				continue
 			}
-			if inMean > 0 && bestAltWeight < inMean*altRatio {
+			if profile.InMean > 0 && profile.BestAltMean < profile.InMean*altRatio {
 				continue
 			}
-			if inMean == 0 && bestAltWeight <= 0 {
+			if profile.InMean == 0 && profile.BestAltMean <= 0 {
 				continue
 			}
-			out[i] = bestAltMod
+			out[i] = profile.BestAltMod
 			changed = true
 		}
 		if !changed {
@@ -831,30 +834,44 @@ func refinePartitionReassign(g *cluster.Graph, part []int, confidenceThreshold, 
 	return clusterPartitionRenumber(out)
 }
 
-func nodeSupportProfile(g *cluster.Graph, part []int, node int) (float64, int, float64) {
-	var inSum, inCount float64
+type supportProfile struct {
+	InMean       float64
+	InTotal      float64
+	InCount      int
+	BestAltMod   int
+	BestAltMean  float64
+	BestAltTotal float64
+	BestAltCount int
+}
+
+func nodeSupportProfile(g *cluster.Graph, part []int, node int) supportProfile {
+	var profile supportProfile
+	profile.BestAltMod = -1
 	alt := map[int]float64{}
+	altCount := map[int]int{}
 	for _, adj := range g.Adj[node] {
 		if part[adj.Target] == part[node] {
-			inSum += adj.Weight
-			inCount++
+			profile.InTotal += adj.Weight
+			profile.InCount++
 			continue
 		}
 		alt[part[adj.Target]] += adj.Weight
+		altCount[part[adj.Target]]++
 	}
-	inMean := 0.0
-	if inCount > 0 {
-		inMean = inSum / inCount
+	if profile.InCount > 0 {
+		profile.InMean = profile.InTotal / float64(profile.InCount)
 	}
-	bestMod := -1
-	bestWeight := 0.0
-	for mod, w := range alt {
-		if w > bestWeight {
-			bestWeight = w
-			bestMod = mod
+	for mod, total := range alt {
+		if total > profile.BestAltTotal {
+			profile.BestAltTotal = total
+			profile.BestAltMod = mod
+			profile.BestAltCount = altCount[mod]
 		}
 	}
-	return inMean, bestMod, bestWeight
+	if profile.BestAltCount > 0 {
+		profile.BestAltMean = profile.BestAltTotal / float64(profile.BestAltCount)
+	}
+	return profile
 }
 
 func confidenceFromSupport(inMean, altWeight float64) float64 {
@@ -868,6 +885,80 @@ func confidenceFromSupport(inMean, altWeight float64) float64 {
 		return 1.0
 	}
 	return inMean / (inMean + altWeight)
+}
+
+func (p supportProfile) ConfidenceMean() float64 {
+	return confidenceFromSupport(p.InMean, p.BestAltMean)
+}
+
+func (p supportProfile) ConfidenceTotal() float64 {
+	if p.InTotal <= 0 {
+		if p.BestAltTotal <= 0 {
+			return 1.0
+		}
+		conf := 1.0 - p.BestAltTotal
+		if conf < 0 {
+			return 0
+		}
+		return conf
+	}
+	if p.BestAltTotal <= 0 {
+		return 1.0
+	}
+	return p.InTotal / (p.InTotal + p.BestAltTotal)
+}
+
+func refinePartitionAltReassign(g *cluster.Graph, part []int, confidenceThreshold, altRatio, altClusterThreshold float64) []int {
+	out := append([]int(nil), part...)
+	if len(out) == 0 {
+		return out
+	}
+	for pass := 0; pass < 2; pass++ {
+		changed := false
+		for i := range out {
+			profile := nodeSupportProfile(g, out, i)
+			conf := profile.ConfidenceTotal()
+			if conf >= confidenceThreshold || profile.BestAltMod < 0 {
+				continue
+			}
+			if profile.InTotal > 0 && profile.BestAltTotal < profile.InTotal*altRatio {
+				continue
+			}
+			if profile.InTotal == 0 && profile.BestAltTotal <= 0 {
+				continue
+			}
+			if altClusterThreshold > 0 && clusterCohesion(g, out, profile.BestAltMod) < altClusterThreshold {
+				continue
+			}
+			out[i] = profile.BestAltMod
+			changed = true
+		}
+		if !changed {
+			break
+		}
+	}
+	return clusterPartitionRenumber(out)
+}
+
+func clusterCohesion(g *cluster.Graph, part []int, mod int) float64 {
+	var sum float64
+	var count int
+	for i, p := range part {
+		if p != mod {
+			continue
+		}
+		for _, adj := range g.Adj[i] {
+			if adj.Target <= i || part[adj.Target] != mod {
+				continue
+			}
+			sum += adj.Weight
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return sum / float64(count)
 }
 
 func clusterPartitionRenumber(part []int) []int {
@@ -892,18 +983,84 @@ func refinePartitionBridgeCut(g *cluster.Graph, part []int, confidenceThreshold,
 	for _, nodes := range members {
 		blocked := map[int]map[int]bool{}
 		for v := range nodes {
-			inMean, _, altWeight := nodeSupportProfile(g, part, v)
-			conf := confidenceFromSupport(inMean, altWeight)
+			profile := nodeSupportProfile(g, part, v)
+			conf := profile.ConfidenceMean()
 			// Bridge-cut is allowed either for globally low-confidence nodes
 			// or for nodes whose internal cohesion is itself weak.
-			if (conf >= confidenceThreshold && inMean >= confidenceThreshold) || inMean <= 0 {
+			if (conf >= confidenceThreshold && profile.InMean >= confidenceThreshold) || profile.InMean <= 0 {
 				continue
 			}
 			for _, adj := range g.Adj[v] {
 				if part[adj.Target] != part[v] {
 					continue
 				}
-				if adj.Weight >= inMean*bridgeRatio {
+				if adj.Weight >= profile.InMean*bridgeRatio {
+					continue
+				}
+				if blocked[v] == nil {
+					blocked[v] = map[int]bool{}
+				}
+				if blocked[adj.Target] == nil {
+					blocked[adj.Target] = map[int]bool{}
+				}
+				blocked[v][adj.Target] = true
+				blocked[adj.Target][v] = true
+			}
+		}
+
+		seen := map[int]bool{}
+		for start := range nodes {
+			if seen[start] {
+				continue
+			}
+			stack := []int{start}
+			seen[start] = true
+			component := []int{}
+			for len(stack) > 0 {
+				v := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				component = append(component, v)
+				for _, adj := range g.Adj[v] {
+					if part[adj.Target] != part[v] || seen[adj.Target] {
+						continue
+					}
+					if blocked[v] != nil && blocked[v][adj.Target] {
+						continue
+					}
+					seen[adj.Target] = true
+					stack = append(stack, adj.Target)
+				}
+			}
+			for _, v := range component {
+				out[v] = next
+			}
+			next++
+		}
+	}
+	return out
+}
+
+func refinePartitionAltBridgeCut(g *cluster.Graph, part []int, confidenceThreshold, bridgeRatio float64) []int {
+	if g == nil || len(part) == 0 {
+		return part
+	}
+	members := membershipSets(part)
+	out := append([]int(nil), part...)
+	next := 0
+	for _, nodes := range members {
+		blocked := map[int]map[int]bool{}
+		for v := range nodes {
+			profile := nodeSupportProfile(g, part, v)
+			conf := profile.ConfidenceTotal()
+			if conf >= confidenceThreshold || profile.InMean <= 0 || profile.BestAltTotal <= 0 {
+				continue
+			}
+			cutFloor := maxFloat(profile.InMean*bridgeRatio, profile.BestAltMean)
+			for _, adj := range g.Adj[v] {
+				if part[adj.Target] != part[v] {
+					continue
+				}
+				if adj.Weight >= cutFloor {
 					continue
 				}
 				if blocked[v] == nil {
@@ -1040,6 +1197,13 @@ func connectedComponents(g *cluster.Graph) []int {
 		next++
 	}
 	return out
+}
+
+func maxFloat(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func groupByFamily(recs []wordlist.Record) map[string][]wordlist.Record {

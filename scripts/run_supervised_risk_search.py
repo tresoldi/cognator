@@ -215,7 +215,7 @@ def main() -> None:
     for trial in range(args.trials):
         penalty = rng.uniform(args.penalty_min, args.penalty_max)
         floor = rng.uniform(args.floor_min, args.floor_max)
-        weights = [rng.random() for _ in range(4)]
+        weights = [rng.random() for _ in range(6)]
         total = sum(weights)
         weights = [w / total for w in weights]
         label = f"trial-{trial:02d}"
@@ -232,6 +232,10 @@ def main() -> None:
             f"{weights[2]:.4f}",
             "--graph-risk-unilateral-weight",
             f"{weights[3]:.4f}",
+            "--graph-risk-density-weight",
+            f"{weights[4]:.4f}",
+            "--graph-risk-dispersion-weight",
+            f"{weights[5]:.4f}",
         ]
         row = run_config(
             eval_table=args.eval_table,
@@ -254,6 +258,8 @@ def main() -> None:
                 "risk_gap_weight": weights[1],
                 "risk_triangle_weight": weights[2],
                 "risk_unilateral_weight": weights[3],
+                "risk_density_weight": weights[4],
+                "risk_dispersion_weight": weights[5],
             }
         )
         rows.append(row)
@@ -273,6 +279,8 @@ def main() -> None:
                 "risk_gap_weight",
                 "risk_triangle_weight",
                 "risk_unilateral_weight",
+                "risk_density_weight",
+                "risk_dispersion_weight",
                 "mean_f1",
                 "mean_precision",
                 "mean_recall",
@@ -290,14 +298,16 @@ def main() -> None:
     summary_md = out_dir / "summary.md"
     with summary_md.open("w", encoding="utf-8") as handle:
         handle.write("# Supervised Risk Search\n\n")
-        handle.write("| Label | Penalty | Floor | Weights (R/G/T/U) | Mean F1 | Mean P | Mean R | Mean Δ vs LingPy | W/L/T |\n")
+        handle.write("| Label | Penalty | Floor | Weights (R/G/T/U/D/Disp) | Mean F1 | Mean P | Mean R | Mean Δ vs LingPy | W/L/T |\n")
         handle.write("|---|---|---|---|---|---|---|---|---|\n")
         for row in rows:
             weights = (
                 f"{row['risk_rank_weight']:.2f}/"
                 f"{row['risk_gap_weight']:.2f}/"
                 f"{row['risk_triangle_weight']:.2f}/"
-                f"{row['risk_unilateral_weight']:.2f}"
+                f"{row['risk_unilateral_weight']:.2f}/"
+                f"{row['risk_density_weight']:.2f}/"
+                f"{row['risk_dispersion_weight']:.2f}"
             )
             handle.write(
                 f"| {row['label']} | {row['penalty']:.3f} | {row['floor']:.3f} | {weights} | "
@@ -325,6 +335,10 @@ def main() -> None:
             f"{best['risk_triangle_weight']:.6f}",
             "--graph-risk-unilateral-weight",
             f"{best['risk_unilateral_weight']:.6f}",
+            "--graph-risk-density-weight",
+            f"{best['risk_density_weight']:.6f}",
+            "--graph-risk-dispersion-weight",
+            f"{best['risk_dispersion_weight']:.6f}",
         ]
         secondary_row = run_config(
             eval_table=args.eval_table,

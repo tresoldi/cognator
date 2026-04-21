@@ -70,6 +70,62 @@ func TestRefinePartitionReassignLeavesConfidentNodeInPlace(t *testing.T) {
 	}
 }
 
+func TestRefinePartitionAltReassignUsesTotalAlternativeSupport(t *testing.T) {
+	g := cluster.NewGraph(5, []cluster.Edge{
+		{A: 0, B: 1, Weight: 0.30},
+		{A: 0, B: 2, Weight: 0.60},
+		{A: 0, B: 3, Weight: 0.60},
+		{A: 2, B: 3, Weight: 0.95},
+	})
+	part := []int{0, 0, 1, 1, 2}
+	got := refinePartition(g, part, Spec{
+		RefineMode:                "alt-reassign",
+		RefineConfidenceThreshold: 0.6,
+		RefineAltRatio:            1.1,
+	})
+	if got[0] != got[2] || got[2] != got[3] {
+		t.Fatalf("expected node 0 to reassign by stronger total alternative support, got %v", got)
+	}
+}
+
+func TestRefinePartitionAltReassignRequiresCoherentTargetClusterWhenGated(t *testing.T) {
+	g := cluster.NewGraph(5, []cluster.Edge{
+		{A: 0, B: 1, Weight: 0.30},
+		{A: 0, B: 2, Weight: 0.60},
+		{A: 0, B: 3, Weight: 0.60},
+		{A: 2, B: 3, Weight: 0.40},
+	})
+	part := []int{0, 0, 1, 1, 2}
+	got := refinePartition(g, part, Spec{
+		RefineMode:                "alt-reassign",
+		RefineConfidenceThreshold: 0.6,
+		RefineAltRatio:            1.1,
+		RefineAltClusterThreshold: 0.75,
+	})
+	if got[0] != got[1] {
+		t.Fatalf("expected weak alternative cluster to block reassignment, got %v", got)
+	}
+}
+
+func TestRefinePartitionAltReassignGateAllowsCoherentTargetCluster(t *testing.T) {
+	g := cluster.NewGraph(5, []cluster.Edge{
+		{A: 0, B: 1, Weight: 0.30},
+		{A: 0, B: 2, Weight: 0.60},
+		{A: 0, B: 3, Weight: 0.60},
+		{A: 2, B: 3, Weight: 0.90},
+	})
+	part := []int{0, 0, 1, 1, 2}
+	got := refinePartition(g, part, Spec{
+		RefineMode:                "alt-reassign",
+		RefineConfidenceThreshold: 0.6,
+		RefineAltRatio:            1.1,
+		RefineAltClusterThreshold: 0.75,
+	})
+	if got[0] != got[2] || got[2] != got[3] {
+		t.Fatalf("expected coherent alternative cluster to allow reassignment, got %v", got)
+	}
+}
+
 func TestRefinePartitionBridgeCutSplitsWeakMemberBridge(t *testing.T) {
 	g := cluster.NewGraph(4, []cluster.Edge{
 		{A: 0, B: 1, Weight: 0.95},
@@ -84,6 +140,43 @@ func TestRefinePartitionBridgeCutSplitsWeakMemberBridge(t *testing.T) {
 	})
 	if got[0] == got[2] || got[1] == got[2] {
 		t.Fatalf("expected weak bridge incident to low-confidence node to be cut, got %v", got)
+	}
+}
+
+func TestRefinePartitionAltBridgeCutSplitsNodePressedByAlternativeCluster(t *testing.T) {
+	g := cluster.NewGraph(5, []cluster.Edge{
+		{A: 0, B: 1, Weight: 0.40},
+		{A: 0, B: 2, Weight: 0.65},
+		{A: 0, B: 3, Weight: 0.66},
+		{A: 2, B: 3, Weight: 0.95},
+	})
+	part := []int{0, 0, 1, 1, 2}
+	got := refinePartition(g, part, Spec{
+		RefineMode:                "alt-bridge-cut",
+		RefineConfidenceThreshold: 0.55,
+		RefineBridgeRatio:         0.7,
+	})
+	if got[0] == got[1] {
+		t.Fatalf("expected node 0 to split away when alternative cluster pressure dominates, got %v", got)
+	}
+}
+
+func TestRefinePartitionBridgeAltReassignComposesBridgeCutAndAltSupport(t *testing.T) {
+	g := cluster.NewGraph(5, []cluster.Edge{
+		{A: 0, B: 1, Weight: 0.30},
+		{A: 0, B: 2, Weight: 0.60},
+		{A: 0, B: 3, Weight: 0.60},
+		{A: 2, B: 3, Weight: 0.95},
+	})
+	part := []int{0, 0, 1, 1, 2}
+	got := refinePartition(g, part, Spec{
+		RefineMode:                "bridge-alt-reassign",
+		RefineConfidenceThreshold: 0.6,
+		RefineBridgeRatio:         0.7,
+		RefineAltRatio:            1.1,
+	})
+	if got[0] != got[2] || got[2] != got[3] {
+		t.Fatalf("expected bridge-alt-reassign to apply alternative support reassignment, got %v", got)
 	}
 }
 

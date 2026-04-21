@@ -52,8 +52,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--risk-weight-specs",
-        default="rg:0.5:0.5:0.0:0.0,rgt:0.35:0.35:0.3:0.0,mix:0.3:0.3:0.2:0.2",
-        help="Comma-separated label:rank:gap:triangle:unilateral specs",
+        default="rg:0.5:0.5:0.0:0.0:0.0:0.0,rgt:0.35:0.35:0.3:0.0:0.0:0.0,mix:0.3:0.3:0.2:0.2:0.0:0.0,d1:0.0:0.0:0.0:0.0:1.0:0.0,d2:0.0:0.0:0.0:0.0:0.0:1.0",
+        help="Comma-separated label:rank:gap:triangle:unilateral:density:dispersion specs",
     )
     parser.add_argument("--secondary-split-file", default="", help="Optional secondary split for best-config evaluation")
     parser.add_argument("--secondary-lingpy-results", default="", help="Optional LingPy results TSV for the secondary split")
@@ -77,7 +77,15 @@ def parse_list(spec: str) -> list[str]:
 def parse_weight_specs(spec: str) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     for item in parse_list(spec):
-        label, rank, gap, tri, unilateral = item.split(":")
+        parts = item.split(":")
+        if len(parts) == 5:
+            label, rank, gap, tri, unilateral = parts
+            density = "0.0"
+            dispersion = "0.0"
+        elif len(parts) == 7:
+            label, rank, gap, tri, unilateral, density, dispersion = parts
+        else:
+            raise ValueError(f"invalid risk-weight spec {item!r}")
         rows.append(
             {
                 "label": label,
@@ -85,6 +93,8 @@ def parse_weight_specs(spec: str) -> list[dict[str, str]]:
                 "gap": gap,
                 "triangle": tri,
                 "unilateral": unilateral,
+                "density": density,
+                "dispersion": dispersion,
             }
         )
     return rows
@@ -261,6 +271,10 @@ def main() -> None:
                     spec["triangle"],
                     "--graph-risk-unilateral-weight",
                     spec["unilateral"],
+                    "--graph-risk-density-weight",
+                    spec["density"],
+                    "--graph-risk-dispersion-weight",
+                    spec["dispersion"],
                 ]
                 row = run_config(
                     eval_table=args.eval_table,
@@ -284,6 +298,8 @@ def main() -> None:
                         "risk_gap_weight": float(spec["gap"]),
                         "risk_triangle_weight": float(spec["triangle"]),
                         "risk_unilateral_weight": float(spec["unilateral"]),
+                        "risk_density_weight": float(spec["density"]),
+                        "risk_dispersion_weight": float(spec["dispersion"]),
                     }
                 )
                 sweep_rows.append(row)
@@ -304,6 +320,8 @@ def main() -> None:
                 "risk_gap_weight",
                 "risk_triangle_weight",
                 "risk_unilateral_weight",
+                "risk_density_weight",
+                "risk_dispersion_weight",
                 "mean_f1",
                 "mean_precision",
                 "mean_recall",
@@ -321,14 +339,16 @@ def main() -> None:
     summary_md = out_dir / "summary.md"
     with summary_md.open("w", encoding="utf-8") as handle:
         handle.write("# Risk Calibration Sweep\n\n")
-        handle.write("| Label | Penalty | Floor | Weights (R/G/T/U) | Mean F1 | Mean P | Mean R | Mean Δ vs LingPy | W/L/T |\n")
+        handle.write("| Label | Penalty | Floor | Weights (R/G/T/U/D/Disp) | Mean F1 | Mean P | Mean R | Mean Δ vs LingPy | W/L/T |\n")
         handle.write("|---|---|---|---|---|---|---|---|---|\n")
         for row in sweep_rows:
             weights = (
                 f"{row['risk_rank_weight']:.2f}/"
                 f"{row['risk_gap_weight']:.2f}/"
                 f"{row['risk_triangle_weight']:.2f}/"
-                f"{row['risk_unilateral_weight']:.2f}"
+                f"{row['risk_unilateral_weight']:.2f}/"
+                f"{row['risk_density_weight']:.2f}/"
+                f"{row['risk_dispersion_weight']:.2f}"
             )
             handle.write(
                 f"| {row['label']} | {row['penalty']:.2f} | {row['floor']:.2f} | {weights} | "
@@ -356,6 +376,10 @@ def main() -> None:
             str(best["risk_triangle_weight"]),
             "--graph-risk-unilateral-weight",
             str(best["risk_unilateral_weight"]),
+            "--graph-risk-density-weight",
+            str(best["risk_density_weight"]),
+            "--graph-risk-dispersion-weight",
+            str(best["risk_dispersion_weight"]),
         ]
         secondary_row = run_config(
             eval_table=args.eval_table,

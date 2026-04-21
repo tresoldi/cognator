@@ -307,14 +307,14 @@ func TestSupportModeTriangleRiskPenalizesUnsupportedEdge(t *testing.T) {
 		TopK:          2,
 	})
 	penalized := BuildGraphEdges(4, pairs, 0.25, Spec{
-		Mode:                "support",
-		ExpansionMode:       "either",
-		TopK:                2,
-		ContrastivePenalty:  0.5,
-		ContrastiveFloor:    0.05,
-		RiskRankWeight:      0.0,
-		RiskGapWeight:       0.0,
-		RiskTriangleWeight:  1.0,
+		Mode:                 "support",
+		ExpansionMode:        "either",
+		TopK:                 2,
+		ContrastivePenalty:   0.5,
+		ContrastiveFloor:     0.05,
+		RiskRankWeight:       0.0,
+		RiskGapWeight:        0.0,
+		RiskTriangleWeight:   1.0,
 		RiskUnilateralWeight: 0.0,
 	})
 	var baseEdge, penalizedEdge float64
@@ -330,5 +330,124 @@ func TestSupportModeTriangleRiskPenalizesUnsupportedEdge(t *testing.T) {
 	}
 	if penalizedEdge >= baseEdge {
 		t.Fatalf("expected triangle-risk penalty to reduce unsupported edge: base=%f penalized=%f", baseEdge, penalizedEdge)
+	}
+}
+
+func TestSupportModeDensityRiskPenalizesSparseLocalNeighborhood(t *testing.T) {
+	pairs := []Pair{
+		{A: 0, B: 1, Distance: 0.28},
+		{A: 0, B: 2, Distance: 0.29},
+		{A: 1, B: 2, Distance: 0.60},
+	}
+	base := BuildGraphEdges(3, pairs, 0.35, Spec{
+		Mode:          "support",
+		ExpansionMode: "either",
+		TopK:          2,
+	})
+	penalized := BuildGraphEdges(3, pairs, 0.35, Spec{
+		Mode:                 "support",
+		ExpansionMode:        "either",
+		TopK:                 2,
+		ContrastivePenalty:   0.5,
+		ContrastiveFloor:     0.05,
+		RiskRankWeight:       0.0,
+		RiskGapWeight:        0.0,
+		RiskTriangleWeight:   0.0,
+		RiskUnilateralWeight: 0.0,
+		RiskDensityWeight:    1.0,
+		RiskDispersionWeight: 0.0,
+	})
+	var baseMain, penalizedMain float64
+	for _, e := range base {
+		if (e.A == 0 && e.B == 1) || (e.A == 1 && e.B == 0) {
+			baseMain = e.Weight
+		}
+	}
+	for _, e := range penalized {
+		if (e.A == 0 && e.B == 1) || (e.A == 1 && e.B == 0) {
+			penalizedMain = e.Weight
+		}
+	}
+	if penalizedMain >= baseMain {
+		t.Fatalf("expected density-risk penalty to reduce sparse local edge: base=%f penalized=%f", baseMain, penalizedMain)
+	}
+}
+
+func TestSupportModeDispersionRiskPenalizesAmbiguousConcept(t *testing.T) {
+	pairs := []Pair{
+		{A: 0, B: 1, Distance: 0.23},
+		{A: 0, B: 2, Distance: 0.24},
+		{A: 1, B: 3, Distance: 0.10},
+		{A: 1, B: 4, Distance: 0.11},
+		{A: 2, B: 5, Distance: 0.10},
+		{A: 2, B: 6, Distance: 0.11},
+	}
+	base := BuildGraphEdges(7, pairs, 0.20, Spec{
+		Mode:          "support",
+		ExpansionMode: "either",
+		TopK:          1,
+	})
+	penalized := BuildGraphEdges(7, pairs, 0.20, Spec{
+		Mode:                 "support",
+		ExpansionMode:        "either",
+		TopK:                 1,
+		ContrastivePenalty:   0.5,
+		ContrastiveFloor:     0.05,
+		RiskRankWeight:       0.0,
+		RiskGapWeight:        0.0,
+		RiskTriangleWeight:   0.0,
+		RiskUnilateralWeight: 0.0,
+		RiskDensityWeight:    0.0,
+		RiskDispersionWeight: 1.0,
+	})
+	var baseEdge, penalizedEdge float64
+	for _, e := range base {
+		if (e.A == 0 && e.B == 1) || (e.A == 1 && e.B == 0) {
+			baseEdge = e.Weight
+		}
+	}
+	for _, e := range penalized {
+		if (e.A == 0 && e.B == 1) || (e.A == 1 && e.B == 0) {
+			penalizedEdge = e.Weight
+		}
+	}
+	if penalizedEdge >= baseEdge {
+		t.Fatalf("expected dispersion-risk penalty to reduce edge weight in ambiguous concept: base=%f penalized=%f", baseEdge, penalizedEdge)
+	}
+}
+
+func TestSupportModeDispersionRiskPreservesCoherentClique(t *testing.T) {
+	pairs := []Pair{
+		{A: 0, B: 1, Distance: 0.10},
+		{A: 0, B: 2, Distance: 0.11},
+		{A: 1, B: 2, Distance: 0.12},
+	}
+	base := BuildGraphEdges(3, pairs, 0.25, Spec{
+		Mode:           "support",
+		ExpansionMode:  "either",
+		TopK:           2,
+		AdaptiveMargin: 0.005,
+	})
+	penalized := BuildGraphEdges(3, pairs, 0.25, Spec{
+		Mode:                 "support",
+		ExpansionMode:        "either",
+		TopK:                 2,
+		AdaptiveMargin:       0.005,
+		ContrastivePenalty:   0.5,
+		ContrastiveFloor:     0.05,
+		RiskRankWeight:       0.0,
+		RiskGapWeight:        0.0,
+		RiskTriangleWeight:   0.0,
+		RiskUnilateralWeight: 0.0,
+		RiskDensityWeight:    0.0,
+		RiskDispersionWeight: 1.0,
+	})
+	if len(base) != len(penalized) {
+		t.Fatalf("edge count mismatch: base=%d penalized=%d", len(base), len(penalized))
+	}
+	for i := range base {
+		if base[i].Weight != penalized[i].Weight {
+			t.Fatalf("coherent clique should have zero dispersion penalty: base=%f penalized=%f", base[i].Weight, penalized[i].Weight)
+		}
 	}
 }

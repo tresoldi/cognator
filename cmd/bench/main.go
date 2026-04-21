@@ -88,12 +88,15 @@ func main() {
 		graphRiskGapWeight               = flag.Float64("graph-risk-gap-weight", 0.5, "weight of best-rival gap risk in calibrated edge-risk score")
 		graphRiskTriangleWeight          = flag.Float64("graph-risk-triangle-weight", 0.0, "weight of low triangle-support risk in calibrated edge-risk score")
 		graphRiskUnilateralWeight        = flag.Float64("graph-risk-unilateral-weight", 0.0, "weight of non-mutual expansion risk in calibrated edge-risk score")
+		graphRiskDensityWeight           = flag.Float64("graph-risk-density-weight", 0.0, "weight of low local-neighborhood density risk in calibrated edge-risk score")
+		graphRiskDispersionWeight        = flag.Float64("graph-risk-dispersion-weight", 0.0, "weight of concept-level ambiguity/dispersion risk in calibrated edge-risk score")
 		graphUnilateralPenalty           = flag.Float64("graph-unilateral-penalty", 0.0, "penalty on non-mutual expanded edges when endpoints have stronger rivals")
 		graphRivalFloor                  = flag.Float64("graph-rival-floor", 0.6, "rival-support floor at which unilateral penalty activates")
-		refineMode                       = flag.String("refine-mode", "none", "'none' (default), 'core-cc', 'reassign', 'bridge-cut', or 'local-recluster'")
+		refineMode                       = flag.String("refine-mode", "none", "'none' (default), 'core-cc', 'reassign', 'alt-reassign', 'bridge-cut', 'bridge-alt-reassign', 'alt-reassign-bridge', 'alt-bridge-cut', or 'local-recluster'")
 		refineCoreWeight                 = flag.Float64("refine-core-weight", 0.75, "minimum internal edge weight for core-connectivity refinement")
 		refineConfidenceThreshold        = flag.Float64("refine-confidence-threshold", 0.55, "only reassign nodes below this confidence")
 		refineAltRatio                   = flag.Float64("refine-alt-ratio", 1.1, "alternative cluster support must exceed in-cluster support by this ratio for reassignment")
+		refineAltClusterThreshold        = flag.Float64("refine-alt-cluster-threshold", 0.0, "minimum target-cluster internal cohesion for alternative-cluster reassignment (0 = disabled)")
 		refineBridgeRatio                = flag.Float64("refine-bridge-ratio", 0.7, "cut weak in-cluster edges incident to low-confidence nodes below this fraction of node mean support")
 		refineClusterConfidenceThreshold = flag.Float64("refine-cluster-confidence-threshold", 0.75, "only locally recluster clusters whose mean confidence falls below this value")
 		refineLocalCoreWeight            = flag.Float64("refine-local-core-weight", 0.8, "edge floor used during selective local reclustering")
@@ -195,12 +198,15 @@ func main() {
 				GraphRiskGapWeight:               *graphRiskGapWeight,
 				GraphRiskTriangleWeight:          *graphRiskTriangleWeight,
 				GraphRiskUnilateralWeight:        *graphRiskUnilateralWeight,
+				GraphRiskDensityWeight:           *graphRiskDensityWeight,
+				GraphRiskDispersionWeight:        *graphRiskDispersionWeight,
 				GraphUnilateralPenalty:           *graphUnilateralPenalty,
 				GraphRivalFloor:                  *graphRivalFloor,
 				RefineMode:                       *refineMode,
 				RefineCoreWeight:                 *refineCoreWeight,
 				RefineConfidenceThreshold:        *refineConfidenceThreshold,
 				RefineAltRatio:                   *refineAltRatio,
+				RefineAltClusterThreshold:        *refineAltClusterThreshold,
 				RefineBridgeRatio:                *refineBridgeRatio,
 				RefineClusterConfidenceThreshold: *refineClusterConfidenceThreshold,
 				RefineLocalCoreWeight:            *refineLocalCoreWeight,
