@@ -193,6 +193,23 @@ go run ./cmd/benchcompare \
   --out-md benchmark/comparison.md
 ```
 
+Generate a detailed rerunnable arcaverborum comparison report:
+
+```sh
+python scripts/generate_arcaverborum_report.py --mode existing
+```
+
+`existing` mode reads local benchmark run directories that already contain
+`comparison.tsv`; use `--run-dir LABEL=PATH` to point it at different artifacts.
+To update the results from a fresh arcaverborum export and new Cognator/LingPy
+runs, use:
+
+```sh
+python scripts/generate_arcaverborum_report.py \
+  --mode fresh \
+  --arcaverborum-root ../arcaverborum
+```
+
 ## Diagnostics
 
 Pairwise error decomposition:
