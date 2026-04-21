@@ -476,22 +476,22 @@ Track A until the primary quality target is met.
 
 Prioritized. Earlier items unblock later ones.
 
-1. **Tidy pass.** Delete the refinement modes and risk weights that lost their
-   promotion tests (see Architecture Roadmap §4 for the concrete list). Add a
-   `--preset=research-20260421` alias for the frozen baseline. Record all
-   effective pipeline settings in benchmark metadata. Day of work, unblocks
-   clean diffs for everything below.
+1. **Tidy pass.** *(Landed.)* Deleted the refinement modes and risk weights
+   that lost their promotion tests (see Architecture Roadmap §4). Added a
+   `--preset=support-adaptive-bridge` alias for the frozen baseline and
+   `--meta-out` to capture the effective Spec per bench run.
 
-2. **Evidence serialization.** Add an evidence export/import format scoped to
-   one family and one split first (see Performance Roadmap §1). This turns
-   downstream graph-policy and scoring sweeps from minutes to seconds and
-   would have saved days in the graph-calibration work already done. Do this
-   before any new scoring or refinement experiments.
-
-3. **Bayesian scoring layer.** Implement `PosteriorTable` alongside the
+2. **Bayesian scoring layer.** Implement `PosteriorTable` alongside the
    existing `CorrespondenceTable` (see Model Roadmap §5). A/B on Dev-Core;
    promote if F ≥ current − 0.005. The win is deleting `Lambda`, `MinPairs`,
    and `tanhScale` and making asymmetric scoring first-class — not chasing F.
+
+3. **Evidence serialization.** Add an evidence export/import format (see
+   Performance Roadmap §1). Deferred behind the Bayesian scoring layer because
+   the natural cache level is alignment-column frequencies, not final
+   distances — and the scoring layer decides which layer is the right cache
+   boundary. A distance cache built before the Bayesian scorer lands would
+   be invalidated on first posterior run.
 
 4. **Confidence calibration.** Move membership confidence out of
    `internal/pipeline`. Add calibration curves and risk bands on Dev-Core,
@@ -511,4 +511,4 @@ Prioritized. Earlier items unblock later ones.
 Out of scope for this cycle: full package split (`internal/refine`,
 `internal/calibrate`, `internal/confidence`), regulae integration (see Model
 Roadmap §6), mid-family memory streaming, Infomap backend swap. Revisit after
-items 1–4 land and the promoted baseline shifts.
+items 2–4 land and the promoted baseline shifts.
