@@ -67,10 +67,11 @@ type Result struct {
 	OOV       map[string]int
 }
 
-// Detect runs the full pipeline. recs must include Family, Concept,
-// Language_ID, and Segments; Cognacy is ignored (this is cognate
-// DETECTION, not evaluation).
-func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
+// ResolveDefaults applies the documented defaults to any zero-valued
+// Spec fields and returns the filled-in Spec. Callers that want to
+// record the effective configuration (for benchmark metadata) should
+// invoke this before consuming the Spec.
+func ResolveDefaults(spec Spec) Spec {
 	if spec.Iterations <= 0 {
 		spec.Iterations = DefaultIterations
 	}
@@ -161,6 +162,14 @@ func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
 	if spec.NullMaxRuns <= 0 {
 		spec.NullMaxRuns = DefaultNullMaxRuns
 	}
+	return spec
+}
+
+// Detect runs the full pipeline. recs must include Family, Concept,
+// Language_ID, and Segments; Cognacy is ignored (this is cognate
+// DETECTION, not evaluation).
+func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
+	spec = ResolveDefaults(spec)
 
 	out := Result{OOV: map[string]int{}}
 	families := groupByFamily(recs)

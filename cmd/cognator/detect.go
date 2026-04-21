@@ -50,8 +50,26 @@ func detectCmd(args []string) {
 	scope := fs.String("cluster-scope", "concept", "'concept' (default) or 'global' (cross-concept)")
 	alignMode := fs.String("alignment-mode", "combined", "'global' or 'combined' (default; global+local+overlap)")
 	classReduce := fs.Bool("class-reduce", true, "strip IPA modifiers upstream for SCA-style densification (default true)")
+	preset := fs.String("preset", "", "apply a named preset (e.g. 'support-adaptive-bridge'); explicit flags override preset values")
 	if err := fs.Parse(args); err != nil {
 		os.Exit(2)
+	}
+	if *preset != "" {
+		overrides := pipeline.Preset(*preset)
+		if overrides == nil {
+			log.Fatalf("unknown preset %q; known: %v", *preset, pipeline.PresetNames())
+		}
+		explicit := map[string]bool{}
+		fs.Visit(func(f *flag.Flag) { explicit[f.Name] = true })
+		for name, val := range overrides {
+			if explicit[name] {
+				continue
+			}
+			if err := fs.Set(name, val); err != nil {
+				log.Fatalf("preset %q: failed to set --%s=%s: %v", *preset, name, val, err)
+			}
+		}
+		log.Printf("applied preset %q", *preset)
 	}
 	if *in == "" || *out == "" {
 		fmt.Fprintln(os.Stderr, "detect: --in and --out are required")

@@ -8,6 +8,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -109,8 +110,27 @@ func main() {
 		maxForms                  = flag.Int("max-forms", 15000, "skip families with more than N forms (0 = no limit; memory guard — mid-family NW edge transients can balloon 30x sys on L²-heavy families)")
 		memProfile                = flag.String("mem-profile", "", "write post-run heap profile to this file (go tool pprof)")
 		memProfileEach            = flag.String("mem-profile-each", "", "write a heap profile after EACH family to this dir (filename = family.prof)")
+		preset                    = flag.String("preset", "", "apply a named preset (e.g. 'support-adaptive-bridge'); explicit flags override preset values")
+		metaOut                   = flag.String("meta-out", "", "write effective spec + run metadata to this JSON file")
 	)
 	flag.Parse()
+	if *preset != "" {
+		overrides := pipeline.Preset(*preset)
+		if overrides == nil {
+			log.Fatalf("unknown preset %q; known: %v", *preset, pipeline.PresetNames())
+		}
+		explicit := map[string]bool{}
+		flag.Visit(func(f *flag.Flag) { explicit[f.Name] = true })
+		for name, val := range overrides {
+			if explicit[name] {
+				continue
+			}
+			if err := flag.Set(name, val); err != nil {
+				log.Fatalf("preset %q: failed to set --%s=%s: %v", *preset, name, val, err)
+			}
+		}
+		log.Printf("applied preset %q", *preset)
+	}
 
 	b, err := merkmal.LoadBundle(*bundle)
 	if err != nil {
@@ -156,55 +176,64 @@ func main() {
 	sort.Strings(famNames)
 	log.Printf("%d families scheduled", len(famNames))
 
+	spec := pipeline.Spec{
+		Iterations:                *iters,
+		Lambda:                    *lambda,
+		Threshold:                 *thresholdOver,
+		ThresholdMode:             *thresholdMode,
+		ThresholdMin:              *thresholdMin,
+		ThresholdMax:              *thresholdMax,
+		ThresholdShrink:           *thresholdShrink,
+		GraphMode:                 *graphMode,
+		GraphExpansionMode:        *graphExpansionMode,
+		GraphTopK:                 *graphTopK,
+		GraphAdaptiveMargin:       *graphAdaptiveMargin,
+		GraphAdaptiveEitherMax:    *graphAdaptiveEitherMax,
+		GraphAdaptiveAmbiguity:    *graphAdaptiveAmbiguity,
+		GraphMutualBoost:          *graphMutualBoost,
+		GraphTriangleBoost:        *graphTriangleBoost,
+		GraphContrastivePenalty:   *graphContrastivePenalty,
+		GraphContrastiveFloor:     *graphContrastiveFloor,
+		GraphRiskRankWeight:       *graphRiskRankWeight,
+		GraphRiskGapWeight:        *graphRiskGapWeight,
+		GraphUnilateralPenalty:    *graphUnilateralPenalty,
+		GraphRivalFloor:           *graphRivalFloor,
+		RefineMode:                *refineMode,
+		RefineConfidenceThreshold: *refineConfidenceThreshold,
+		RefineBridgeRatio:         *refineBridgeRatio,
+		Bootstrap:                 *bootstrap,
+		BootstrapSigma:            *bootstrapSigma,
+		Seed:                      *seed,
+		Jobs:                      *jobs,
+		ClusterScope:              *scope,
+		AlignmentMode:             *alignMode,
+		ClassReduce:               *classReduce,
+		NullMode:                  *nullMode,
+		NullMaxRuns:               *nullMaxRuns,
+	}
+	effective := pipeline.ResolveDefaults(spec)
+	workerCount := *parallelFam
+	if workerCount <= 0 {
+		workerCount = runtime.GOMAXPROCS(0)
+	}
+	if *metaOut != "" {
+		if err := writeRunMeta(*metaOut, effective, *preset, *runLabel, *track, *minCognacy, *maxLects, *maxForms, workerCount, start); err != nil {
+			log.Fatalf("write meta: %v", err)
+		}
+		log.Printf("wrote %s", *metaOut)
+	}
+
 	results := make([]result, len(famNames))
 	predictionsByFamily := make([][]prediction, len(famNames))
 	var wg sync.WaitGroup
-	workers := *parallelFam
-	if workers <= 0 {
-		workers = runtime.GOMAXPROCS(0)
-	}
-	sem := make(chan struct{}, workers)
+	sem := make(chan struct{}, workerCount)
 	for i, name := range famNames {
 		wg.Add(1)
 		sem <- struct{}{}
 		go func(i int, name string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[i], predictionsByFamily[i] = runFamily(name, byFam[name], b, pipeline.Spec{
-				Iterations:                *iters,
-				Lambda:                    *lambda,
-				Threshold:                 *thresholdOver,
-				ThresholdMode:             *thresholdMode,
-				ThresholdMin:              *thresholdMin,
-				ThresholdMax:              *thresholdMax,
-				ThresholdShrink:           *thresholdShrink,
-				GraphMode:                 *graphMode,
-				GraphExpansionMode:        *graphExpansionMode,
-				GraphTopK:                 *graphTopK,
-				GraphAdaptiveMargin:       *graphAdaptiveMargin,
-				GraphAdaptiveEitherMax:    *graphAdaptiveEitherMax,
-				GraphAdaptiveAmbiguity:    *graphAdaptiveAmbiguity,
-				GraphMutualBoost:          *graphMutualBoost,
-				GraphTriangleBoost:        *graphTriangleBoost,
-				GraphContrastivePenalty:   *graphContrastivePenalty,
-				GraphContrastiveFloor:     *graphContrastiveFloor,
-				GraphRiskRankWeight:       *graphRiskRankWeight,
-				GraphRiskGapWeight:        *graphRiskGapWeight,
-				GraphUnilateralPenalty:    *graphUnilateralPenalty,
-				GraphRivalFloor:           *graphRivalFloor,
-				RefineMode:                *refineMode,
-				RefineConfidenceThreshold: *refineConfidenceThreshold,
-				RefineBridgeRatio:         *refineBridgeRatio,
-				Bootstrap:                 *bootstrap,
-				BootstrapSigma:            *bootstrapSigma,
-				Seed:                      *seed,
-				Jobs:                      *jobs,
-				ClusterScope:              *scope,
-				AlignmentMode:             *alignMode,
-				ClassReduce:               *classReduce,
-				NullMode:                  *nullMode,
-				NullMaxRuns:               *nullMaxRuns,
-			}, *minCognacy, *maxLects, *maxForms)
+			results[i], predictionsByFamily[i] = runFamily(name, byFam[name], b, spec, *minCognacy, *maxLects, *maxForms)
 			r := results[i]
 			if r.Skipped != "" {
 				log.Printf("[%s] skipped: %s", r.Dataset, r.Skipped)
@@ -561,6 +590,40 @@ func formatMs(ms int64) string {
 		return fmt.Sprintf("%.1fs", float64(ms)/1000)
 	}
 	return fmt.Sprintf("%dm%02ds", ms/60_000, (ms%60_000)/1000)
+}
+
+func writeRunMeta(path string, spec pipeline.Spec, preset, runLabel, track string, minCognacy, maxLects, maxForms, parallelFamilies int, start time.Time) error {
+	if err := ensureDir(path); err != nil {
+		return err
+	}
+	meta := struct {
+		Tool             string        `json:"tool"`
+		StartedUTC       string        `json:"started_utc"`
+		Preset           string        `json:"preset,omitempty"`
+		RunLabel         string        `json:"run_label,omitempty"`
+		Track            string        `json:"track,omitempty"`
+		MinCognacy       int           `json:"min_cognacy"`
+		MaxLects         int           `json:"max_lects"`
+		MaxForms         int           `json:"max_forms"`
+		ParallelFamilies int           `json:"parallel_families"`
+		Spec             pipeline.Spec `json:"spec"`
+	}{
+		Tool:             "cognator-bench",
+		StartedUTC:       start.UTC().Format(time.RFC3339),
+		Preset:           preset,
+		RunLabel:         runLabel,
+		Track:            track,
+		MinCognacy:       minCognacy,
+		MaxLects:         maxLects,
+		MaxForms:         maxForms,
+		ParallelFamilies: parallelFamilies,
+		Spec:             spec,
+	}
+	data, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(data, '\n'), 0o644)
 }
 
 func writePredictions(path string, rows []prediction, runLabel string) error {
