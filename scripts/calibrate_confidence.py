@@ -47,6 +47,7 @@ from typing import Iterable
 
 REQUIRED_COLUMNS = {"eval_id", "dataset", "concept", "gold", "pred", "confidence"}
 STRATIFY_CHOICES = ("", "cluster_size")
+ERROR_LABEL_CHOICES = ("pairwise", "form-local")
 DEFAULT_STRATUM = "_all"
 SINGLETON_STRATUM = "singleton"
 MULTI_STRATUM = "multi"
@@ -69,6 +70,20 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Partition fit rows before PAV: '' (default, single fit) or 'cluster_size' (singleton vs multi-member cluster)",
     )
+    fit.add_argument(
+        "--error-label",
+        choices=ERROR_LABEL_CHOICES,
+        default="pairwise",
+        help=(
+            "How to label a form as correct/incorrect: 'pairwise' (default) "
+            "= not involved in any same-concept false-merge or false-split pair; "
+            "'form-local' = B-cubed-style form-level precision AND recall both at or "
+            "above 0.5 against the form's gold class within its concept. The pairwise "
+            "label is concept-level and pessimistic; form-local is node-local and matches "
+            "the scale of node-level confidence metrics. True-singleton gold classes are "
+            "vacuously correct under form-local."
+        ),
+    )
 
     apply_ = sub.add_parser("apply", help="Apply a calibration JSON to a predictions TSV.")
     apply_.add_argument("--calibration", required=True, help="Calibration JSON from 'fit'")
@@ -89,6 +104,13 @@ def read_predictions(path: str) -> list[dict[str, str]]:
 
 
 def error_involved_ids(rows: list[dict[str, str]]) -> set[str]:
+    """Concept-level pairwise error-involvement label.
+
+    A form is flagged if at least one same-concept pair containing it
+    is a false merge (gold differs, pred same) or false split (gold
+    same, pred differs). This propagates concept-level errors to every
+    member — pessimistic when the concept has many forms.
+    """
     ids: set[str] = set()
     by_concept: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
     for row in rows:
@@ -102,6 +124,62 @@ def error_involved_ids(rows: list[dict[str, str]]) -> set[str]:
                 ids.add(left["eval_id"])
                 ids.add(right["eval_id"])
     return ids
+
+
+def form_local_error_ids(rows: list[dict[str, str]], threshold: float = 0.5) -> set[str]:
+    """Form-local B-cubed-style correctness label.
+
+    For each form f with gold class G and predicted cluster P inside a
+    concept, define:
+
+        precision(f) = |P ∩ gold_peers_of(f)| / max(1, |P|)
+        recall(f)    = |P ∩ gold_peers_of(f)| / max(1, |G_peers|)
+
+    where P and G_peers exclude f itself, and the max() guards against
+    the "singleton whose gold class is a true singleton in the concept"
+    case (both sets empty → both ratios are vacuously 1.0).
+
+    A form is flagged as an error iff precision(f) < threshold OR
+    recall(f) < threshold. At threshold=0.5 this collapses to: the
+    majority of my cluster-mates must share my gold class AND at
+    least half of my gold-peers must be in my cluster. Singletons in
+    true-singleton gold classes are correct; singletons whose gold
+    class has other members in the concept are errors (false splits).
+    Multi-member clusters are correct iff they roughly match their
+    dominant gold class's extent.
+    """
+    ids: set[str] = set()
+    by_concept: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
+    for row in rows:
+        if row["gold"]:
+            by_concept[(row["dataset"], row["concept"])].append(row)
+    for members in by_concept.values():
+        gold_by_class: dict[str, set[str]] = defaultdict(set)
+        pred_by_cluster: dict[str, set[str]] = defaultdict(set)
+        for m in members:
+            gold_by_class[m["gold"]].add(m["eval_id"])
+            pred_by_cluster[m["pred"]].add(m["eval_id"])
+        for m in members:
+            eid = m["eval_id"]
+            gold_peers = gold_by_class[m["gold"]] - {eid}
+            pred_peers = pred_by_cluster[m["pred"]] - {eid}
+            inter = len(gold_peers & pred_peers)
+            precision = inter / max(1, len(pred_peers))
+            recall = inter / max(1, len(gold_peers))
+            # Vacuously correct when the form is truly alone in both.
+            if not pred_peers and not gold_peers:
+                continue
+            if precision < threshold or recall < threshold:
+                ids.add(eid)
+    return ids
+
+
+def labeled_error_ids(rows: list[dict[str, str]], method: str) -> set[str]:
+    if method == "pairwise":
+        return error_involved_ids(rows)
+    if method == "form-local":
+        return form_local_error_ids(rows)
+    raise ValueError(f"unknown error-label method {method!r}")
 
 
 def pool_adjacent_violators(ys: list[float], ws: list[float]) -> list[float]:
@@ -193,13 +271,13 @@ def fit_stratum(rows: list[dict[str, str]], error_ids: set[str], bins: int) -> d
     }
 
 
-def fit_calibration(rows: list[dict[str, str]], bins: int, band_low: float, band_high: float, stratify_by: str) -> dict:
+def fit_calibration(rows: list[dict[str, str]], bins: int, band_low: float, band_high: float, stratify_by: str, error_label: str) -> dict:
     gold_rows = [row for row in rows if row["gold"]]
     if not gold_rows:
         raise ValueError("no rows carry gold labels; cannot fit a calibration")
     if stratify_by == "cluster_size" and "cluster_size" not in (gold_rows[0].keys() if gold_rows else ()):
         raise ValueError("--stratify-by cluster_size requires a cluster_size column in the predictions TSV")
-    error_ids = error_involved_ids(gold_rows)
+    error_ids = labeled_error_ids(gold_rows, error_label)
     strata_rows: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in gold_rows:
         strata_rows[stratum_for(row, stratify_by)].append(row)
@@ -207,6 +285,7 @@ def fit_calibration(rows: list[dict[str, str]], bins: int, band_low: float, band
     return {
         "method": "isotonic-pav",
         "stratify_by": stratify_by,
+        "error_label": error_label,
         "fit_rows": len(gold_rows),
         "error_involved_rows": len(error_ids),
         "bands": {"low": band_low, "high": band_high},
@@ -281,6 +360,7 @@ def write_fit_markdown(path: str, calibration: dict) -> None:
     with Path(path).open("w", encoding="utf-8") as handle:
         handle.write("# Confidence Calibration Fit\n\n")
         handle.write(f"- Method: `{calibration['method']}`\n")
+        handle.write(f"- Error label: `{calibration.get('error_label', 'pairwise')}`\n")
         handle.write(f"- Stratify by: `{calibration.get('stratify_by') or '(none)'}`\n")
         handle.write(f"- Fit rows: {calibration['fit_rows']}\n")
         handle.write(f"- Error-involved rows: {calibration['error_involved_rows']}\n")
@@ -307,7 +387,8 @@ def write_transfer_markdown(path: str, calibration: dict, rows: list[dict[str, s
         with Path(path).open("w", encoding="utf-8") as handle:
             handle.write("# Calibration Transfer\n\nNo gold labels in input; reliability cannot be measured.\n")
         return
-    error_ids = error_involved_ids(gold_rows)
+    error_label = calibration.get("error_label", "pairwise")
+    error_ids = labeled_error_ids(gold_rows, error_label)
     stratify_by = calibration.get("stratify_by", "")
     low = calibration["bands"]["low"]
     high = calibration["bands"]["high"]
@@ -330,7 +411,7 @@ def write_transfer_markdown(path: str, calibration: dict, rows: list[dict[str, s
     with Path(path).open("w", encoding="utf-8") as handle:
         handle.write("# Calibration Transfer Report\n\n")
         handle.write(f"- Applied calibration fit on {calibration['fit_rows']} rows.\n")
-        handle.write(f"- Transfer set: {len(gold_rows)} rows with gold labels ({len(error_ids)} error-involved).\n")
+        handle.write(f"- Transfer set: {len(gold_rows)} rows with gold labels ({len(error_ids)} error-involved by `{error_label}` label).\n")
         handle.write(f"- Stratify by: `{stratify_by or '(none)'}`\n\n")
         for name in sorted(strata_buckets.keys()):
             handle.write(f"## Stratum `{name}`\n\n")
@@ -357,7 +438,7 @@ def main() -> None:
     args = parse_args()
     if args.mode == "fit":
         rows = read_predictions(args.predictions)
-        calibration = fit_calibration(rows, args.bins, args.band_low, args.band_high, args.stratify_by)
+        calibration = fit_calibration(rows, args.bins, args.band_low, args.band_high, args.stratify_by, args.error_label)
         Path(args.out_json).parent.mkdir(parents=True, exist_ok=True)
         with Path(args.out_json).open("w", encoding="utf-8") as handle:
             json.dump(calibration, handle, indent=2)

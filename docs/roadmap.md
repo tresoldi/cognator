@@ -242,49 +242,53 @@ Promotion criterion:
 
 ### 2. Calibrate Confidence As A Paper-Ready Quantity
 
-*Status: partial — singletons calibrated; multi-member clusters still
-collapse for a different reason than originally suspected.*
+*Status: landed. Both strata now yield usable calibrated risk bands.
+Top plateau still caps below the default low-risk threshold; fixing
+that would need another stratification axis (see follow-ups below).*
 
-Sidecar now emits `ClusterSize` and `CandidateNeighbors` alongside the
-support-ratio `Confidence`. `scripts/calibrate_confidence.py` accepts
-`--stratify-by cluster_size` which splits the fit into two strata:
-`singleton` (predicted cluster contains only this form) and `multi`
-(predicted cluster has ≥ 2 forms). Risk-band thresholds are fixed on
-the calibrated value (default low ≥ 0.90, high < 0.60).
+Sidecar emits `ClusterSize` and `CandidateNeighbors` alongside the
+support-ratio `Confidence`. `scripts/calibrate_confidence.py` takes
+`--stratify-by cluster_size` and `--error-label {pairwise, form-local}`.
+Form-local is the B-cubed form-level per-form correctness label
+(precision ≥ 0.5 AND recall ≥ 0.5 against the form's gold class
+within its concept); it matches the scale of node-level confidence
+and makes the previously-collapsed multi stratum calibratable.
 
-Singleton stratum (Dev-Core fit, Holdout apply):
+Form-local + cluster_size stratification on Dev-Core, applied to Holdout:
 
-- Isotonic produces a real curve: empirical accuracy climbs
-  0.50 → 0.52 → 0.63 → 0.75 → 0.79 across confidence bins.
-- Transfers cleanly to Holdout: 763 rows land in the calibrated
-  [0.7, 0.8) decile with empirical accuracy 0.83; 97 rows in
-  [0.5, 0.6) with accuracy 0.80. "Medium" risk band carries a 17%
-  error rate — usable as a paper-ready diagnostic.
+| Stratum | Band | Holdout rows | Empirical error rate |
+|---|---|---:|---:|
+| singleton | medium | 763 | 0.169 |
+| singleton | high | 97 | 0.196 |
+| multi | medium | 15779 | 0.179 |
+| multi | high | 4457 | 0.563 |
 
-Multi stratum (Dev-Core fit, same source):
+Usable as a paper-ready diagnostic:
 
-- PAV still collapses to two plateau values (≈0.05 and ≈0.34).
-  Nothing reaches the default low-risk band.
-- Diagnosis: the error label used for fitting is *concept-level*
-  (any same-concept pair of this form participates in a false-merge
-  or false-split). The confidence metric is *node-level*. For concepts
-  with many forms, one bad cluster pollutes many rows' labels — so
-  node-level confidence and concept-level error involvement have a
-  scale mismatch that no binning can fix.
+- 77% of multi rows land in a "medium" band with ~82% empirical
+  accuracy; the remaining 23% fall into "high" with 56% error rate.
+- 89% of singletons land in "medium" at 83% accuracy.
+- Calibrated value is monotone with empirical accuracy on Holdout
+  across all deciles with ≥ 100 rows (conservative: actual accuracy
+  generally exceeds the calibrated estimate).
 
-Next steps (in order):
+Unresolved: nothing reaches the default low-risk band (≥ 0.90). The
+PAV top plateau on multi caps at 0.747 because the conf=1.0 bins
+within multi are non-monotone (accuracy swings 0.44 → 0.98). Closing
+that would need another stratification — e.g., by
+`assigned_support` tier or by whether the predicted cluster spans
+multiple lects (phylogenetic coherence).
 
-- Swap the ground label in the multi stratum for a form-local notion
-  of correctness — e.g., "does this form's predicted cluster share
-  majority gold-class with its gold-class members within the concept?"
-  That is closer to B-cubed per-form semantics.
-- Add cluster-level signals to the multi stratum (mean in-cluster
-  edge weight, cluster cohesion variance). Stratify by
-  `(cluster_size_tier, in_cluster_mean_tier)` if a single signal
-  doesn't give monotone buckets.
+Follow-ups (order by expected return):
+
+- Stratify further by `assigned_support` decile within multi — the
+  0.44 vs 0.98 split at conf=1.0 probably tracks raw support mass.
 - Posterior-sample bootstrap once the Bayesian scoring layer is the
   default scorer — credible intervals are the natural long-form
-  output.
+  output that also handles the top-plateau noise.
+- Move membership-confidence code out of `internal/pipeline` into
+  `internal/confidence`. Pure refactor; deferred because the output
+  schema is now stable.
 
 Candidate output (shape is settled; multi-stratum semantics still
 shifting):
@@ -551,24 +555,19 @@ Prioritized. Earlier items unblock later ones.
    boundary. A distance cache built before the Bayesian scorer lands would
    be invalidated on first posterior run.
 
-4. **Confidence calibration.** *(Singleton calibration landed; multi
-   stratum pending label redesign.)* Sidecar now emits `ClusterSize`
-   and `CandidateNeighbors`. The calibrator stratifies by cluster size,
-   and the singleton stratum produces a usable calibrated risk band
-   that transfers from Dev-Core to Holdout (17% error rate in the
-   "medium" band, ~80% accuracy at calibrated 0.7+). The multi-member
-   stratum still collapses because pairwise-error-involvement is a
-   concept-level label while confidence is node-level — a scale
-   mismatch no binning can fix. The next step is a form-local label
-   (see Model §2).
+4. **Confidence calibration.** *(Landed.)* Sidecar emits `ClusterSize`
+   and `CandidateNeighbors`. Calibrator stratifies by `cluster_size`
+   and supports both `pairwise` and `form-local` error labels.
+   Form-local + cluster_size on Dev-Core gives monotone PAV fits in
+   both strata; Holdout transfer lands 77% of multi rows in a medium
+   band at 82% empirical accuracy, 89% of singletons at 83% accuracy.
+   Top plateau caps below 0.90 on multi — see Model §2 follow-ups.
 
-5. **Form-local error label for multi-stratum calibration.** The
-   multi-cluster collapse is a label problem, not a metric problem.
-   Replace concept-level error involvement with a form-local notion —
-   e.g., does this form's predicted cluster share majority gold class
-   with its gold-class peers within the concept — then recalibrate.
-   If this works, multi-cluster risk bands become informative and
-   item 4 is fully landed.
+5. **`assigned_support` as a second multi-stratum axis.** The
+   multi-stratum top plateau caps at calibrated 0.747 because
+   conf=1.0 bins have non-monotone accuracy (0.44 → 0.98). Raw
+   `assigned_support` likely explains the split. Stratifying on its
+   decile would let the "low-risk" (≥ 0.90) band become populated.
 
 6. **Selective merge control.** One experiment using alternative-support as a
    split-proposal signal rather than a reassignment rule — the only Family-2

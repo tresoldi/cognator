@@ -248,11 +248,14 @@ enough to use these flags as model behavior.
 Confidence calibration (isotonic PAV, stdlib only):
 
 ```sh
-# Fit a calibration on a Dev-Core run.
+# Fit a calibration on a Dev-Core run. Recommended: stratify by
+# cluster size and use the form-local per-form correctness label.
 python scripts/calibrate_confidence.py fit \
   --predictions benchmark/runs/dev_core/cognator_predictions.tsv \
   --out-json benchmark/calibration.json \
-  --out-md benchmark/calibration_fit.md
+  --out-md benchmark/calibration_fit.md \
+  --stratify-by cluster_size \
+  --error-label form-local
 
 # Apply it to any other predictions TSV to add
 # `confidence_calibrated` and `risk_band` columns.
@@ -263,11 +266,13 @@ python scripts/calibrate_confidence.py apply \
   --out-md benchmark/holdout_transfer.md
 ```
 
-On CoreCog the Dev-Core fit is currently degenerate: the raw
-`confidence` metric collapses stable and unsupported singletons into the
-same bin. See `docs/roadmap.md` Model §2/§4 — the calibration tool is
-ready, but the metric needs the singleton redesign before the bands
-become informative.
+The recommended recipe (stratify-by cluster_size + form-local label)
+produces monotone PAV fits in both strata. On a recent Dev-Core →
+Holdout run, ~77% of multi-member-cluster rows land in a "medium" risk
+band at ~82% empirical accuracy; the remaining ~23% in "high" at 56%
+error rate. The "low" band is still unpopulated because the PAV top
+plateau caps below 0.90 — see `docs/roadmap.md` Model §2 for the
+`assigned_support`-stratification follow-up that would unlock it.
 
 ## Architecture
 
