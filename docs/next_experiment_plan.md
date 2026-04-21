@@ -1,6 +1,11 @@
 # Next Experiment Plan
 
-This plan defines the next research iteration after establishing fixed family threshold `0.80` as the current baseline to beat on `Dev-Core`.
+Current global roadmap:
+- [docs/roadmap.md](/home/tiagot/nas-dev/new_chl/cognator/docs/roadmap.md)
+
+This file preserves the experiment history that led from fixed family threshold
+`0.80` to the current support/adaptive/bridge-cut baseline. For the current
+global roadmap, use `docs/roadmap.md`.
 
 Primary target:
 - beat `t0.80` on mean per-dataset B-cubed F1
