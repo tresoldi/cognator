@@ -38,6 +38,12 @@ func TestMembershipDiagnosticsExposeAssignedAndAlternativeSupport(t *testing.T) 
 	if got[0].Confidence <= 0 || got[0].Confidence >= 1 {
 		t.Fatalf("confidence should be bounded and non-degenerate, got %f", got[0].Confidence)
 	}
+	if got[0].ClusterSize != 2 {
+		t.Errorf("node 0 lives in a 2-member cluster, got ClusterSize=%d", got[0].ClusterSize)
+	}
+	if got[0].CandidateNeighbors != 3 {
+		t.Errorf("node 0 has 3 candidate-graph neighbors, got CandidateNeighbors=%d", got[0].CandidateNeighbors)
+	}
 }
 
 func closeFloat(a, b float64) bool {

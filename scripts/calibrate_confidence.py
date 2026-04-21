@@ -7,7 +7,9 @@ Two subcommands:
            form-level pairwise error involvement as the "wrong" label,
            and fits a monotone (isotonic) calibration of raw confidence
            to P(correct | confidence). Writes a calibration JSON file
-           plus a markdown reliability report.
+           plus a markdown reliability report. Optionally stratifies by
+           the `cluster_size` column so stable singletons and
+           unsupported singletons get separate calibration curves.
 
 - `apply`: reads a calibration JSON and a predictions TSV, writes an
            enriched TSV with two new columns: `confidence_calibrated`
@@ -21,6 +23,10 @@ Design choices:
   inherits that report's definition of error.
 - Calibration is pool-adjacent-violators (PAV) isotonic regression on
   equal-count bins of the fit rows. Stdlib only; no sklearn dependency.
+- Stratification by `cluster_size` (singleton vs multi-member)
+  addresses the conf=1.0 collapse flagged in docs/roadmap.md Model
+  §2/§4: stable singletons and unsupported singletons with
+  competitors both live at conf=1.0 under the single-metric view.
 - Risk bands are fixed thresholds on the calibrated value (not on the
   raw confidence). Defaults: low ≥ 0.90, medium ≥ 0.60, else high.
 - The calibration file is a portable plain-JSON artifact. Fit once on
@@ -40,6 +46,10 @@ from typing import Iterable
 
 
 REQUIRED_COLUMNS = {"eval_id", "dataset", "concept", "gold", "pred", "confidence"}
+STRATIFY_CHOICES = ("", "cluster_size")
+DEFAULT_STRATUM = "_all"
+SINGLETON_STRATUM = "singleton"
+MULTI_STRATUM = "multi"
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,9 +60,15 @@ def parse_args() -> argparse.Namespace:
     fit.add_argument("--predictions", required=True, help="Prediction TSV from cmd/bench --pred-out")
     fit.add_argument("--out-json", required=True, help="Calibration JSON output path")
     fit.add_argument("--out-md", default="", help="Optional reliability-report markdown path")
-    fit.add_argument("--bins", type=int, default=20, help="Number of equal-count bins for the reliability curve (default 20)")
+    fit.add_argument("--bins", type=int, default=20, help="Number of equal-count bins per stratum (default 20)")
     fit.add_argument("--band-low", type=float, default=0.90, help="Calibrated value at or above which risk_band is 'low' (default 0.90)")
     fit.add_argument("--band-high", type=float, default=0.60, help="Calibrated value below which risk_band is 'high' (default 0.60)")
+    fit.add_argument(
+        "--stratify-by",
+        choices=STRATIFY_CHOICES,
+        default="",
+        help="Partition fit rows before PAV: '' (default, single fit) or 'cluster_size' (singleton vs multi-member cluster)",
+    )
 
     apply_ = sub.add_parser("apply", help="Apply a calibration JSON to a predictions TSV.")
     apply_.add_argument("--calibration", required=True, help="Calibration JSON from 'fit'")
@@ -123,16 +139,23 @@ def pool_adjacent_violators(ys: list[float], ws: list[float]) -> list[float]:
     return expanded
 
 
-def fit_calibration(rows: list[dict[str, str]], bins: int, band_low: float, band_high: float) -> dict:
-    gold_rows = [row for row in rows if row["gold"]]
-    if not gold_rows:
-        raise ValueError("no rows carry gold labels; cannot fit a calibration")
-    error_ids = error_involved_ids(gold_rows)
+def stratum_for(row: dict[str, str], stratify_by: str) -> str:
+    if stratify_by == "":
+        return DEFAULT_STRATUM
+    if stratify_by == "cluster_size":
+        size = int(row.get("cluster_size", "1") or "1")
+        return SINGLETON_STRATUM if size <= 1 else MULTI_STRATUM
+    raise ValueError(f"unknown stratify_by {stratify_by!r}")
+
+
+def fit_stratum(rows: list[dict[str, str]], error_ids: set[str], bins: int) -> dict:
     samples = sorted(
-        [(float(row["confidence"]), 0.0 if row["eval_id"] in error_ids else 1.0) for row in gold_rows],
+        [(float(row["confidence"]), 0.0 if row["eval_id"] in error_ids else 1.0) for row in rows],
         key=lambda t: t[0],
     )
     n = len(samples)
+    if n == 0:
+        return {"fit_rows": 0, "error_involved_rows": 0, "bins": 0, "mapping": [], "raw_bins": []}
     bins = max(2, min(bins, n))
     per_bin = max(1, n // bins)
     bin_centers: list[float] = []
@@ -142,7 +165,7 @@ def fit_calibration(rows: list[dict[str, str]], bins: int, band_low: float, band
     while idx < n:
         end = min(idx + per_bin, n)
         if n - end < per_bin and idx + per_bin < n:
-            end = n  # fold tail into the last bin
+            end = n
         chunk = samples[idx:end]
         confs = [c for c, _ in chunk]
         labels = [y for _, y in chunk]
@@ -151,26 +174,43 @@ def fit_calibration(rows: list[dict[str, str]], bins: int, band_low: float, band
         bin_counts.append(len(chunk))
         idx = end
     isotonic = pool_adjacent_violators(bin_means, [float(c) for c in bin_counts])
-    # Collapse consecutive centers that end up mapped to the same
-    # isotonic value — a piecewise-constant plateau — into a single
-    # anchor for the interpolator.
-    mapping: list[tuple[float, float]] = []
+    mapping: list[list[float]] = []
     for center, value in zip(bin_centers, isotonic):
         if mapping and abs(mapping[-1][1] - value) < 1e-12:
-            mapping[-1] = (center, value)
+            mapping[-1] = [round(center, 6), round(value, 6)]
         else:
-            mapping.append((center, value))
+            mapping.append([round(center, 6), round(value, 6)])
+    errors = sum(1 for row in rows if row["eval_id"] in error_ids)
     return {
-        "method": "isotonic-pav",
-        "fit_rows": len(gold_rows),
-        "error_involved_rows": len(error_ids),
+        "fit_rows": n,
+        "error_involved_rows": errors,
         "bins": len(bin_centers),
-        "bands": {"low": band_low, "high": band_high},
-        "mapping": [[round(c, 6), round(v, 6)] for c, v in mapping],
+        "mapping": mapping,
         "raw_bins": [
             {"center": round(bc, 6), "mean": round(bm, 6), "calibrated": round(iv, 6), "count": bn}
             for bc, bm, iv, bn in zip(bin_centers, bin_means, isotonic, bin_counts)
         ],
+    }
+
+
+def fit_calibration(rows: list[dict[str, str]], bins: int, band_low: float, band_high: float, stratify_by: str) -> dict:
+    gold_rows = [row for row in rows if row["gold"]]
+    if not gold_rows:
+        raise ValueError("no rows carry gold labels; cannot fit a calibration")
+    if stratify_by == "cluster_size" and "cluster_size" not in (gold_rows[0].keys() if gold_rows else ()):
+        raise ValueError("--stratify-by cluster_size requires a cluster_size column in the predictions TSV")
+    error_ids = error_involved_ids(gold_rows)
+    strata_rows: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in gold_rows:
+        strata_rows[stratum_for(row, stratify_by)].append(row)
+    strata = {name: fit_stratum(members, error_ids, bins) for name, members in strata_rows.items()}
+    return {
+        "method": "isotonic-pav",
+        "stratify_by": stratify_by,
+        "fit_rows": len(gold_rows),
+        "error_involved_rows": len(error_ids),
+        "bands": {"low": band_low, "high": band_high},
+        "strata": strata,
     }
 
 
@@ -200,11 +240,26 @@ def risk_band(calibrated: float, low: float, high: float) -> str:
     return "medium"
 
 
+def lookup_mapping(calibration: dict, row: dict[str, str]) -> list[list[float]]:
+    stratify_by = calibration.get("stratify_by", "")
+    strata = calibration.get("strata", {})
+    key = stratum_for(row, stratify_by)
+    stratum = strata.get(key) or strata.get(DEFAULT_STRATUM)
+    if stratum and stratum.get("mapping"):
+        return stratum["mapping"]
+    # Fall back to any stratum with a non-empty mapping so we always
+    # return a usable curve, even for rows whose stratum has no data.
+    for candidate in strata.values():
+        if candidate.get("mapping"):
+            return candidate["mapping"]
+    return []
+
+
 def apply_calibration(calibration: dict, rows: list[dict[str, str]]) -> Iterable[dict[str, str]]:
-    mapping = calibration["mapping"]
     low = calibration["bands"]["low"]
     high = calibration["bands"]["high"]
     for row in rows:
+        mapping = lookup_mapping(calibration, row)
         cal = interpolate(mapping, float(row["confidence"]))
         out = dict(row)
         out["confidence_calibrated"] = f"{cal:.6f}"
@@ -226,14 +281,23 @@ def write_fit_markdown(path: str, calibration: dict) -> None:
     with Path(path).open("w", encoding="utf-8") as handle:
         handle.write("# Confidence Calibration Fit\n\n")
         handle.write(f"- Method: `{calibration['method']}`\n")
+        handle.write(f"- Stratify by: `{calibration.get('stratify_by') or '(none)'}`\n")
         handle.write(f"- Fit rows: {calibration['fit_rows']}\n")
         handle.write(f"- Error-involved rows: {calibration['error_involved_rows']}\n")
         handle.write(f"- Bands: low ≥ {calibration['bands']['low']}; high < {calibration['bands']['high']}\n\n")
-        handle.write("## Reliability by bin (ascending confidence)\n\n")
-        handle.write("| Bin center | Empirical accuracy | Isotonic calibrated | Count |\n")
-        handle.write("|---:|---:|---:|---:|\n")
-        for b in calibration["raw_bins"]:
-            handle.write(f"| {b['center']:.4f} | {b['mean']:.4f} | {b['calibrated']:.4f} | {b['count']} |\n")
+        for name, stratum in sorted(calibration.get("strata", {}).items()):
+            handle.write(f"## Stratum `{name}`\n\n")
+            handle.write(f"- Rows: {stratum.get('fit_rows', 0)}\n")
+            handle.write(f"- Error-involved: {stratum.get('error_involved_rows', 0)}\n")
+            handle.write(f"- Bins: {stratum.get('bins', 0)}\n\n")
+            if not stratum.get("raw_bins"):
+                handle.write("No rows in this stratum.\n\n")
+                continue
+            handle.write("| Bin center | Empirical accuracy | Isotonic calibrated | Count |\n")
+            handle.write("|---:|---:|---:|---:|\n")
+            for b in stratum["raw_bins"]:
+                handle.write(f"| {b['center']:.4f} | {b['mean']:.4f} | {b['calibrated']:.4f} | {b['count']} |\n")
+            handle.write("\n")
 
 
 def write_transfer_markdown(path: str, calibration: dict, rows: list[dict[str, str]]) -> None:
@@ -244,54 +308,56 @@ def write_transfer_markdown(path: str, calibration: dict, rows: list[dict[str, s
             handle.write("# Calibration Transfer\n\nNo gold labels in input; reliability cannot be measured.\n")
         return
     error_ids = error_involved_ids(gold_rows)
-    # Build per-bin empirical accuracy using the fit calibration's own bin centers.
-    mapping = calibration["mapping"]
-    buckets: dict[int, list[float]] = defaultdict(list)
-    for row in gold_rows:
-        conf = float(row["confidence"])
-        cal = interpolate(mapping, conf)
-        is_correct = 0.0 if row["eval_id"] in error_ids else 1.0
-        # Bucket by calibrated decile.
-        decile = min(int(cal * 10), 9)
-        buckets[decile].append(is_correct)
-    band_counts: dict[str, dict[str, int]] = defaultdict(lambda: {"count": 0, "errors": 0})
+    stratify_by = calibration.get("stratify_by", "")
     low = calibration["bands"]["low"]
     high = calibration["bands"]["high"]
+
+    # Per-decile accuracy per stratum.
+    strata_buckets: dict[str, dict[int, list[float]]] = defaultdict(lambda: defaultdict(list))
+    band_counts: dict[str, dict[str, dict[str, int]]] = defaultdict(lambda: defaultdict(lambda: {"count": 0, "errors": 0}))
     for row in gold_rows:
-        conf = float(row["confidence"])
-        cal = interpolate(mapping, conf)
+        mapping = lookup_mapping(calibration, row)
+        cal = interpolate(mapping, float(row["confidence"]))
+        is_correct = 0.0 if row["eval_id"] in error_ids else 1.0
+        decile = min(int(cal * 10), 9)
+        stratum = stratum_for(row, stratify_by)
+        strata_buckets[stratum][decile].append(is_correct)
         band = risk_band(cal, low, high)
-        band_counts[band]["count"] += 1
+        band_counts[stratum][band]["count"] += 1
         if row["eval_id"] in error_ids:
-            band_counts[band]["errors"] += 1
+            band_counts[stratum][band]["errors"] += 1
 
     with Path(path).open("w", encoding="utf-8") as handle:
         handle.write("# Calibration Transfer Report\n\n")
         handle.write(f"- Applied calibration fit on {calibration['fit_rows']} rows.\n")
-        handle.write(f"- Transfer set: {len(gold_rows)} rows with gold labels ({len(error_ids)} error-involved).\n\n")
-        handle.write("## Empirical accuracy by calibrated decile\n\n")
-        handle.write("| Decile | Calibrated range | N | Empirical accuracy |\n")
-        handle.write("|---:|---|---:|---:|\n")
-        for d in range(10):
-            vals = buckets.get(d, [])
-            if not vals:
-                continue
-            acc = sum(vals) / len(vals)
-            handle.write(f"| {d} | [{d/10:.1f}, {(d+1)/10:.1f}) | {len(vals)} | {acc:.4f} |\n")
-        handle.write("\n## Risk-band distribution\n\n")
-        handle.write("| Band | N | Errors | Empirical error rate |\n")
-        handle.write("|---|---:|---:|---:|\n")
-        for band in ("low", "medium", "high"):
-            stats = band_counts.get(band, {"count": 0, "errors": 0})
-            rate = (stats["errors"] / stats["count"]) if stats["count"] else 0.0
-            handle.write(f"| {band} | {stats['count']} | {stats['errors']} | {rate:.4f} |\n")
+        handle.write(f"- Transfer set: {len(gold_rows)} rows with gold labels ({len(error_ids)} error-involved).\n")
+        handle.write(f"- Stratify by: `{stratify_by or '(none)'}`\n\n")
+        for name in sorted(strata_buckets.keys()):
+            handle.write(f"## Stratum `{name}`\n\n")
+            handle.write("### Empirical accuracy by calibrated decile\n\n")
+            handle.write("| Decile | Calibrated range | N | Empirical accuracy |\n")
+            handle.write("|---:|---|---:|---:|\n")
+            for d in range(10):
+                vals = strata_buckets[name].get(d, [])
+                if not vals:
+                    continue
+                acc = sum(vals) / len(vals)
+                handle.write(f"| {d} | [{d/10:.1f}, {(d+1)/10:.1f}) | {len(vals)} | {acc:.4f} |\n")
+            handle.write("\n### Risk-band distribution\n\n")
+            handle.write("| Band | N | Errors | Empirical error rate |\n")
+            handle.write("|---|---:|---:|---:|\n")
+            for band in ("low", "medium", "high"):
+                stats = band_counts[name].get(band, {"count": 0, "errors": 0})
+                rate = (stats["errors"] / stats["count"]) if stats["count"] else 0.0
+                handle.write(f"| {band} | {stats['count']} | {stats['errors']} | {rate:.4f} |\n")
+            handle.write("\n")
 
 
 def main() -> None:
     args = parse_args()
     if args.mode == "fit":
         rows = read_predictions(args.predictions)
-        calibration = fit_calibration(rows, args.bins, args.band_low, args.band_high)
+        calibration = fit_calibration(rows, args.bins, args.band_low, args.band_high, args.stratify_by)
         Path(args.out_json).parent.mkdir(parents=True, exist_ok=True)
         with Path(args.out_json).open("w", encoding="utf-8") as handle:
             json.dump(calibration, handle, indent=2)

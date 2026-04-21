@@ -543,6 +543,8 @@ func clusterGlobal(fam string, forms []wordlist.Record, rawEdges []cEdge, thresh
 			AssignedSupport:    diagnostics[i].AssignedSupport,
 			AlternativeSupport: diagnostics[i].AlternativeSupport,
 			SupportMargin:      diagnostics[i].SupportMargin,
+			ClusterSize:        diagnostics[i].ClusterSize,
+			CandidateNeighbors: diagnostics[i].CandidateNeighbors,
 			Bootstrap:          boot.Mean[i],
 			BootstrapLow:       boot.Low[i],
 			BootstrapHigh:      boot.High[i],
@@ -569,6 +571,8 @@ func clusterConcept(fam, concept string, forms []wordlist.Record, rawEdges []cEd
 			AssignedSupport:    diagnostics[i].AssignedSupport,
 			AlternativeSupport: diagnostics[i].AlternativeSupport,
 			SupportMargin:      diagnostics[i].SupportMargin,
+			ClusterSize:        diagnostics[i].ClusterSize,
+			CandidateNeighbors: diagnostics[i].CandidateNeighbors,
 			Bootstrap:          boot.Mean[i],
 			BootstrapLow:       boot.Low[i],
 			BootstrapHigh:      boot.High[i],
@@ -702,6 +706,8 @@ type membershipDiagnostic struct {
 	AssignedSupport    float64
 	AlternativeSupport float64
 	SupportMargin      float64
+	ClusterSize        int // # forms in this node's predicted cluster, including self
+	CandidateNeighbors int // # candidate-graph neighbors for this node, regardless of cluster
 }
 
 func membershipDiagnostics(g *cluster.Graph, part []int) []membershipDiagnostic {
@@ -709,13 +715,23 @@ func membershipDiagnostics(g *cluster.Graph, part []int) []membershipDiagnostic 
 	if g == nil || len(part) == 0 {
 		return out
 	}
+	clusterSize := map[int]int{}
+	for _, p := range part {
+		clusterSize[p]++
+	}
 	for i := range part {
 		profile := nodeSupportProfile(g, part, i)
+		neighbors := 0
+		if i < len(g.Adj) {
+			neighbors = len(g.Adj[i])
+		}
 		out[i] = membershipDiagnostic{
 			Confidence:         profile.ConfidenceTotal(),
 			AssignedSupport:    profile.InTotal,
 			AlternativeSupport: profile.BestAltTotal,
 			SupportMargin:      profile.InTotal - profile.BestAltTotal,
+			ClusterSize:        clusterSize[part[i]],
+			CandidateNeighbors: neighbors,
 		}
 	}
 	return out

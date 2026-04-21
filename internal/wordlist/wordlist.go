@@ -25,7 +25,12 @@ type Record struct {
 	Cognacy    string
 }
 
-// SidecarRow is one output form — clustering result with confidence.
+// SidecarRow is one output form — clustering result with confidence
+// diagnostics. Confidence is the support-ratio confidence; ClusterSize
+// and CandidateNeighbors are structural signals that disambiguate the
+// support-ratio metric's conf=1.0 collapse between stable singletons
+// and unsupported singletons with competitors (see docs/roadmap.md
+// Model §2/§4).
 type SidecarRow struct {
 	ID                 string
 	CognatorID         string
@@ -33,6 +38,8 @@ type SidecarRow struct {
 	AssignedSupport    float64
 	AlternativeSupport float64
 	SupportMargin      float64
+	ClusterSize        int
+	CandidateNeighbors int
 	Bootstrap          float64
 	BootstrapLow       float64
 	BootstrapHigh      float64
@@ -177,6 +184,8 @@ func WriteSidecar(path string, rows []SidecarRow) error {
 		"Cognator_Assigned_Support",
 		"Cognator_Alternative_Support",
 		"Cognator_Support_Margin",
+		"Cognator_Cluster_Size",
+		"Cognator_Candidate_Neighbors",
 		"Cognator_Bootstrap",
 		"Cognator_Bootstrap_Low",
 		"Cognator_Bootstrap_High",
@@ -191,6 +200,8 @@ func WriteSidecar(path string, rows []SidecarRow) error {
 			fmt.Sprintf("%.6f", row.AssignedSupport),
 			fmt.Sprintf("%.6f", row.AlternativeSupport),
 			fmt.Sprintf("%.6f", row.SupportMargin),
+			fmt.Sprintf("%d", row.ClusterSize),
+			fmt.Sprintf("%d", row.CandidateNeighbors),
 			fmt.Sprintf("%.6f", row.Bootstrap),
 			fmt.Sprintf("%.6f", row.BootstrapLow),
 			fmt.Sprintf("%.6f", row.BootstrapHigh),

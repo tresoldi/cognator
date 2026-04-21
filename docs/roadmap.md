@@ -242,41 +242,58 @@ Promotion criterion:
 
 ### 2. Calibrate Confidence As A Paper-Ready Quantity
 
-*Status: calibration infrastructure landed; the finding is that the raw
-`confidence` metric is not calibratable as-is.*
+*Status: partial — singletons calibrated; multi-member clusters still
+collapse for a different reason than originally suspected.*
 
-A Dev-Core isotonic (PAV) fit via `scripts/calibrate_confidence.py`
-shows that empirical pairwise-error-involvement is roughly 91–95% at
-every raw confidence bin in [0.35, 0.97), and only breaks free at
-confidence ≥ 0.997. Worse, the mass at confidence = 1.0 (about half
-the rows on Dev-Core) has accuracy swinging 4% → 88% depending on the
-micro-bin — the exact "stable singleton vs unsupported singleton with
-competitors" collapse that Model §4 already flags.
+Sidecar now emits `ClusterSize` and `CandidateNeighbors` alongside the
+support-ratio `Confidence`. `scripts/calibrate_confidence.py` accepts
+`--stratify-by cluster_size` which splits the fit into two strata:
+`singleton` (predicted cluster contains only this form) and `multi`
+(predicted cluster has ≥ 2 forms). Risk-band thresholds are fixed on
+the calibrated value (default low ≥ 0.90, high < 0.60).
 
-Consequences:
+Singleton stratum (Dev-Core fit, Holdout apply):
 
-- Calibration tool is useful infrastructure: fits isotonic, applies to
-  new predictions, emits `confidence_calibrated` + `risk_band` columns.
-  Stdlib only, no sklearn dependency.
-- Under the current confidence metric, isotonic PAV collapses nearly
-  every bin onto two plateau values (≈0.06 and ≈0.39). Nothing reaches
-  the ≥0.90 "low risk" band with default thresholds.
+- Isotonic produces a real curve: empirical accuracy climbs
+  0.50 → 0.52 → 0.63 → 0.75 → 0.79 across confidence bins.
+- Transfers cleanly to Holdout: 763 rows land in the calibrated
+  [0.7, 0.8) decile with empirical accuracy 0.83; 97 rows in
+  [0.5, 0.6) with accuracy 0.80. "Medium" risk band carries a 17%
+  error rate — usable as a paper-ready diagnostic.
+
+Multi stratum (Dev-Core fit, same source):
+
+- PAV still collapses to two plateau values (≈0.05 and ≈0.34).
+  Nothing reaches the default low-risk band.
+- Diagnosis: the error label used for fitting is *concept-level*
+  (any same-concept pair of this form participates in a false-merge
+  or false-split). The confidence metric is *node-level*. For concepts
+  with many forms, one bad cluster pollutes many rows' labels — so
+  node-level confidence and concept-level error involvement have a
+  scale mismatch that no binning can fix.
 
 Next steps (in order):
 
-- Fix the raw metric per Model §4 — split the confidence=1.0 bin into
-  "stable singleton" and "unsupported singleton" before recalibrating.
-- Then compare: support-ratio confidence, bootstrap stability,
-  combined score; recalibrate and verify the isotonic fit becomes
-  non-degenerate.
-- Optionally: swap the error-involvement label for a less pessimistic
-  ground (e.g. form-level B-cubed correctness rather than
-  concept-level error propagation).
+- Swap the ground label in the multi stratum for a form-local notion
+  of correctness — e.g., "does this form's predicted cluster share
+  majority gold-class with its gold-class members within the concept?"
+  That is closer to B-cubed per-form semantics.
+- Add cluster-level signals to the multi stratum (mean in-cluster
+  edge weight, cluster cohesion variance). Stratify by
+  `(cluster_size_tier, in_cluster_mean_tier)` if a single signal
+  doesn't give monotone buckets.
+- Posterior-sample bootstrap once the Bayesian scoring layer is the
+  default scorer — credible intervals are the natural long-form
+  output.
 
-Candidate output (unchanged when the metric is fixed):
+Candidate output (shape is settled; multi-stratum semantics still
+shifting):
 
 - `confidence`: bounded score, monotonic with membership support
-- `confidence_calibrated`: isotonic-mapped probability of correctness
+- `cluster_size`: integer; support for the singleton stratum
+- `candidate_neighbors`: integer; support for the "should this
+  singleton have merged?" analysis
+- `confidence_calibrated`: isotonic-mapped P(correct) per stratum
 - `risk_band`: `low`, `medium`, `high`
 - `confidence_low` / `confidence_high` when bootstrap or calibration intervals
   are meaningful
@@ -534,24 +551,24 @@ Prioritized. Earlier items unblock later ones.
    boundary. A distance cache built before the Bayesian scorer lands would
    be invalidated on first posterior run.
 
-4. **Confidence calibration.** *(Partially landed — tool exists, metric
-   needs redesign.)* `scripts/calibrate_confidence.py` fits isotonic PAV
-   and emits `confidence_calibrated` + `risk_band`. A Dev-Core fit
-   revealed that the raw `confidence` metric collapses too many cases at
-   the high-confidence end; the PAV fit is degenerate (two plateau
-   values). Unblocking this needs Model §4 — split the confidence=1.0
-   bin into "stable singleton" vs "unsupported singleton" — before
-   recalibrating. Moving membership confidence out of
-   `internal/pipeline` into `internal/confidence` remains deferred
-   until the metric is redesigned.
+4. **Confidence calibration.** *(Singleton calibration landed; multi
+   stratum pending label redesign.)* Sidecar now emits `ClusterSize`
+   and `CandidateNeighbors`. The calibrator stratifies by cluster size,
+   and the singleton stratum produces a usable calibrated risk band
+   that transfers from Dev-Core to Holdout (17% error rate in the
+   "medium" band, ~80% accuracy at calibrated 0.7+). The multi-member
+   stratum still collapses because pairwise-error-involvement is a
+   concept-level label while confidence is node-level — a scale
+   mismatch no binning can fix. The next step is a form-local label
+   (see Model §2).
 
-5. **Singleton-semantics redesign** (Model §4). The calibration finding
-   makes this a prerequisite for item 4, not an optional Model §4
-   refinement: until confidence distinguishes "stable singleton" from
-   "unsupported singleton with competitors", no calibration can give a
-   usable `risk_band`. Cheapest concrete version is a second confidence
-   channel (node degree + in-cluster size) emitted alongside the
-   support ratio — let the calibration tool fit on the pair.
+5. **Form-local error label for multi-stratum calibration.** The
+   multi-cluster collapse is a label problem, not a metric problem.
+   Replace concept-level error involvement with a form-local notion —
+   e.g., does this form's predicted cluster share majority gold class
+   with its gold-class peers within the concept — then recalibrate.
+   If this works, multi-cluster risk bands become informative and
+   item 4 is fully landed.
 
 6. **Selective merge control.** One experiment using alternative-support as a
    split-proposal signal rather than a reassignment rule — the only Family-2

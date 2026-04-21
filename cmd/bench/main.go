@@ -54,6 +54,8 @@ type prediction struct {
 	AssignedSupport    float64
 	AlternativeSupport float64
 	SupportMargin      float64
+	ClusterSize        int
+	CandidateNeighbors int
 	Bootstrap          float64
 	BootstrapLow       float64
 	BootstrapHigh      float64
@@ -479,6 +481,8 @@ func runFamily(name string, recs []wordlist.Record, b *merkmal.Bundle, spec pipe
 			AssignedSupport:    row.AssignedSupport,
 			AlternativeSupport: row.AlternativeSupport,
 			SupportMargin:      row.SupportMargin,
+			ClusterSize:        row.ClusterSize,
+			CandidateNeighbors: row.CandidateNeighbors,
 			Bootstrap:          row.Bootstrap,
 			BootstrapLow:       row.BootstrapLow,
 			BootstrapHigh:      row.BootstrapHigh,
@@ -638,11 +642,12 @@ func writePredictions(path string, rows []prediction, runLabel string) error {
 		return err
 	}
 	defer f.Close()
-	fmt.Fprintln(f, "eval_id\tdataset\tconcept\tgold\tpred\tconfidence\tassigned_support\talternative_support\tsupport_margin\tbootstrap\tbootstrap_low\tbootstrap_high\trun_label")
+	fmt.Fprintln(f, "eval_id\tdataset\tconcept\tgold\tpred\tconfidence\tassigned_support\talternative_support\tsupport_margin\tcluster_size\tcandidate_neighbors\tbootstrap\tbootstrap_low\tbootstrap_high\trun_label")
 	for _, row := range rows {
-		fmt.Fprintf(f, "%s\t%s\t%s\t%s\t%s\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%s\n",
+		fmt.Fprintf(f, "%s\t%s\t%s\t%s\t%s\t%.6f\t%.6f\t%.6f\t%.6f\t%d\t%d\t%.6f\t%.6f\t%.6f\t%s\n",
 			row.EvalID, row.Dataset, row.Concept, row.Gold, row.Pred,
 			row.Confidence, row.AssignedSupport, row.AlternativeSupport, row.SupportMargin,
+			row.ClusterSize, row.CandidateNeighbors,
 			row.Bootstrap, row.BootstrapLow, row.BootstrapHigh, runLabel)
 	}
 	return nil
