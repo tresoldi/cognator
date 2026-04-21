@@ -245,6 +245,30 @@ The review queue is diagnostic-only. On the current holdout run, the top 200
 flagged rows were 81.5% error-involved, but threshold transfer was not stable
 enough to use these flags as model behavior.
 
+Confidence calibration (isotonic PAV, stdlib only):
+
+```sh
+# Fit a calibration on a Dev-Core run.
+python scripts/calibrate_confidence.py fit \
+  --predictions benchmark/runs/dev_core/cognator_predictions.tsv \
+  --out-json benchmark/calibration.json \
+  --out-md benchmark/calibration_fit.md
+
+# Apply it to any other predictions TSV to add
+# `confidence_calibrated` and `risk_band` columns.
+python scripts/calibrate_confidence.py apply \
+  --calibration benchmark/calibration.json \
+  --predictions benchmark/runs/holdout/cognator_predictions.tsv \
+  --out-tsv benchmark/holdout_calibrated.tsv \
+  --out-md benchmark/holdout_transfer.md
+```
+
+On CoreCog the Dev-Core fit is currently degenerate: the raw
+`confidence` metric collapses stable and unsupported singletons into the
+same bin. See `docs/roadmap.md` Model §2/§4 — the calibration tool is
+ready, but the metric needs the singleton redesign before the bands
+become informative.
+
 ## Architecture
 
 The current pipeline is:

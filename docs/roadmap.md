@@ -242,19 +242,41 @@ Promotion criterion:
 
 ### 2. Calibrate Confidence As A Paper-Ready Quantity
 
-Current confidence is a support ratio, not a calibrated probability.
+*Status: calibration infrastructure landed; the finding is that the raw
+`confidence` metric is not calibratable as-is.*
 
-Next steps:
+A Dev-Core isotonic (PAV) fit via `scripts/calibrate_confidence.py`
+shows that empirical pairwise-error-involvement is roughly 91–95% at
+every raw confidence bin in [0.35, 0.97), and only breaks free at
+confidence ≥ 0.997. Worse, the mass at confidence = 1.0 (about half
+the rows on Dev-Core) has accuracy swinging 4% → 88% depending on the
+micro-bin — the exact "stable singleton vs unsupported singleton with
+competitors" collapse that Model §4 already flags.
 
-- build calibration curves on Dev-Core using error involvement labels
-- evaluate transfer on Dev-Full and holdout
-- compare support-ratio confidence, bootstrap stability, and a combined score
-- report confidence as a calibrated risk band if point probabilities are not
-  stable
+Consequences:
 
-Candidate output:
+- Calibration tool is useful infrastructure: fits isotonic, applies to
+  new predictions, emits `confidence_calibrated` + `risk_band` columns.
+  Stdlib only, no sklearn dependency.
+- Under the current confidence metric, isotonic PAV collapses nearly
+  every bin onto two plateau values (≈0.06 and ≈0.39). Nothing reaches
+  the ≥0.90 "low risk" band with default thresholds.
+
+Next steps (in order):
+
+- Fix the raw metric per Model §4 — split the confidence=1.0 bin into
+  "stable singleton" and "unsupported singleton" before recalibrating.
+- Then compare: support-ratio confidence, bootstrap stability,
+  combined score; recalibrate and verify the isotonic fit becomes
+  non-degenerate.
+- Optionally: swap the error-involvement label for a less pessimistic
+  ground (e.g. form-level B-cubed correctness rather than
+  concept-level error propagation).
+
+Candidate output (unchanged when the metric is fixed):
 
 - `confidence`: bounded score, monotonic with membership support
+- `confidence_calibrated`: isotonic-mapped probability of correctness
 - `risk_band`: `low`, `medium`, `high`
 - `confidence_low` / `confidence_high` when bootstrap or calibration intervals
   are meaningful
@@ -512,18 +534,31 @@ Prioritized. Earlier items unblock later ones.
    boundary. A distance cache built before the Bayesian scorer lands would
    be invalidated on first posterior run.
 
-4. **Confidence calibration.** Move membership confidence out of
-   `internal/pipeline`. Add calibration curves and risk bands on Dev-Core,
-   evaluate transfer on Dev-Full. If the Bayesian scoring layer lands first,
-   the posterior-sample bootstrap becomes a natural source of honest credible
-   intervals; if not, use the existing bootstrap output.
+4. **Confidence calibration.** *(Partially landed — tool exists, metric
+   needs redesign.)* `scripts/calibrate_confidence.py` fits isotonic PAV
+   and emits `confidence_calibrated` + `risk_band`. A Dev-Core fit
+   revealed that the raw `confidence` metric collapses too many cases at
+   the high-confidence end; the PAV fit is degenerate (two plateau
+   values). Unblocking this needs Model §4 — split the confidence=1.0
+   bin into "stable singleton" vs "unsupported singleton" — before
+   recalibrating. Moving membership confidence out of
+   `internal/pipeline` into `internal/confidence` remains deferred
+   until the metric is redesigned.
 
-5. **Selective merge control.** One experiment using alternative-support as a
+5. **Singleton-semantics redesign** (Model §4). The calibration finding
+   makes this a prerequisite for item 4, not an optional Model §4
+   refinement: until confidence distinguishes "stable singleton" from
+   "unsupported singleton with competitors", no calibration can give a
+   usable `risk_band`. Cheapest concrete version is a second confidence
+   channel (node degree + in-cluster size) emitted alongside the
+   support ratio — let the calibration tool fit on the pair.
+
+6. **Selective merge control.** One experiment using alternative-support as a
    split-proposal signal rather than a reassignment rule — the only Family-2
    direction that hasn't been tried and that respects the "don't change
    assignments without a principled gain" conclusion.
 
-6. **Spot-check reports** for the holdout families with the largest gaps
+7. **Spot-check reports** for the holdout families with the largest gaps
    (`blustaustronesian`, `syrjaenenuralic`, `lundgrenomagoa`). Useful for the
    paper's error analysis regardless of which of the above lands first.
 
