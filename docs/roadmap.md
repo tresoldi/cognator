@@ -242,53 +242,53 @@ Promotion criterion:
 
 ### 2. Calibrate Confidence As A Paper-Ready Quantity
 
-*Status: landed. Both strata now yield usable calibrated risk bands.
-Top plateau still caps below the default low-risk threshold; fixing
-that would need another stratification axis (see follow-ups below).*
+*Status: landed. Three-axis stratification (cluster_size × support
+quartile) yields a populated low-risk band with <5% error rate on
+Holdout for a third of all rows.*
 
 Sidecar emits `ClusterSize` and `CandidateNeighbors` alongside the
 support-ratio `Confidence`. `scripts/calibrate_confidence.py` takes
-`--stratify-by cluster_size` and `--error-label {pairwise, form-local}`.
-Form-local is the B-cubed form-level per-form correctness label
-(precision ≥ 0.5 AND recall ≥ 0.5 against the form's gold class
-within its concept); it matches the scale of node-level confidence
-and makes the previously-collapsed multi stratum calibratable.
+`--stratify-by {"", cluster_size, cluster_size_support}` and
+`--error-label {pairwise, form-local}`. Recommended recipe:
+`--stratify-by cluster_size_support --error-label form-local`.
 
-Form-local + cluster_size stratification on Dev-Core, applied to Holdout:
+Form-local is a B-cubed form-level per-form label (precision ≥ 0.5
+AND recall ≥ 0.5 against the form's gold class within its concept) —
+matches the scale of node-level confidence. The support-tier axis
+splits the multi stratum into four quartiles by `assigned_support`,
+with cut points computed on the fit set and stored in the JSON.
 
-| Stratum | Band | Holdout rows | Empirical error rate |
-|---|---|---:|---:|
-| singleton | medium | 763 | 0.169 |
-| singleton | high | 97 | 0.196 |
-| multi | medium | 15779 | 0.179 |
-| multi | high | 4457 | 0.563 |
+Dev-Core fit → Holdout apply:
 
-Usable as a paper-ready diagnostic:
+| Stratum  | Support range        | Low  | Medium | High  |
+|----------|----------------------|-----:|-------:|------:|
+| multi_q1 | ≤ 1.70               |    — |   74% err | 79% err |
+| multi_q2 | (1.70, 4.59]         |    — |   27% err | 48% err |
+| multi_q3 | (4.59, 10.31]        |    — |   **6% err** | 27% err |
+| multi_q4 | > 10.31              |   **3% err** | 15% err | 10% err |
+| singleton | n/a                 |    — |   17% err | 20% err |
 
-- 77% of multi rows land in a "medium" band with ~82% empirical
-  accuracy; the remaining 23% fall into "high" with 56% error rate.
-- 89% of singletons land in "medium" at 83% accuracy.
-- Calibrated value is monotone with empirical accuracy on Holdout
-  across all deciles with ≥ 100 rows (conservative: actual accuracy
-  generally exceeds the calibrated estimate).
+(Rows in each band, truncated for brevity; numbers are the empirical
+error rate on the band.)
 
-Unresolved: nothing reaches the default low-risk band (≥ 0.90). The
-PAV top plateau on multi caps at 0.747 because the conf=1.0 bins
-within multi are non-monotone (accuracy swings 0.44 → 0.98). Closing
-that would need another stratification — e.g., by
-`assigned_support` tier or by whether the predicted cluster spans
-multiple lects (phylogenetic coherence).
+Headline: `multi_q4` low band = 6883 rows (33% of Holdout) at 3%
+error. `multi_q3` medium band = 3768 rows (18%) at 6% error. Together
+~50% of Holdout rows sit in a calibrated band with <7% error rate —
+paper-ready.
 
-Follow-ups (order by expected return):
+Transfer is clean across q2–q4 (calibrated value monotone with
+empirical accuracy per decile). `multi_q1` is the weakest-support
+tier and the signal there is still noisy — the calibrator correctly
+flags those rows as high-risk.
 
-- Stratify further by `assigned_support` decile within multi — the
-  0.44 vs 0.98 split at conf=1.0 probably tracks raw support mass.
+Follow-ups:
+
 - Posterior-sample bootstrap once the Bayesian scoring layer is the
   default scorer — credible intervals are the natural long-form
-  output that also handles the top-plateau noise.
+  output for the q4 "low" band that would still benefit from
+  uncertainty annotation.
 - Move membership-confidence code out of `internal/pipeline` into
-  `internal/confidence`. Pure refactor; deferred because the output
-  schema is now stable.
+  `internal/confidence`. Pure refactor; output schema is now stable.
 
 Candidate output (shape is settled; multi-stratum semantics still
 shifting):
@@ -563,11 +563,12 @@ Prioritized. Earlier items unblock later ones.
    band at 82% empirical accuracy, 89% of singletons at 83% accuracy.
    Top plateau caps below 0.90 on multi — see Model §2 follow-ups.
 
-5. **`assigned_support` as a second multi-stratum axis.** The
-   multi-stratum top plateau caps at calibrated 0.747 because
-   conf=1.0 bins have non-monotone accuracy (0.44 → 0.98). Raw
-   `assigned_support` likely explains the split. Stratifying on its
-   decile would let the "low-risk" (≥ 0.90) band become populated.
+5. **`assigned_support` as a second multi-stratum axis.** *(Landed.)*
+   `--stratify-by cluster_size_support` splits the multi stratum into
+   four assigned-support quartiles with cut points stored in the JSON.
+   On Dev-Core → Holdout, `multi_q4` low-risk band covers 33% of the
+   corpus at 3% empirical error; `multi_q3` medium covers another 18%
+   at 6% error. Model §2 now carries the full numbers.
 
 6. **Selective merge control.** One experiment using alternative-support as a
    split-proposal signal rather than a reassignment rule — the only Family-2

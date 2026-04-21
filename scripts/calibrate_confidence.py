@@ -46,11 +46,12 @@ from typing import Iterable
 
 
 REQUIRED_COLUMNS = {"eval_id", "dataset", "concept", "gold", "pred", "confidence"}
-STRATIFY_CHOICES = ("", "cluster_size")
+STRATIFY_CHOICES = ("", "cluster_size", "cluster_size_support")
 ERROR_LABEL_CHOICES = ("pairwise", "form-local")
 DEFAULT_STRATUM = "_all"
 SINGLETON_STRATUM = "singleton"
 MULTI_STRATUM = "multi"
+SUPPORT_TIERS = 4  # quartiles when --stratify-by cluster_size_support
 
 
 def parse_args() -> argparse.Namespace:
@@ -68,7 +69,12 @@ def parse_args() -> argparse.Namespace:
         "--stratify-by",
         choices=STRATIFY_CHOICES,
         default="",
-        help="Partition fit rows before PAV: '' (default, single fit) or 'cluster_size' (singleton vs multi-member cluster)",
+        help=(
+            "Partition fit rows before PAV: '' (single fit), 'cluster_size' "
+            "(singleton vs multi-member cluster), or 'cluster_size_support' "
+            "(singleton + 4 assigned_support quartiles of the multi stratum; "
+            "quartile cut points computed on the fit set and stored in the JSON)."
+        ),
     )
     fit.add_argument(
         "--error-label",
@@ -217,13 +223,44 @@ def pool_adjacent_violators(ys: list[float], ws: list[float]) -> list[float]:
     return expanded
 
 
-def stratum_for(row: dict[str, str], stratify_by: str) -> str:
+def multi_support_tier(support: float, quartiles: list[float]) -> str:
+    """Return multi_q{1..K} for a support value given K-1 cut points."""
+    for i, cut in enumerate(quartiles):
+        if support <= cut:
+            return f"{MULTI_STRATUM}_q{i+1}"
+    return f"{MULTI_STRATUM}_q{len(quartiles)+1}"
+
+
+def stratum_for(row: dict[str, str], stratify_by: str, support_quartiles: list[float] | None = None) -> str:
     if stratify_by == "":
         return DEFAULT_STRATUM
+    size = int(row.get("cluster_size", "1") or "1")
     if stratify_by == "cluster_size":
-        size = int(row.get("cluster_size", "1") or "1")
         return SINGLETON_STRATUM if size <= 1 else MULTI_STRATUM
+    if stratify_by == "cluster_size_support":
+        if size <= 1:
+            return SINGLETON_STRATUM
+        if support_quartiles is None:
+            raise ValueError("cluster_size_support stratification requires support_quartiles")
+        support = float(row.get("assigned_support", "0") or "0")
+        return multi_support_tier(support, support_quartiles)
     raise ValueError(f"unknown stratify_by {stratify_by!r}")
+
+
+def compute_support_quartiles(rows: list[dict[str, str]]) -> list[float]:
+    """Cut points for 4 quantiles from the multi-member fit rows."""
+    values = sorted(
+        float(row.get("assigned_support", "0") or "0")
+        for row in rows
+        if int(row.get("cluster_size", "1") or "1") > 1
+    )
+    if not values:
+        return []
+    # statistics.quantiles needs n >= 2
+    if len(values) < SUPPORT_TIERS:
+        # Degenerate: just split at distinct sorted values if any.
+        return sorted(set(values))[:-1] or [values[0]]
+    return list(statistics.quantiles(values, n=SUPPORT_TIERS, method="inclusive"))
 
 
 def fit_stratum(rows: list[dict[str, str]], error_ids: set[str], bins: int) -> dict:
@@ -275,14 +312,22 @@ def fit_calibration(rows: list[dict[str, str]], bins: int, band_low: float, band
     gold_rows = [row for row in rows if row["gold"]]
     if not gold_rows:
         raise ValueError("no rows carry gold labels; cannot fit a calibration")
-    if stratify_by == "cluster_size" and "cluster_size" not in (gold_rows[0].keys() if gold_rows else ()):
+    first_row_keys = gold_rows[0].keys() if gold_rows else ()
+    if stratify_by == "cluster_size" and "cluster_size" not in first_row_keys:
         raise ValueError("--stratify-by cluster_size requires a cluster_size column in the predictions TSV")
+    if stratify_by == "cluster_size_support":
+        missing = {"cluster_size", "assigned_support"} - set(first_row_keys)
+        if missing:
+            raise ValueError(f"--stratify-by cluster_size_support requires columns {sorted(missing)} in the predictions TSV")
     error_ids = labeled_error_ids(gold_rows, error_label)
+    support_quartiles: list[float] = []
+    if stratify_by == "cluster_size_support":
+        support_quartiles = compute_support_quartiles(gold_rows)
     strata_rows: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in gold_rows:
-        strata_rows[stratum_for(row, stratify_by)].append(row)
+        strata_rows[stratum_for(row, stratify_by, support_quartiles)].append(row)
     strata = {name: fit_stratum(members, error_ids, bins) for name, members in strata_rows.items()}
-    return {
+    out = {
         "method": "isotonic-pav",
         "stratify_by": stratify_by,
         "error_label": error_label,
@@ -291,6 +336,9 @@ def fit_calibration(rows: list[dict[str, str]], bins: int, band_low: float, band
         "bands": {"low": band_low, "high": band_high},
         "strata": strata,
     }
+    if support_quartiles:
+        out["support_quartiles"] = [round(q, 6) for q in support_quartiles]
+    return out
 
 
 def interpolate(mapping: list[list[float]], x: float) -> float:
@@ -322,7 +370,8 @@ def risk_band(calibrated: float, low: float, high: float) -> str:
 def lookup_mapping(calibration: dict, row: dict[str, str]) -> list[list[float]]:
     stratify_by = calibration.get("stratify_by", "")
     strata = calibration.get("strata", {})
-    key = stratum_for(row, stratify_by)
+    support_quartiles = calibration.get("support_quartiles") or None
+    key = stratum_for(row, stratify_by, support_quartiles)
     stratum = strata.get(key) or strata.get(DEFAULT_STRATUM)
     if stratum and stratum.get("mapping"):
         return stratum["mapping"]
@@ -364,7 +413,11 @@ def write_fit_markdown(path: str, calibration: dict) -> None:
         handle.write(f"- Stratify by: `{calibration.get('stratify_by') or '(none)'}`\n")
         handle.write(f"- Fit rows: {calibration['fit_rows']}\n")
         handle.write(f"- Error-involved rows: {calibration['error_involved_rows']}\n")
-        handle.write(f"- Bands: low ≥ {calibration['bands']['low']}; high < {calibration['bands']['high']}\n\n")
+        handle.write(f"- Bands: low ≥ {calibration['bands']['low']}; high < {calibration['bands']['high']}\n")
+        if calibration.get("support_quartiles"):
+            qs = ", ".join(f"{q:.4f}" for q in calibration["support_quartiles"])
+            handle.write(f"- Multi support quartile cut points: {qs}\n")
+        handle.write("\n")
         for name, stratum in sorted(calibration.get("strata", {}).items()):
             handle.write(f"## Stratum `{name}`\n\n")
             handle.write(f"- Rows: {stratum.get('fit_rows', 0)}\n")
@@ -390,6 +443,7 @@ def write_transfer_markdown(path: str, calibration: dict, rows: list[dict[str, s
     error_label = calibration.get("error_label", "pairwise")
     error_ids = labeled_error_ids(gold_rows, error_label)
     stratify_by = calibration.get("stratify_by", "")
+    support_quartiles = calibration.get("support_quartiles") or None
     low = calibration["bands"]["low"]
     high = calibration["bands"]["high"]
 
@@ -401,7 +455,7 @@ def write_transfer_markdown(path: str, calibration: dict, rows: list[dict[str, s
         cal = interpolate(mapping, float(row["confidence"]))
         is_correct = 0.0 if row["eval_id"] in error_ids else 1.0
         decile = min(int(cal * 10), 9)
-        stratum = stratum_for(row, stratify_by)
+        stratum = stratum_for(row, stratify_by, support_quartiles)
         strata_buckets[stratum][decile].append(is_correct)
         band = risk_band(cal, low, high)
         band_counts[stratum][band]["count"] += 1
