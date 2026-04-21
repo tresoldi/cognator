@@ -260,6 +260,34 @@ Promotion guardrails:
 - if a richer supervised calibrator wins by less than `0.005` mean F1 on `Dev-Core`, prefer the simpler heuristic
 - if a candidate improves mean F1 but loses badly on family win count, keep both summaries because that tradeoff matters for the paper
 
+## Confidence Review Artifact
+
+Added `scripts/flag_low_confidence.py` as a diagnostic-only review queue for
+prediction TSVs emitted by `cmd/bench --pred-out`.
+
+Default flags:
+- `confidence <= 0.77`
+- `alternative_support >= 0.26`
+- `support_margin <= 0.0`
+
+The script ranks rows by number of triggered flags, then by lower confidence,
+higher alternative support, and lower support margin. If gold labels are present,
+it annotates each row with pairwise false-merge and false-split involvement using
+the same definition as `scripts/confidence_report.py`.
+
+Current holdout diagnostic result:
+- flagged rows: `5845`
+- top 50 error-involved share: `0.8400`
+- top 100 error-involved share: `0.7900`
+- top 200 error-involved share: `0.8150`
+- all flagged rows error-involved share: `0.7204`
+
+Interpretation:
+- useful as a manual review and paper-analysis artifact
+- not yet stable enough to use as an automatic clustering policy
+- top-ranked rows are substantially enriched for real errors, but include some
+  clean isolated rows with zero assigned support
+
 ## Artifact Layout
 
 Use separate benchmark run labels for each branch:
