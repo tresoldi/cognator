@@ -6,8 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -58,9 +59,20 @@ type Bundle struct {
 	partitions map[string]map[string]string
 }
 
+// LoadBundle loads a merkmal bundle from a directory on disk.
+// Thin wrapper over LoadBundleFS(os.DirFS(dir), ".") preserved for
+// existing CLI callers; the FS-based variant is used by the WASM
+// build to consume //go:embed bundles.
 func LoadBundle(dir string) (*Bundle, error) {
-	manifestPath := filepath.Join(dir, "manifest.json")
-	mdata, err := os.ReadFile(manifestPath)
+	return LoadBundleFS(os.DirFS(dir), ".")
+}
+
+// LoadBundleFS loads a merkmal bundle rooted at dir within the
+// supplied fs.FS. Accepts any fs.FS — os.DirFS for on-disk loading,
+// embed.FS for compiled-in bundles, fstest.MapFS for unit tests.
+func LoadBundleFS(fsys fs.FS, dir string) (*Bundle, error) {
+	manifestPath := joinFS(dir, "manifest.json")
+	mdata, err := fs.ReadFile(fsys, manifestPath)
 	if err != nil {
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}
@@ -86,33 +98,42 @@ func LoadBundle(dir string) (*Bundle, error) {
 		if !ok || !meta.Present {
 			continue
 		}
-		path := filepath.Join(dir, name)
-		if err := verifySHA256(path, meta.SHA256); err != nil {
+		if err := verifySHA256FS(fsys, joinFS(dir, name), meta.SHA256); err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
 		}
 	}
 
-	if err := b.loadDistances(filepath.Join(dir, "distances.tsv")); err != nil {
+	if err := b.loadDistances(fsys, joinFS(dir, "distances.tsv")); err != nil {
 		return nil, fmt.Errorf("distances: %w", err)
 	}
-	if err := b.loadProsody(filepath.Join(dir, "prosody.tsv")); err != nil {
+	if err := b.loadProsody(fsys, joinFS(dir, "prosody.tsv")); err != nil {
 		return nil, fmt.Errorf("prosody: %w", err)
 	}
 	if meta, ok := m.Files["classes.tsv"]; ok && meta.Present {
-		if err := b.loadClasses(filepath.Join(dir, "classes.tsv")); err != nil {
+		if err := b.loadClasses(fsys, joinFS(dir, "classes.tsv")); err != nil {
 			return nil, fmt.Errorf("classes: %w", err)
 		}
 	}
 	if meta, ok := m.Files["partitions.tsv"]; ok && meta.Present {
-		if err := b.loadPartitions(filepath.Join(dir, "partitions.tsv")); err != nil {
+		if err := b.loadPartitions(fsys, joinFS(dir, "partitions.tsv")); err != nil {
 			return nil, fmt.Errorf("partitions: %w", err)
 		}
 	}
 	return b, nil
 }
 
-func (b *Bundle) loadPartitions(path string) error {
-	f, err := os.Open(path)
+// joinFS joins a prefix directory with a filename using forward
+// slashes, the convention fs.FS requires. "." prefix is treated as
+// an empty prefix so the path stays relative-to-root.
+func joinFS(dir, name string) string {
+	if dir == "" || dir == "." {
+		return name
+	}
+	return path.Join(dir, name)
+}
+
+func (b *Bundle) loadPartitions(fsys fs.FS, name string) error {
+	f, err := fsys.Open(name)
 	if err != nil {
 		return err
 	}
@@ -163,8 +184,8 @@ func (b *Bundle) PartitionLevels() []string {
 	return out
 }
 
-func verifySHA256(path, want string) error {
-	data, err := os.ReadFile(path)
+func verifySHA256FS(fsys fs.FS, name, want string) error {
+	data, err := fs.ReadFile(fsys, name)
 	if err != nil {
 		return err
 	}
@@ -176,8 +197,8 @@ func verifySHA256(path, want string) error {
 	return nil
 }
 
-func (b *Bundle) loadDistances(path string) error {
-	f, err := os.Open(path)
+func (b *Bundle) loadDistances(fsys fs.FS, name string) error {
+	f, err := fsys.Open(name)
 	if err != nil {
 		return err
 	}
@@ -209,8 +230,8 @@ func (b *Bundle) loadDistances(path string) error {
 	return s.Err()
 }
 
-func (b *Bundle) loadProsody(path string) error {
-	f, err := os.Open(path)
+func (b *Bundle) loadProsody(fsys fs.FS, name string) error {
+	f, err := fsys.Open(name)
 	if err != nil {
 		return err
 	}
@@ -232,8 +253,8 @@ func (b *Bundle) loadProsody(path string) error {
 	return s.Err()
 }
 
-func (b *Bundle) loadClasses(path string) error {
-	f, err := os.Open(path)
+func (b *Bundle) loadClasses(fsys fs.FS, name string) error {
+	f, err := fsys.Open(name)
 	if err != nil {
 		return err
 	}
