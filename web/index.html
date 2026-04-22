@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cognator — Cognate Detection with Calibrated Confidence</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/nord.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/solarized.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root{--bg:#fafaf8;--fg:#222;--accent:#2a5a3a;--accent2:#4a7a54;--border:#ccc;--code-bg:#f0f0ec;--btn-bg:#2a5a3a;--btn-fg:#fff;--btn-hover:#1e4a2e;--muted:#666;--band-low:#2ca02c;--band-med:#ff7f0e;--band-high:#d62728}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;background:var(--bg);color:var(--fg);line-height:1.6}
+.page-main{max-width:1000px;margin:0 auto;padding:1.5rem 1.5rem 2rem}
+.guide-open .page-main{max-width:none}
+
+.top-nav{background:var(--accent);color:#fff;padding:.5rem 1.5rem;display:flex;align-items:center;gap:1rem;font-size:.9rem;position:sticky;top:0;z-index:50}
+.top-nav .brand{font-weight:bold;font-size:1.1rem;letter-spacing:.5px;margin-right:auto}
+.top-nav a{color:rgba(255,255,255,.85);text-decoration:none;font-size:.85rem}
+.top-nav a:hover{color:#fff}
+.top-nav button{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:.3rem .8rem;border-radius:4px;cursor:pointer;font-size:.85rem;font-family:inherit}
+.top-nav button:hover{background:rgba(255,255,255,.25)}
+
+h1{font-size:2rem;margin-bottom:.1rem;color:var(--accent)}
+h2{font-size:1.3rem;margin:2rem 0 .8rem;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:.3rem}
+p{margin-bottom:1rem}
+a{color:var(--accent)}
+.subtitle{font-size:1.05rem;color:var(--muted);margin-bottom:.5rem;font-style:italic}
+.intro{margin-bottom:1.5rem}
+.features{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin:1rem 0 1.5rem}
+.feature{background:var(--code-bg);padding:.7rem 1rem;border-radius:4px;font-size:.9rem}
+.feature strong{display:block;margin-bottom:.2rem}
+@media(max-width:700px){.features{grid-template-columns:1fr}}
+
+.toolbar{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;flex-wrap:wrap}
+select,button,input[type=text],input[type=number]{font-family:inherit;font-size:.85rem;padding:.35rem .7rem;border-radius:4px;border:1px solid var(--border);cursor:pointer;background:#fff}
+input[type=number],input[type=text]{cursor:text;width:7em}
+button.primary{background:var(--btn-bg);color:var(--btn-fg);border-color:var(--btn-bg);font-weight:bold}
+button.primary:hover{background:var(--btn-hover)}
+button.primary:disabled{opacity:.5;cursor:not-allowed}
+button.secondary{background:var(--code-bg)}
+.spacer{flex:1}
+
+.editor-wrap{border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:.5rem}
+.CodeMirror{height:360px;font-size:.82rem}
+textarea.fallback-editor{width:100%;height:360px;font-family:'Menlo','Consolas',monospace;font-size:.82rem;padding:.8rem;border:1px solid var(--border);border-radius:4px;background:var(--code-bg);resize:vertical;tab-size:2}
+
+/* Advanced config accordion */
+.advanced{margin:.8rem 0}
+.advanced summary{cursor:pointer;padding:.4rem .6rem;background:var(--code-bg);border:1px solid var(--border);border-radius:4px;font-weight:bold;font-size:.9rem;color:var(--accent);list-style:none}
+.advanced summary::-webkit-details-marker{display:none}
+.advanced summary::before{content:'▶';display:inline-block;margin-right:.5rem;transition:transform .15s}
+.advanced[open] summary::before{transform:rotate(90deg)}
+.advanced-body{border:1px solid var(--border);border-top:none;border-radius:0 0 4px 4px;padding:.8rem;background:#fff}
+.section{margin-bottom:1rem}
+.section:last-child{margin-bottom:0}
+.section-title{font-size:.85rem;font-weight:bold;color:var(--accent);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px}
+.knob-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.4rem .8rem}
+.knob{display:flex;flex-direction:column;gap:.15rem;font-size:.82rem}
+.knob label{font-weight:500;color:var(--muted)}
+.knob input,.knob select{width:100%;font-size:.82rem}
+.knob.inline{flex-direction:row;align-items:center;gap:.4rem}
+.knob.inline input[type=checkbox]{width:auto;margin:0}
+.knob.inline label{flex:1}
+
+/* Status + load banner */
+.status{font-size:.85rem;color:var(--muted);margin:.3rem 0;min-height:1.2rem}
+.load-info{font-size:.82rem;color:var(--muted);text-align:center;padding:1rem;background:var(--code-bg);border-radius:4px;margin:1rem 0;display:none}
+.load-bar{width:100%;height:18px;background:#e0e0dc;border-radius:4px;overflow:hidden;margin-top:.5rem;position:relative}
+.load-bar-fill{height:100%;width:30%;border-radius:4px;background:repeating-linear-gradient(-45deg,var(--accent),var(--accent) 10px,var(--accent2) 10px,var(--accent2) 20px);position:absolute;left:-30%;top:0;animation:load-slide 1.5s ease-in-out infinite}
+@keyframes load-slide{0%{left:-30%}50%{left:70%}100%{left:-30%}}
+
+/* Results */
+.results-panel{margin:1rem 0;display:none}
+.summary-card{background:var(--code-bg);border-radius:4px;padding:.8rem 1rem;margin-bottom:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem}
+.summary-card .metric{font-size:.82rem}
+.summary-card .metric-value{font-size:1.1rem;font-weight:bold;color:var(--accent)}
+.summary-card .metric-label{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px}
+
+.tabs{display:flex;gap:.3rem;margin-bottom:.8rem;border-bottom:1px solid var(--border)}
+.tab{background:transparent;border:none;padding:.5rem 1rem;cursor:pointer;font-size:.9rem;color:var(--muted);border-bottom:2px solid transparent;font-family:inherit;border-radius:0}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:bold}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Predictions table */
+.pred-table-wrap{max-height:520px;overflow:auto;border:1px solid var(--border);border-radius:4px;background:#fff}
+.pred-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.pred-table th{position:sticky;top:0;background:var(--code-bg);color:var(--accent);text-align:left;padding:.4rem .6rem;border-bottom:2px solid var(--accent);z-index:1;font-size:.78rem;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;user-select:none;white-space:nowrap}
+.pred-table th.sorted-asc::after{content:' ▲';font-size:.7em;opacity:.7}
+.pred-table th.sorted-desc::after{content:' ▼';font-size:.7em;opacity:.7}
+.pred-table td{padding:.3rem .6rem;border-bottom:1px solid #eee;vertical-align:top}
+.pred-table tr:hover{background:#fff8e8}
+.band-low{background:#eaf7ec}
+.band-med{background:#fff4e8}
+.band-high{background:#fdecec}
+.band-none{background:transparent}
+.band-dot{display:inline-block;width:.6em;height:.6em;border-radius:50%;vertical-align:middle;margin-right:.3em}
+.band-dot.low{background:var(--band-low)}
+.band-dot.med{background:var(--band-med)}
+.band-dot.high{background:var(--band-high)}
+.band-dot.na{background:#aaa}
+.seg-mono{font-family:'Menlo','Consolas',monospace;font-size:.95em}
+
+/* Graph */
+.graph-controls{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;font-size:.82rem}
+.graph-wrap{background:#fff;border:1px solid var(--border);border-radius:4px;padding:.5rem;overflow:auto;max-height:600px}
+.graph-svg{width:100%;height:520px;display:block}
+.graph-svg .node circle{stroke:#fff;stroke-width:1.5px}
+.graph-svg .node text{font-size:11px;fill:#222;font-family:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;pointer-events:none}
+.graph-svg .link{stroke:#999;stroke-opacity:.4}
+.graph-legend{display:flex;gap:1rem;margin-top:.4rem;font-size:.8rem;color:var(--muted);flex-wrap:wrap}
+.graph-legend span{display:inline-flex;align-items:center;gap:.3rem}
+
+/* Eval panel */
+.eval-card{background:var(--code-bg);padding:1rem;border-radius:4px;margin-bottom:1rem}
+.eval-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem}
+.eval-metric{display:flex;flex-direction:column}
+.eval-metric .v{font-size:1.8rem;font-weight:bold;color:var(--accent)}
+.eval-metric .l{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.band-summary{margin-top:1rem}
+.band-row{display:grid;grid-template-columns:100px 1fr 120px;gap:.5rem;align-items:center;margin-bottom:.3rem;font-size:.85rem}
+.band-row .bar{height:1.4rem;background:var(--code-bg);border-radius:3px;overflow:hidden;position:relative}
+.band-row .bar-fill{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:bold;padding:0 .4rem}
+.band-row .bar-fill.low{background:var(--band-low)}
+.band-row .bar-fill.med{background:var(--band-med)}
+.band-row .bar-fill.high{background:var(--band-high)}
+
+/* Guide sidebar — yvyra pattern */
+.page-layout{display:grid;grid-template-columns:1fr 0px}
+.guide-open.page-layout{grid-template-columns:1fr 380px}
+@media(max-width:900px){.page-layout.guide-open{grid-template-columns:1fr}.guide-panel{position:fixed;right:0;top:0;bottom:0;width:380px;z-index:100;box-shadow:-2px 0 8px rgba(0,0,0,.15)}}
+.page-main{min-width:0;overflow:hidden}
+.guide-panel{background:#fff;border-left:1px solid var(--border);overflow:hidden;font-size:.88rem;line-height:1.55;position:sticky;top:38px;height:calc(100vh - 38px);align-self:start;width:0;min-width:0;padding:0;opacity:0;transition:width .3s ease,min-width .3s ease,padding .3s ease,opacity .25s ease .05s}
+.guide-open .guide-panel{width:380px;min-width:380px;padding:1.2rem;opacity:1;overflow-y:auto}
+.guide-pull-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);writing-mode:vertical-rl;text-orientation:mixed;background:var(--accent);color:#fff;padding:.6rem .3rem;border-radius:4px 0 0 4px;cursor:pointer;font-size:.8rem;font-weight:bold;letter-spacing:1px;z-index:40;box-shadow:-1px 0 4px rgba(0,0,0,.1)}
+.guide-pull-tab:hover{background:var(--btn-hover)}
+.guide-open .guide-pull-tab{opacity:0;pointer-events:none}
+.guide-panel h3{font-size:1.1rem;color:var(--accent);margin:0 0 .8rem;display:flex;justify-content:space-between;align-items:center}
+.guide-panel h3 button{font-size:.8rem;padding:.2rem .6rem;background:var(--code-bg);border:1px solid var(--border);border-radius:3px;cursor:pointer}
+.guide-step{margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.guide-step:last-child{border-bottom:none}
+.guide-step h4{font-size:.95rem;color:var(--accent);margin:0 0 .4rem;cursor:pointer}
+.guide-step h4 .step-num{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;background:var(--accent);color:#fff;border-radius:50%;font-size:.75rem;margin-right:.4rem}
+.guide-step p{margin-bottom:.5rem;font-size:.86rem}
+.guide-step ul{margin:.4rem 0 .6rem 1.2rem;font-size:.86rem}
+.guide-step li{margin-bottom:.25rem}
+.guide-step code{background:var(--code-bg);padding:.1rem .3rem;border-radius:2px;font-size:.82rem}
+.guide-step .load-btn{display:inline-block;background:var(--btn-bg);color:var(--btn-fg);border:none;padding:.3rem .8rem;border-radius:4px;cursor:pointer;font-size:.82rem;margin-top:.3rem}
+.guide-step .load-btn:hover{background:var(--btn-hover)}
+
+footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);font-size:.85rem;color:var(--muted)}
+.citation{background:var(--code-bg);padding:.8rem 1rem;border-radius:4px;font-size:.82rem;margin:.8rem 0}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+<span class="brand">cognator</span>
+<a href="https://github.com/tresoldi/cognator" target="_blank" rel="noopener">GitHub</a>
+<button onclick="toggleGuide()">Guide</button>
+</nav>
+<div class="guide-pull-tab" onclick="toggleGuide()">G&thinsp;U&thinsp;I&thinsp;D&thinsp;E</div>
+<div class="page-layout" id="pageLayout">
+<div class="page-main">
+<h1>cognator</h1>
+<p class="subtitle">Framework-native cognate detection with calibrated confidence</p>
+<div class="intro">
+<p>cognator clusters phonologically related forms across lects within a concept,
+emitting per-prediction confidence backed by a held-out calibration. The full
+pipeline — merkmal-based phonetic prior, asymmetric alignment, support-aware
+graph construction, Infomap clustering, and form-local risk bands — runs in
+your browser as a single WebAssembly module. No installation, no server-side
+processing.</p>
+</div>
+<div class="features">
+<div class="feature"><strong>Framework-native scoring</strong>merkmal phonological features, asymmetric lect-pair scorers, prosody-aware alignment</div>
+<div class="feature"><strong>Calibrated risk bands</strong>Every prediction labelled low / medium / high risk against a transferable Dev-Core fit</div>
+<div class="feature"><strong>Fast</strong>29–54× faster than LingPy on CoreCog; 18 MB WASM, 3 MB gzipped</div>
+<div class="feature"><strong>Open</strong>Stdlib-only Go; MIT-ish license; same pipeline as the CLI</div>
+</div>
+
+<h2>Run a detection</h2>
+<div class="load-info" id="loadInfo"><span id="loadText">Loading cognator engine…</span><div class="load-bar"><div class="load-bar-fill"></div></div></div>
+<div id="app">
+<div class="toolbar">
+<select id="examples" onchange="onExampleSelect()"></select>
+<button class="secondary" onclick="clearEd()">Clear</button>
+<button class="secondary" onclick="document.getElementById('fileUp').click()">Upload CSV</button>
+<button class="secondary" onclick="saveCSV()">Save</button>
+<input type="file" id="fileUp" accept=".csv,.tsv,.txt" style="display:none" onchange="uploadFile(event)">
+<select id="editorTheme" onchange="setEditorTheme(this.value)" style="font-size:.8rem">
+<option value="dracula">Theme: Dracula</option>
+<option value="nord">Theme: Nord</option>
+<option value="monokai">Theme: Monokai</option>
+<option value="solarized dark">Theme: Solarized Dark</option>
+<option value="eclipse">Theme: Eclipse (light)</option>
+<option value="solarized light">Theme: Solarized Light</option>
+</select>
+<span class="spacer"></span>
+<button class="primary" id="runBtn" onclick="runDetection()" disabled>Run detection</button>
+</div>
+<div class="editor-wrap" id="editorWrap"><textarea id="taEditor" class="fallback-editor" spellcheck="false"></textarea></div>
+
+<details class="advanced" id="advancedCfg">
+<summary>Advanced configuration</summary>
+<div class="advanced-body">
+<div class="knob-grid" style="margin-bottom:.8rem">
+<div class="knob">
+<label for="preset">Preset</label>
+<select id="preset" onchange="hydrateFromPreset()">
+<option value="support-adaptive-bridge" selected>support-adaptive-bridge (recommended)</option>
+<option value="">(none — use defaults)</option>
+</select>
+</div>
+<div class="knob">
+<label for="seed">Seed</label>
+<input type="number" id="seed" value="1" min="1">
+</div>
+</div>
+
+<div class="section"><div class="section-title">Scoring</div><div class="knob-grid">
+<div class="knob"><label for="scorer_mode">Scorer</label><select id="scorer_mode"><option value="learned" selected>learned</option><option value="posterior">posterior (Bayesian)</option></select></div>
+<div class="knob"><label for="iterations">Iterations (EM)</label><input type="number" id="iterations" value="3" min="1" max="10"></div>
+<div class="knob"><label for="lambda">Lambda (learned)</label><input type="number" id="lambda" value="0.5" step="0.05" min="0" max="1"></div>
+<div class="knob"><label for="dirichlet_concentration">α₀ concentration</label><input type="number" id="dirichlet_concentration" value="0" step="1" min="0"></div>
+<div class="knob"><label for="dirichlet_sharpness">k sharpness</label><input type="number" id="dirichlet_sharpness" value="0" step="0.5" min="0"></div>
+<div class="knob"><label for="dirichlet_scale">α₀ scaling</label><select id="dirichlet_scale"><option value="">flat</option><option value="sparse-boost">sparse-boost</option><option value="rich-boost">rich-boost</option></select></div>
+<div class="knob"><label for="alignment_mode">Alignment</label><select id="alignment_mode"><option value="combined" selected>combined</option><option value="global">global only</option></select></div>
+<div class="knob inline"><input type="checkbox" id="class_reduce" checked><label for="class_reduce">Class-reduce (NFD strip)</label></div>
+<div class="knob"><label for="null_mode">Null</label><select id="null_mode"><option value="marginal" selected>marginal</option><option value="shuffle">shuffle</option></select></div>
+<div class="knob"><label for="null_max_runs">Shuffle runs</label><input type="number" id="null_max_runs" value="200" min="1"></div>
+<div class="knob"><label for="min_pairs">Min pairs (learned)</label><input type="number" id="min_pairs" value="5" min="1"></div>
+</div></div>
+
+<div class="section"><div class="section-title">Threshold</div><div class="knob-grid">
+<div class="knob"><label for="threshold">Threshold (0 = Otsu)</label><input type="number" id="threshold" value="0" step="0.01" min="0" max="1"></div>
+<div class="knob"><label for="threshold_mode">Mode</label><select id="threshold_mode"><option value="family" selected>family</option><option value="concept-shrink">concept-shrink</option></select></div>
+<div class="knob"><label for="threshold_min">Min clamp</label><input type="number" id="threshold_min" value="0" step="0.01"></div>
+<div class="knob"><label for="threshold_max">Max clamp</label><input type="number" id="threshold_max" value="0" step="0.01"></div>
+<div class="knob"><label for="threshold_shrink">Shrink</label><input type="number" id="threshold_shrink" value="0.5" step="0.05" min="0" max="1"></div>
+</div></div>
+
+<div class="section"><div class="section-title">Graph construction</div><div class="knob-grid">
+<div class="knob"><label for="graph_mode">Graph mode</label><select id="graph_mode"><option value="support" selected>support</option><option value="threshold">threshold</option></select></div>
+<div class="knob"><label for="graph_expansion_mode">Expansion</label><select id="graph_expansion_mode"><option value="adaptive" selected>adaptive</option><option value="mutual">mutual</option><option value="either">either</option></select></div>
+<div class="knob"><label for="graph_top_k">Top-k</label><input type="number" id="graph_top_k" value="3" min="1"></div>
+<div class="knob"><label for="graph_adaptive_margin">Adaptive margin</label><input type="number" id="graph_adaptive_margin" value="0.1" step="0.01"></div>
+<div class="knob"><label for="graph_adaptive_either_max">Adaptive either-max</label><input type="number" id="graph_adaptive_either_max" value="0.15" step="0.01"></div>
+<div class="knob"><label for="graph_adaptive_ambiguity">Adaptive ambiguity</label><input type="number" id="graph_adaptive_ambiguity" value="0.5" step="0.05"></div>
+<div class="knob"><label for="graph_mutual_boost">Mutual boost</label><input type="number" id="graph_mutual_boost" value="0.2" step="0.05"></div>
+<div class="knob"><label for="graph_triangle_boost">Triangle boost</label><input type="number" id="graph_triangle_boost" value="0.3" step="0.05"></div>
+<div class="knob"><label for="graph_contrastive_penalty">Contrastive penalty</label><input type="number" id="graph_contrastive_penalty" value="0.2" step="0.05" min="0" max="1"></div>
+<div class="knob"><label for="graph_contrastive_floor">Contrastive floor</label><input type="number" id="graph_contrastive_floor" value="0.05" step="0.01"></div>
+<div class="knob"><label for="graph_risk_rank_weight">Risk weight: rank</label><input type="number" id="graph_risk_rank_weight" value="0.5" step="0.05"></div>
+<div class="knob"><label for="graph_risk_gap_weight">Risk weight: gap</label><input type="number" id="graph_risk_gap_weight" value="0.5" step="0.05"></div>
+<div class="knob"><label for="graph_unilateral_penalty">Unilateral penalty</label><input type="number" id="graph_unilateral_penalty" value="0" step="0.05" min="0" max="1"></div>
+<div class="knob"><label for="graph_rival_floor">Rival floor</label><input type="number" id="graph_rival_floor" value="0.6" step="0.05"></div>
+</div></div>
+
+<div class="section"><div class="section-title">Refinement</div><div class="knob-grid">
+<div class="knob"><label for="refine_mode">Mode</label><select id="refine_mode"><option value="bridge-cut" selected>bridge-cut</option><option value="none">none</option></select></div>
+<div class="knob"><label for="refine_confidence_threshold">Confidence threshold</label><input type="number" id="refine_confidence_threshold" value="0.55" step="0.05" min="0" max="1"></div>
+<div class="knob"><label for="refine_bridge_ratio">Bridge ratio</label><input type="number" id="refine_bridge_ratio" value="0.7" step="0.05" min="0" max="1"></div>
+</div></div>
+
+<div class="section"><div class="section-title">Bootstrap &amp; clustering scope</div><div class="knob-grid">
+<div class="knob"><label for="bootstrap">Bootstrap runs (0=off)</label><input type="number" id="bootstrap" value="0" min="0"></div>
+<div class="knob"><label for="bootstrap_sigma">Bootstrap σ</label><input type="number" id="bootstrap_sigma" value="0.05" step="0.01" min="0"></div>
+<div class="knob"><label for="cluster_scope">Scope</label><select id="cluster_scope"><option value="concept" selected>concept</option><option value="global">global</option></select></div>
+</div></div>
+</div><!-- end advanced-body -->
+</details>
+
+<div class="toolbar"><span class="status" id="status"></span></div>
+</div><!-- end #app -->
+
+<div class="results-panel" id="resultsPanel">
+<div class="summary-card" id="summaryCard"></div>
+<div class="tabs">
+<button class="tab active" data-tab="table" onclick="showTab('table')">Predictions</button>
+<button class="tab" data-tab="graph" onclick="showTab('graph')">Graph</button>
+<button class="tab" data-tab="eval" onclick="showTab('eval')">Evaluation</button>
+</div>
+
+<div class="tab-panel active" id="tabTable">
+<div style="font-size:.82rem;color:var(--muted);margin-bottom:.4rem">Rows colour-coded by calibrated risk band (Dev-Core fit). Click column headers to sort.</div>
+<div class="pred-table-wrap"><table class="pred-table" id="predTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<div class="tab-panel" id="tabGraph">
+<div class="graph-controls">
+<label for="graphConcept">Concept:</label>
+<select id="graphConcept" onchange="renderGraph()"></select>
+<span class="spacer"></span>
+<span style="font-size:.8rem;color:var(--muted)">Nodes coloured by predicted cluster · border by risk band</span>
+</div>
+<div class="graph-wrap"><svg class="graph-svg" id="graphSvg"></svg></div>
+<div class="graph-legend">
+<span><span class="band-dot low"></span>low risk</span>
+<span><span class="band-dot med"></span>medium risk</span>
+<span><span class="band-dot high"></span>high risk</span>
+<span><span class="band-dot na"></span>uncalibrated</span>
+</div>
+</div>
+
+<div class="tab-panel" id="tabEval">
+<div id="evalBody"></div>
+</div>
+</div><!-- end results-panel -->
+
+<footer>
+<div class="citation">
+<strong>How to cite cognator:</strong><br>
+Tresoldi, T. 2026. cognator: Framework-native cognate detection with calibrated confidence.
+Software available at <a href="https://cognator.tresoldi.org">cognator.tresoldi.org</a>.
+</div>
+<p>Engine: cognator WASM bundle · <a href="https://github.com/tresoldi/cognator">source</a> · Embedded merkmal <span id="sysBadge">descriptive</span> (<span id="grCountBadge">—</span> graphemes).</p>
+</footer>
+</div><!-- end page-main -->
+<div class="guide-panel" id="guidePanel">
+<h3>Guide <button onclick="toggleGuide()">Close</button></h3>
+<div id="guideSteps"></div>
+</div>
+</div><!-- end page-layout -->
+
+<script src="guide-content.js"></script>
+<script>
+let worker=null, wasmReady=false, editor=null, lastResult=null, calibration=null;
+let simulation=null, currentSort={key:null, dir:1};
+
+const EX={};
+(function initExamples(){
+  const sel=document.getElementById('examples');
+  if(typeof GUIDE_STEPS==='undefined')return;
+  const placeholder=document.createElement('option');
+  placeholder.value='';placeholder.textContent='— Choose an example —';placeholder.disabled=true;placeholder.selected=true;
+  sel.appendChild(placeholder);
+  for(let i=0;i<GUIDE_STEPS.length;i++){
+    if(!GUIDE_STEPS[i].example)continue;
+    const key='guide_'+i;
+    EX[key]=GUIDE_STEPS[i].example;
+    const opt=document.createElement('option');
+    opt.value=key;opt.textContent=GUIDE_STEPS[i].title;
+    sel.appendChild(opt);
+  }
+})();
+
+function initEditor(){
+  const ta=document.getElementById('taEditor');
+  if(typeof CodeMirror!=='undefined'){
+    ta.style.display='none';
+    const savedTheme=(()=>{try{return localStorage.getItem('cognator-theme')}catch(e){return null}})()||'dracula';
+    document.getElementById('editorTheme').value=savedTheme;
+    const firstKey=Object.keys(EX)[0]||'';
+    editor=CodeMirror(document.getElementById('editorWrap'),{
+      value:EX[firstKey]||'',
+      mode:'text/plain',
+      theme:savedTheme,
+      lineNumbers:true,
+      tabSize:2,
+      indentWithTabs:false,
+    });
+  } else {
+    ta.value=EX[Object.keys(EX)[0]||'']||'';
+  }
+}
+
+function getEd(){return editor?editor.getValue():document.getElementById('taEditor').value}
+function setEd(t){if(editor)editor.setValue(t);else document.getElementById('taEditor').value=t}
+function setEditorTheme(theme){if(editor){editor.setOption('theme',theme);try{localStorage.setItem('cognator-theme',theme)}catch(e){}}}
+function onExampleSelect(){const k=document.getElementById('examples').value;if(!k)return;setEd(EX[k]);clearResults()}
+function clearEd(){setEd('');clearResults()}
+function uploadFile(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=e=>{setEd(e.target.result);document.getElementById('examples').value='';clearResults()};
+  r.readAsText(f);ev.target.value='';
+}
+function saveCSV(){downloadFile('wordlist.csv',getEd())}
+function downloadFile(n,c){const b=new Blob([c],{type:'text/plain'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u)}
+
+function clearResults(){
+  document.getElementById('resultsPanel').style.display='none';
+  document.getElementById('status').textContent='';
+  lastResult=null;
+  if(simulation){simulation.stop();simulation=null}
+}
+
+/* Advanced config hydration. Each field ID matches a detectOptions
+   JSON key in the Go side, so the mapping is 1:1. */
+const KNOB_IDS=[
+ 'scorer_mode','iterations','lambda','dirichlet_concentration','dirichlet_sharpness','dirichlet_scale',
+ 'alignment_mode','class_reduce','null_mode','null_max_runs','min_pairs',
+ 'threshold','threshold_mode','threshold_min','threshold_max','threshold_shrink',
+ 'graph_mode','graph_expansion_mode','graph_top_k','graph_adaptive_margin','graph_adaptive_either_max',
+ 'graph_adaptive_ambiguity','graph_mutual_boost','graph_triangle_boost','graph_contrastive_penalty',
+ 'graph_contrastive_floor','graph_risk_rank_weight','graph_risk_gap_weight','graph_unilateral_penalty',
+ 'graph_rival_floor','refine_mode','refine_confidence_threshold','refine_bridge_ratio',
+ 'bootstrap','bootstrap_sigma','cluster_scope'
+];
+function readOptions(){
+  const opts={};
+  opts.preset=document.getElementById('preset').value;
+  opts.seed=parseInt(document.getElementById('seed').value||'1',10)||1;
+  for(const id of KNOB_IDS){
+    const el=document.getElementById(id);
+    if(!el)continue;
+    if(el.type==='checkbox'){opts[id]=el.checked;continue}
+    if(el.type==='number'){const v=parseFloat(el.value);if(!isNaN(v))opts[id]=v;continue}
+    if(el.value!==undefined&&el.value!=='')opts[id]=el.value;
+  }
+  return opts;
+}
+/* When the preset changes, reset the knobs so the baseline matches
+   what the CLI would do; the user can then override freely. */
+function hydrateFromPreset(){
+  const name=document.getElementById('preset').value;
+  if(name!=='support-adaptive-bridge')return; /* only one defined preset */
+  /* These values are the support-adaptive-bridge overrides plus the
+     CLI defaults for every other knob. Kept in one place for clarity. */
+  setVal('threshold','0.68');setVal('graph_mode','support');
+  setVal('graph_expansion_mode','adaptive');setVal('graph_top_k','3');
+  setVal('graph_contrastive_penalty','0.2');setVal('refine_mode','bridge-cut');
+  setVal('threshold_mode','family');setVal('threshold_min','0');setVal('threshold_max','0');
+  setVal('threshold_shrink','0.5');
+  setVal('graph_adaptive_margin','0.1');setVal('graph_adaptive_either_max','0.15');
+  setVal('graph_adaptive_ambiguity','0.5');setVal('graph_mutual_boost','0.2');
+  setVal('graph_triangle_boost','0.3');setVal('graph_contrastive_floor','0.05');
+  setVal('graph_risk_rank_weight','0.5');setVal('graph_risk_gap_weight','0.5');
+  setVal('graph_unilateral_penalty','0');setVal('graph_rival_floor','0.6');
+  setVal('refine_confidence_threshold','0.55');setVal('refine_bridge_ratio','0.7');
+  setVal('scorer_mode','learned');setVal('iterations','3');setVal('lambda','0.5');
+  setVal('dirichlet_concentration','0');setVal('dirichlet_sharpness','0');setVal('dirichlet_scale','');
+  setVal('alignment_mode','combined');document.getElementById('class_reduce').checked=true;
+  setVal('null_mode','marginal');setVal('null_max_runs','200');setVal('min_pairs','5');
+  setVal('bootstrap','0');setVal('bootstrap_sigma','0.05');setVal('cluster_scope','concept');
+}
+function setVal(id,v){const el=document.getElementById(id);if(!el)return;if(el.type==='checkbox')el.checked=(v===true||v==='true');else el.value=v}
+
+function initWorker(){
+  worker=new Worker('worker.js?v='+Date.now());
+  document.getElementById('loadInfo').style.display='block';
+  document.getElementById('runBtn').disabled=true;
+  worker.onmessage=function(e){
+    const m=e.data;
+    if(m.type==='ready'){
+      wasmReady=true;
+      document.getElementById('loadInfo').style.display='none';
+      document.getElementById('runBtn').disabled=false;
+      document.getElementById('sysBadge').textContent=m.system;
+      document.getElementById('grCountBadge').textContent=m.graphemeCount;
+    }
+    else if(m.type==='status'){document.getElementById('status').textContent=m.text;if(!wasmReady)document.getElementById('loadText').textContent=m.text}
+    else if(m.type==='error'){
+      document.getElementById('status').textContent='Error: '+m.message;
+      document.getElementById('loadText').textContent='Error: '+m.message;
+      document.getElementById('runBtn').disabled=!wasmReady;
+    }
+    else if(m.type==='done')onResult(m.result);
+  };
+  worker.onerror=function(e){document.getElementById('loadText').textContent='Worker error: '+(e.message||'unknown')};
+  const t0=Date.now();setInterval(()=>{if(wasmReady)return;const s=Math.round((Date.now()-t0)/1000);const el=document.getElementById('loadText');if(s>3&&el.textContent.indexOf('Error')===-1)el.textContent='Loading cognator engine… ('+s+'s)'},2000);
+}
+function initCalibration(){
+  fetch('calibration.json?v='+Date.now())
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{calibration=j})
+    .catch(()=>{calibration=null});
+}
+
+function runDetection(){
+  const csv=getEd();if(!csv.trim())return;
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('runBtn').textContent='Running…';
+  document.getElementById('status').textContent='Starting…';
+  clearResults();
+  worker.postMessage({type:'run',csv,options:readOptions()});
+}
+
+function onResult(result){
+  document.getElementById('runBtn').disabled=false;
+  document.getElementById('runBtn').textContent='Run detection';
+  if(!result||!result.ok){
+    document.getElementById('status').textContent='Detection failed: '+((result&&result.error)||'unknown');
+    return;
+  }
+  lastResult=result;
+  applyCalibration(result);
+  renderSummary(result);
+  renderTable(result);
+  populateConceptDropdown(result);
+  renderGraph();
+  renderEval(result);
+  document.getElementById('resultsPanel').style.display='block';
+  document.getElementById('status').textContent='Done in '+(result.summary.elapsed_ms)+' ms ('+(result._wallTimeMs||'?')+' ms wall)';
+}
+
+/* Calibration application — mirrors scripts/calibrate_confidence.py apply */
+function interpolate(mapping,x){
+  if(!mapping||!mapping.length)return x;
+  if(x<=mapping[0][0])return mapping[0][1];
+  if(x>=mapping[mapping.length-1][0])return mapping[mapping.length-1][1];
+  for(let i=0;i<mapping.length-1;i++){
+    const [lx,ly]=mapping[i],[hx,hy]=mapping[i+1];
+    if(lx<=x&&x<=hx){if(hx===lx)return ly;const f=(x-lx)/(hx-lx);return ly+f*(hy-ly)}
+  }
+  return mapping[mapping.length-1][1];
+}
+function stratumFor(row,quartiles){
+  const size=row.cluster_size||1;
+  if(size<=1)return 'singleton';
+  const support=row.assigned_support||0;
+  if(!quartiles||!quartiles.length)return 'multi';
+  for(let i=0;i<quartiles.length;i++)if(support<=quartiles[i])return 'multi_q'+(i+1);
+  return 'multi_q'+(quartiles.length+1);
+}
+function riskBand(cal,low,high){if(cal>=low)return 'low';if(cal<high)return 'high';return 'medium'}
+function applyCalibration(result){
+  if(!calibration||!calibration.strata){return}
+  const low=calibration.bands.low,high=calibration.bands.high;
+  const quartiles=calibration.support_quartiles||[];
+  for(const p of result.predictions){
+    const stratum=stratumFor(p,quartiles);
+    const mapping=(calibration.strata[stratum]&&calibration.strata[stratum].mapping)||[];
+    const cal=interpolate(mapping,p.confidence);
+    p.confidence_calibrated=cal;
+    p.risk_band=riskBand(cal,low,high);
+    p.stratum=stratum;
+  }
+}
+
+/* Summary card */
+function renderSummary(r){
+  const s=r.summary,ev=r.eval;
+  const el=document.getElementById('summaryCard');
+  const row=(label,v)=>`<div class="metric"><div class="metric-label">${label}</div><div class="metric-value">${v}</div></div>`;
+  let html=''
+    +row('Forms',s.forms)
+    +row('Concepts',s.concepts)
+    +row('Lects',s.lects)
+    +row('Clusters',s.clusters)
+    +row('Threshold',s.threshold.toFixed(3))
+    +row('OOV types',s.oov_types)
+    +row('Elapsed',s.elapsed_ms+' ms');
+  if(ev)html+=row('F1',ev.f1.toFixed(3))+row('P / R',ev.precision.toFixed(2)+' / '+ev.recall.toFixed(2));
+  el.innerHTML=html;
+}
+
+/* Table view */
+const COLS=[
+  ['eval_id','ID'],['language_id','Lect'],['concept','Concept'],['segments','Segments'],
+  ['pred','Cluster'],['confidence','Confidence'],['confidence_calibrated','Calibrated'],
+  ['risk_band','Risk'],['cluster_size','Cluster size'],['assigned_support','Assigned'],
+  ['alternative_support','Alt. sup.'],['support_margin','Margin'],['gold','Gold']
+];
+function renderTable(r){
+  const table=document.getElementById('predTable');
+  const thead=table.querySelector('thead'),tbody=table.querySelector('tbody');
+  thead.innerHTML='<tr>'+COLS.map(c=>`<th data-key="${c[0]}">${c[1]}</th>`).join('')+'</tr>';
+  thead.querySelectorAll('th').forEach(th=>th.onclick=()=>sortTable(th.dataset.key));
+  currentSort={key:null,dir:1};
+  drawRows(r.predictions);
+}
+function drawRows(rows){
+  const tbody=document.getElementById('predTable').querySelector('tbody');
+  tbody.innerHTML=rows.map(p=>{
+    const bandCls=p.risk_band?('band-'+(p.risk_band==='medium'?'med':p.risk_band)):'band-none';
+    const dot=p.risk_band?`<span class="band-dot ${p.risk_band==='medium'?'med':p.risk_band}"></span>`:'<span class="band-dot na"></span>';
+    const cal=p.confidence_calibrated!=null?p.confidence_calibrated.toFixed(3):'—';
+    const band=p.risk_band||'—';
+    return `<tr class="${bandCls}">
+      <td>${esc(p.eval_id)}</td><td>${esc(p.language_id)}</td><td>${esc(p.concept)}</td>
+      <td class="seg-mono">${esc(p.segments)}</td><td><code>${esc(p.pred)}</code></td>
+      <td>${p.confidence.toFixed(3)}</td><td>${cal}</td><td>${dot}${band}</td>
+      <td>${p.cluster_size}</td><td>${p.assigned_support.toFixed(2)}</td>
+      <td>${p.alternative_support.toFixed(2)}</td><td>${p.support_margin.toFixed(2)}</td>
+      <td>${esc(p.gold)}</td>
+    </tr>`;
+  }).join('');
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])}
+function sortTable(key){
+  if(!lastResult)return;
+  const dir=(currentSort.key===key)?-currentSort.dir:1;
+  currentSort={key,dir};
+  const rows=[...lastResult.predictions].sort((a,b)=>{
+    const va=a[key],vb=b[key];
+    if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;
+    if(typeof va==='number'&&typeof vb==='number')return dir*(va-vb);
+    return dir*String(va).localeCompare(String(vb));
+  });
+  drawRows(rows);
+  document.querySelectorAll('#predTable th').forEach(th=>{
+    th.classList.remove('sorted-asc','sorted-desc');
+    if(th.dataset.key===key)th.classList.add(dir>0?'sorted-asc':'sorted-desc');
+  });
+}
+
+/* Graph view */
+function populateConceptDropdown(r){
+  const sel=document.getElementById('graphConcept');
+  const concepts=[...new Set(r.predictions.map(p=>p.concept))].sort();
+  sel.innerHTML=concepts.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+}
+function renderGraph(){
+  if(!lastResult)return;
+  const concept=document.getElementById('graphConcept').value;
+  const rows=lastResult.predictions.filter(p=>p.concept===concept);
+  if(!rows.length)return;
+  const svgEl=document.getElementById('graphSvg');
+  const svg=d3.select(svgEl);svg.selectAll('*').remove();
+  if(simulation){simulation.stop();simulation=null}
+
+  const W=svgEl.clientWidth||800,H=520;
+  const clusters=[...new Set(rows.map(r=>r.pred))];
+  const color=d3.scaleOrdinal(d3.schemeTableau10).domain(clusters);
+  const bandStroke=b=>({low:'#2ca02c',medium:'#ff7f0e',high:'#d62728'}[b]||'#aaa');
+
+  const nodes=rows.map(r=>({
+    id:r.eval_id,label:r.language_id,cluster:r.pred,
+    confidence:r.confidence,risk:r.risk_band||'na',
+    fx:null,fy:null
+  }));
+  /* Edges: within-cluster fully connected (visualising the cluster);
+     plus a light inter-cluster edge weighted by support_margin is a
+     future enhancement. Keeping it simple here. */
+  const links=[];
+  const byCluster={};
+  for(const n of nodes){(byCluster[n.cluster]=byCluster[n.cluster]||[]).push(n)}
+  for(const cl of Object.keys(byCluster)){
+    const group=byCluster[cl];
+    for(let i=0;i<group.length;i++)for(let j=i+1;j<group.length;j++)
+      links.push({source:group[i].id,target:group[j].id,strength:0.6});
+  }
+
+  const link=svg.append('g').attr('class','links').selectAll('line').data(links).enter()
+    .append('line').attr('class','link').attr('stroke-width',1.2);
+
+  const node=svg.append('g').attr('class','nodes').selectAll('g').data(nodes).enter()
+    .append('g').attr('class','node').call(d3.drag()
+      .on('start',(ev,d)=>{if(!ev.active)simulation.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y})
+      .on('drag',(ev,d)=>{d.fx=ev.x;d.fy=ev.y})
+      .on('end',(ev,d)=>{if(!ev.active)simulation.alphaTarget(0);d.fx=null;d.fy=null}));
+
+  node.append('circle')
+    .attr('r',d=>6+6*d.confidence)
+    .attr('fill',d=>color(d.cluster))
+    .attr('stroke',d=>bandStroke(d.risk))
+    .attr('stroke-width',3);
+
+  node.append('text').attr('dx',10).attr('dy',4).text(d=>d.label);
+  node.append('title').text(d=>`${d.id}\ncluster: ${d.cluster}\nconfidence: ${d.confidence.toFixed(3)}\nrisk: ${d.risk}`);
+
+  simulation=d3.forceSimulation(nodes)
+    .force('link',d3.forceLink(links).id(d=>d.id).distance(70).strength(d=>d.strength))
+    .force('charge',d3.forceManyBody().strength(-160))
+    .force('center',d3.forceCenter(W/2,H/2))
+    .force('collide',d3.forceCollide(d=>14+6*d.confidence))
+    .on('tick',()=>{
+      link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+          .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+      node.attr('transform',d=>`translate(${d.x},${d.y})`);
+    });
+}
+
+/* Eval panel */
+function renderEval(r){
+  const body=document.getElementById('evalBody');
+  let html='';
+  if(r.eval){
+    html+=`<div class="eval-card"><div class="eval-grid">
+      <div class="eval-metric"><span class="v">${r.eval.f1.toFixed(3)}</span><span class="l">B-cubed F1</span></div>
+      <div class="eval-metric"><span class="v">${r.eval.precision.toFixed(3)}</span><span class="l">Precision</span></div>
+      <div class="eval-metric"><span class="v">${r.eval.recall.toFixed(3)}</span><span class="l">Recall</span></div>
+      <div class="eval-metric"><span class="v">${r.eval.scored_forms}</span><span class="l">Scored forms</span></div>
+    </div></div>`;
+  } else {
+    html+=`<div class="eval-card" style="color:var(--muted)">No gold cognacy in the input; add a <code>Cognacy</code> column to see B-cubed scores.</div>`;
+  }
+  /* Risk-band distribution over this input */
+  const bands={low:0,medium:0,high:0,none:0};
+  for(const p of r.predictions){
+    if(!p.risk_band){bands.none++;continue}
+    bands[p.risk_band]=(bands[p.risk_band]||0)+1;
+  }
+  const total=r.predictions.length||1;
+  const bandRow=(label,n,cls)=>{
+    const pct=(100*n/total).toFixed(1);
+    return `<div class="band-row">
+      <div>${label}</div>
+      <div class="bar"><div class="bar-fill ${cls}" style="width:${Math.max(0.1,100*n/total)}%">${n>0?n+' ('+pct+'%)':''}</div></div>
+      <div style="font-size:.8rem;color:var(--muted);text-align:right">${n} of ${total}</div>
+    </div>`;
+  };
+  html+=`<div class="band-summary"><h4 style="margin:.2rem 0 .5rem;color:var(--accent);font-size:1rem">Risk-band distribution</h4>`;
+  html+=bandRow('Low','low' in bands?bands.low:0,'low');
+  html+=bandRow('Medium',bands.medium||0,'med');
+  html+=bandRow('High',bands.high||0,'high');
+  if(bands.none>0)html+=`<div style="font-size:.8rem;color:var(--muted);margin-top:.3rem">${bands.none} row(s) uncalibrated (no calibration file loaded).</div>`;
+  html+=`</div>`;
+  body.innerHTML=html;
+}
+
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab'+name.charAt(0).toUpperCase()+name.slice(1)));
+  if(name==='graph')renderGraph();
+}
+
+/* Guide sidebar */
+function renderGuide(){
+  const box=document.getElementById('guideSteps');
+  let html='';
+  GUIDE_STEPS.forEach((s,i)=>{
+    html+=`<div class="guide-step"><h4><span class="step-num">${i+1}</span>${esc(s.title)}</h4>
+      <div class="step-body">${s.body}${s.example?`<button class="load-btn" onclick="loadGuideExample(${i})">Load in editor</button>`:''}</div></div>`;
+  });
+  box.innerHTML=html;
+  box.querySelectorAll('.guide-step h4').forEach(h=>h.addEventListener('click',()=>{h.parentElement.classList.toggle('active');h.parentElement.querySelector('.step-body').style.display=h.parentElement.classList.contains('active')?'block':'none'}));
+  /* Open the first step by default */
+  const first=box.querySelector('.guide-step');if(first){first.classList.add('active');first.querySelector('.step-body').style.display='block'}
+}
+function loadGuideExample(i){
+  const st=GUIDE_STEPS[i];if(!st||!st.example)return;
+  setEd(st.example);
+  const key='guide_'+i;const sel=document.getElementById('examples');sel.value=key;
+  clearResults();
+}
+function toggleGuide(){document.getElementById('pageLayout').classList.toggle('guide-open')}
+
+/* Boot */
+window.addEventListener('DOMContentLoaded',()=>{
+  initEditor();
+  initCalibration();
+  initWorker();
+  renderGuide();
+  hydrateFromPreset();
+});
+</script>
+</body>
+</html>
