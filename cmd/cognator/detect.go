@@ -8,7 +8,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/pipeline"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
@@ -17,7 +17,8 @@ func detectCmd(args []string) {
 	fs := flag.NewFlagSet("detect", flag.ExitOnError)
 	in := fs.String("in", "", "input wordlist (arcaverborum-shape TSV/CSV)")
 	out := fs.String("out", "", "output sidecar TSV")
-	bundle := fs.String("bundle", "tests/fixtures/merkmal/descriptive", "merkmal bundle directory")
+	merkmalDir := fs.String("merkmal-dir", "tests/fixtures/merkmal-models", "merkmal data root (contains models/ and geometries/)")
+	model := fs.String("model", "descriptive", "merkmal model name")
 	iters := fs.Int("iterations", 3, "EM iterations per ordered lect-pair")
 	lambda := fs.Float64("lambda", 0.5, "learned-vs-prior blend in [0, 1]")
 	threshold := fs.Float64("threshold", 0, "distance threshold (0 = auto via Otsu)")
@@ -82,16 +83,16 @@ func detectCmd(args []string) {
 	}
 
 	start := time.Now()
-	b, err := merkmal.LoadBundle(*bundle)
+	b, err := phon.LoadDir(*merkmalDir, *model)
 	if err != nil {
-		log.Fatalf("merkmal bundle: %v", err)
+		log.Fatalf("merkmal load: %v", err)
 	}
 	recs, err := wordlist.ReadTable(*in)
 	if err != nil {
 		log.Fatalf("read %s: %v", *in, err)
 	}
 	log.Printf("loaded %d records from %s; merkmal system=%s (%d graphemes)",
-		len(recs), *in, b.System, b.Manifest.GraphemeCount)
+		len(recs), *in, b.Name, b.GraphemeCount)
 
 	spec := pipeline.Spec{
 		Iterations:                *iters,

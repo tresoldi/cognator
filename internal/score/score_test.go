@@ -7,14 +7,14 @@ import (
 	"testing"
 
 	"github.com/tresoldi/cognator/internal/align"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
 
-var descBundle *merkmal.Bundle
+var descBundle *phon.Phon
 
 func init() {
-	b, err := merkmal.LoadBundle("../../tests/fixtures/merkmal/descriptive")
+	b, err := phon.LoadDir("../../tests/fixtures/merkmal-models", "descriptive")
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +51,7 @@ func TestTrainYieldsIdentityPositiveLogOdds(t *testing.T) {
 func TestTrainShiftedCorrespondenceOvertakesIdentity(t *testing.T) {
 	// Every source "a" in target becomes "u" — a systematic
 	// correspondence. After training the learned logodds for a~u
-	// should be higher than a~a even though merkmal's prior prefers
+	// should be higher than a~a even though phon's prior prefers
 	// identity.
 	fps := pairs(
 		"p a", "p u",

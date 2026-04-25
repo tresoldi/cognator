@@ -5,13 +5,13 @@ import (
 	"sort"
 
 	"github.com/tresoldi/cognator/internal/align"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 )
 
 // DefaultDirichletConcentration is α₀, the prior strength of the
 // Dirichlet prior over correspondence distributions. Interpretation:
 // "the prior is worth α₀ observations per source row." Small-sample
-// regime (n(σ,·) ≪ α₀) recovers the merkmal-similarity prior;
+// regime (n(σ,·) ≪ α₀) recovers the phon-similarity prior;
 // rich-sample regime recovers the maximum-likelihood estimate.
 //
 // Chosen from a Dev-Core sweep over α₀ ∈ {1, 2, 5, 10, 20, 50, 100,
@@ -22,8 +22,8 @@ import (
 // per row still benefit from regularization against over-merging.
 const DefaultDirichletConcentration = 50.0
 
-// DefaultDirichletSharpness controls how strongly merkmal distance
-// shapes the base measure π(σ, τ) = softmax_τ(-k · d_merkmal(σ, τ)).
+// DefaultDirichletSharpness controls how strongly phon distance
+// shapes the base measure π(σ, τ) = softmax_τ(-k · d_phon(σ, τ)).
 // Matches priorSharpness in the legacy LogOdds pseudocount so the
 // Bayesian prior has the same curvature as the legacy smoothing term.
 const DefaultDirichletSharpness = 4.0
@@ -36,11 +36,11 @@ const DefaultDirichletSharpness = 4.0
 const posteriorScorerScale = 3.0
 
 // DirichletPrior defines a per-source Dirichlet prior over target
-// graphemes. α(σ, τ) = α₀ · softmax_τ(-k · d_merkmal(σ, τ)) where the
+// graphemes. α(σ, τ) = α₀ · softmax_τ(-k · d_phon(σ, τ)) where the
 // softmax is taken over a fixed inventory of target graphemes.
 // Denominators are precomputed per source for read-only concurrent use.
 type DirichletPrior struct {
-	Bundle        *merkmal.Bundle
+	Bundle        *phon.Phon
 	Concentration float64
 	Sharpness     float64
 
@@ -54,7 +54,7 @@ type DirichletPrior struct {
 // observed in a training corpus plus the gap sentinel; DirichletPrior
 // assigns zero Alpha to graphemes outside this set. Concentration and
 // sharpness fall back to defaults if non-positive.
-func NewDirichletPrior(bundle *merkmal.Bundle, concentration, sharpness float64, inventory []string) *DirichletPrior {
+func NewDirichletPrior(bundle *phon.Phon, concentration, sharpness float64, inventory []string) *DirichletPrior {
 	if concentration <= 0 {
 		concentration = DefaultDirichletConcentration
 	}
@@ -92,7 +92,7 @@ func NewDirichletPrior(bundle *merkmal.Bundle, concentration, sharpness float64,
 // priorDistance is Bundle.Distance with a gap-aware policy: pairs
 // involving the Gap sentinel use the maximum distance, reflecting
 // that a phonetic prior cannot predict insertion/deletion events.
-func priorDistance(b *merkmal.Bundle, source, target string) float64 {
+func priorDistance(b *phon.Phon, source, target string) float64 {
 	if source == Gap || target == Gap {
 		if source == target {
 			return 0
@@ -357,7 +357,7 @@ func (t *PosteriorTable) LogOdds(source, target string) float64 {
 // the lambda blend — the posterior already combines prior and
 // evidence.
 type posteriorScorer struct {
-	bundle *merkmal.Bundle
+	bundle *phon.Phon
 	table  *PosteriorTable
 	gapT   float64
 	gapS   float64
@@ -366,7 +366,7 @@ type posteriorScorer struct {
 // PosteriorScorer wraps a PosteriorTable in the align.Scorer interface
 // and composes it with the prosody-aware role penalty, matching the
 // legacy LearnedScorer's treatment of C/V/R/G role mismatches.
-func PosteriorScorer(bundle *merkmal.Bundle, table *PosteriorTable) align.Scorer {
+func PosteriorScorer(bundle *phon.Phon, table *PosteriorTable) align.Scorer {
 	inner := &posteriorScorer{
 		bundle: bundle,
 		table:  table,

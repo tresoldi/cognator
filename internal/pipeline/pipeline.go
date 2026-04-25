@@ -16,7 +16,7 @@ import (
 	"github.com/tresoldi/cognator/internal/cluster"
 	"github.com/tresoldi/cognator/internal/confidence"
 	"github.com/tresoldi/cognator/internal/evidence"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/score"
 	"github.com/tresoldi/cognator/internal/segment"
 	"github.com/tresoldi/cognator/internal/wordlist"
@@ -61,7 +61,7 @@ type Spec struct {
 	NullMaxRuns               int     // cap on shuffle runs per lect-pair (default 200; adaptive stopping usually stops earlier)
 	ScorerMode                string  // "learned" (default; legacy CorrespondenceTable + lambda blend) | "posterior" (Dirichlet-prior PosteriorTable)
 	DirichletConcentration    float64 // α₀ for the Dirichlet-prior scorer; 0 falls back to DefaultDirichletConcentration
-	DirichletSharpness        float64 // k for the softmax over merkmal distances in the Dirichlet base measure; 0 falls back to DefaultDirichletSharpness
+	DirichletSharpness        float64 // k for the softmax over phon distances in the Dirichlet base measure; 0 falls back to DefaultDirichletSharpness
 	DirichletScaleMode        string  // "" (flat α₀, default) | "sparse-boost" | "rich-boost"; per-row α₀ scaling, see score.PosteriorTable.AttachScaling
 }
 
@@ -182,7 +182,7 @@ func ResolveDefaults(spec Spec) Spec {
 // Detect runs the full pipeline. recs must include Family, Concept,
 // Language_ID, and Segments; Cognacy is ignored (this is cognate
 // DETECTION, not evaluation).
-func Detect(recs []wordlist.Record, bundle *merkmal.Bundle, spec Spec) Result {
+func Detect(recs []wordlist.Record, bundle *phon.Phon, spec Spec) Result {
 	spec = ResolveDefaults(spec)
 
 	out := Result{OOV: map[string]int{}}
@@ -211,7 +211,7 @@ type familyResult struct {
 	OOV       map[string]int
 }
 
-func detectFamily(fam string, recs []wordlist.Record, b *merkmal.Bundle, spec Spec) familyResult {
+func detectFamily(fam string, recs []wordlist.Record, b *phon.Phon, spec Spec) familyResult {
 	res := familyResult{OOV: map[string]int{}}
 
 	// Tokenize all forms once; stash the graphemes per record ID.

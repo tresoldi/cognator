@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/tresoldi/cognator/internal/eval"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/pipeline"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
@@ -69,7 +69,8 @@ func main() {
 		track                     = flag.String("track", "", "optional track label for logging/metadata (informational)")
 		predOut                   = flag.String("pred-out", "", "optional per-form prediction TSV output")
 		runLabel                  = flag.String("run-label", "", "optional run label written to prediction output")
-		bundle                    = flag.String("bundle", "tests/fixtures/merkmal/descriptive", "merkmal bundle directory")
+		merkmalDir                = flag.String("merkmal-dir", "tests/fixtures/merkmal-models", "merkmal data root (contains models/ and geometries/)")
+		model                     = flag.String("model", "descriptive", "merkmal model name")
 		outTSV                    = flag.String("out-tsv", "benchmark/results.tsv", "per-dataset TSV output")
 		outMD                     = flag.String("out-md", "benchmark/results.md", "markdown summary output")
 		iters                     = flag.Int("iterations", 3, "EM iterations per lect-pair")
@@ -138,7 +139,7 @@ func main() {
 		log.Printf("applied preset %q", *preset)
 	}
 
-	b, err := merkmal.LoadBundle(*bundle)
+	b, err := phon.LoadDir(*merkmalDir, *model)
 	if err != nil {
 		log.Fatalf("load bundle: %v", err)
 	}
@@ -403,7 +404,7 @@ func readEvalTable(path string) ([]wordlist.Record, error) {
 	return out, nil
 }
 
-func runFamily(name string, recs []wordlist.Record, b *merkmal.Bundle, spec pipeline.Spec, minCognacy, maxLects, maxForms int) (result, []prediction) {
+func runFamily(name string, recs []wordlist.Record, b *phon.Phon, spec pipeline.Spec, minCognacy, maxLects, maxForms int) (result, []prediction) {
 	r := result{Dataset: name, Forms: len(recs)}
 	cognacyForms := 0
 	lects := map[string]struct{}{}

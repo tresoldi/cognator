@@ -7,14 +7,14 @@ import (
 	"testing"
 
 	"github.com/tresoldi/cognator/internal/eval"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
 
-var bundle *merkmal.Bundle
+var bundle *phon.Phon
 
 func init() {
-	b, err := merkmal.LoadBundle("../../tests/fixtures/merkmal/descriptive")
+	b, err := phon.LoadDir("../../tests/fixtures/merkmal-models", "descriptive")
 	if err != nil {
 		panic(err)
 	}

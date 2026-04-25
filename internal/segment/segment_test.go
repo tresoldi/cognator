@@ -4,35 +4,35 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 )
 
 // mockResolver answers role queries from a fixed map; anything else is RoleUnknown.
-type mockResolver map[string]merkmal.Role
+type mockResolver map[string]phon.Role
 
-func (m mockResolver) Role(g string) merkmal.Role {
+func (m mockResolver) Role(g string) phon.Role {
 	if r, ok := m[g]; ok {
 		return r
 	}
-	return merkmal.RoleUnknown
+	return phon.RoleUnknown
 }
 
 var polynesianRoles = mockResolver{
-	"a": merkmal.RoleV, "e": merkmal.RoleV, "i": merkmal.RoleV,
-	"o": merkmal.RoleV, "u": merkmal.RoleV,
-	"p": merkmal.RoleC, "t": merkmal.RoleC, "k": merkmal.RoleC,
-	"ʔ": merkmal.RoleC, "l": merkmal.RoleR, "m": merkmal.RoleR,
-	"n": merkmal.RoleR,
+	"a": phon.RoleV, "e": phon.RoleV, "i": phon.RoleV,
+	"o": phon.RoleV, "u": phon.RoleV,
+	"p": phon.RoleC, "t": phon.RoleC, "k": phon.RoleC,
+	"ʔ": phon.RoleC, "l": phon.RoleR, "m": phon.RoleR,
+	"n": phon.RoleR,
 }
 
 var bdpaRoles = mockResolver{
-	"a":  merkmal.RoleV,
-	"p":  merkmal.RoleC,
-	"j":  merkmal.RoleG,
-	"tɕ": merkmal.RoleC,
-	"ɥ":  merkmal.RoleG,
-	"k":  merkmal.RoleC,
-	"t":  merkmal.RoleC,
+	"a":  phon.RoleV,
+	"p":  phon.RoleC,
+	"j":  phon.RoleG,
+	"tɕ": phon.RoleC,
+	"ɥ":  phon.RoleG,
+	"k":  phon.RoleC,
+	"t":  phon.RoleC,
 }
 
 func TestTokenizePreservesBoundaries(t *testing.T) {
@@ -140,7 +140,7 @@ func TestParseLeadingToneIsOrphan(t *testing.T) {
 func TestParseRecognizesToneWithoutMerkmalHelp(t *testing.T) {
 	// Merkmal often lacks standalone tone graphemes. IsTone should catch
 	// Chao superscripts by shape, so re-attachment still works.
-	got, _ := Parse("p a ⁴²", mockResolver{"p": merkmal.RoleC, "a": merkmal.RoleV})
+	got, _ := Parse("p a ⁴²", mockResolver{"p": phon.RoleC, "a": phon.RoleV})
 	if len(got) != 2 || got[1].Tone != "⁴²" {
 		t.Errorf("shape-based tone detection failed: %+v", got)
 	}
@@ -148,7 +148,7 @@ func TestParseRecognizesToneWithoutMerkmalHelp(t *testing.T) {
 
 func TestParseToneOnSonorantNucleus(t *testing.T) {
 	// Mandarin "m̩²" style: syllabic nasal as nucleus carrying tone.
-	roles := mockResolver{"m": merkmal.RoleR, "²": merkmal.RoleT}
+	roles := mockResolver{"m": phon.RoleR, "²": phon.RoleT}
 	got, _ := Parse("m ²", roles)
 	if len(got) != 1 || got[0].Grapheme != "m" || got[0].Tone != "²" {
 		t.Errorf("tone on sonorant nucleus not attached: %+v", got)

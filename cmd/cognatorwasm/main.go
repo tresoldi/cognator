@@ -28,24 +28,27 @@ import (
 
 	"github.com/tresoldi/cognator/internal/confidence"
 	"github.com/tresoldi/cognator/internal/eval"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/pipeline"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
 
-//go:embed embedded/descriptive/*
-var embeddedBundles embed.FS
+//go:embed embedded/models/descriptive
+var modelFS embed.FS
 
-// loadEmbeddedBundle wires the compile-time merkmal bundle into the
-// fs.FS-aware loader. The subdirectory layout matches the shipped
-// tests/fixtures/merkmal/descriptive/ so the manifest's file names
-// resolve unchanged.
-func loadEmbeddedBundle() (*merkmal.Bundle, error) {
-	sub, err := fs.Sub(embeddedBundles, "embedded/descriptive")
+//go:embed embedded/geometries
+var geomFS embed.FS
+
+func loadEmbeddedPhon() (*phon.Phon, error) {
+	mFS, err := fs.Sub(modelFS, "embedded/models/descriptive")
 	if err != nil {
-		return nil, fmt.Errorf("sub fs: %w", err)
+		return nil, fmt.Errorf("sub model fs: %w", err)
 	}
-	return merkmal.LoadBundleFS(sub, ".")
+	gFS, err := fs.Sub(geomFS, "embedded/geometries")
+	if err != nil {
+		return nil, fmt.Errorf("sub geom fs: %w", err)
+	}
+	return phon.Load(mFS, gFS, "clements-hume")
 }
 
 // detectOptions mirrors the Spec fields that the browser UI exposes.
@@ -368,7 +371,7 @@ func recordsFromRows(rows [][]string) ([]wordlist.Record, error) {
 // detect wraps the full pipeline in a JSON-in / JSON-out contract
 // suitable for syscall/js. Errors surface via {ok:false, error:"..."};
 // success returns {ok:true, predictions:[...], summary:{...}, eval?:{...}}.
-func detect(bundle *merkmal.Bundle, csvText string, opts detectOptions) map[string]any {
+func detect(bundle *phon.Phon, csvText string, opts detectOptions) map[string]any {
 	start := time.Now()
 	recs, err := parseRecords(csvText)
 	if err != nil {
@@ -468,7 +471,7 @@ func detect(bundle *merkmal.Bundle, csvText string, opts detectOptions) map[stri
 // (csvText, optionsObject) and returns the JSON-marshaled result as
 // a string — the UI does JSON.parse on the other side, which is
 // cheaper than plumbing every field through js.ValueOf piecewise.
-func jsEntry(bundle *merkmal.Bundle) js.Func {
+func jsEntry(bundle *phon.Phon) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		if len(args) < 1 {
 			return failJSON("cognatorDetect: expected (csvText, options)")
@@ -533,15 +536,15 @@ func failJSON(msg string) string {
 }
 
 func main() {
-	bundle, err := loadEmbeddedBundle()
+	b, err := loadEmbeddedPhon()
 	if err != nil {
 		js.Global().Set("cognatorInitError", err.Error())
 		return
 	}
-	js.Global().Set("cognatorDetect", jsEntry(bundle))
+	js.Global().Set("cognatorDetect", jsEntry(b))
 	js.Global().Set("cognatorReady", true)
-	js.Global().Set("cognatorSystem", bundle.System)
-	js.Global().Set("cognatorGraphemeCount", bundle.Manifest.GraphemeCount)
+	js.Global().Set("cognatorSystem", b.Name)
+	js.Global().Set("cognatorGraphemeCount", b.GraphemeCount)
 
 	// Block forever so the Go runtime stays alive for repeat calls
 	// into cognatorDetect. Closing the channel would let main return

@@ -25,7 +25,7 @@ cd "$REPO_DIR"
 # fixture. This lets the source of truth stay in tests/fixtures and
 # avoids a second place to update when the bundle version changes.
 rsync -a --delete \
-    tests/fixtures/merkmal/descriptive/ \
+    tests/fixtures/merkmal-models/ \
     cmd/cognatorwasm/embedded/descriptive/
 
 GOOS=js GOARCH=wasm go build \

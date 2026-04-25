@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "name": "clements-hume",
+  "version": "1.0.0",
+  "description": "Clements & Hume (1995) feature geometry",
+  "reference": "Clements, G.N. & Hume, E.V. (1995). The internal organization of speech sounds.",
+  "weight_presets": {
+    "ignore-tone": {
+      "Tonal": 0.0
+    },
+    "ignore-prosodic": {
+      "Prosodic": 0.0
+    },
+    "segmental": {
+      "Tonal": 0.0,
+      "Prosodic": 0.0
+    },
+    "tone-heavy": {
+      "Tonal": 2.0
+    },
+    "tone-only": {
+      "Laryngeal": 0.0,
+      "Manner": 0.0,
+      "Place": 0.0,
+      "TongueRoot": 0.0,
+      "Prosodic": 0.0
+    },
+    "flat": "__flat__"
+  },
+  "feature_to_node": {
+    "advanced-tongue-root": "TongueRoot",
+    "affricate": "Manner",
+    "alveolar": "Coronal",
+    "alveolo-palatal": "Coronal",
+    "approximant": "Manner",
+    "aspirated": "Laryngeal",
+    "back": "Dorsal",
+    "bilabial": "Labial",
+    "breathy": "Laryngeal",
+    "central": "Dorsal",
+    "click": "Manner",
+    "close": "Dorsal",
+    "close-mid": "Dorsal",
+    "creaky": "Laryngeal",
+    "dental": "Coronal",
+    "ejective": "Prosodic",
+    "epiglottal": "Pharyngeal",
+    "fricative": "Manner",
+    "front": "Dorsal",
+    "glottal": "Glottal",
+    "glottalized": "Laryngeal",
+    "implosive": "Manner",
+    "labial": "Labial",
+    "labialized": "Prosodic",
+    "labio-dental": "Labial",
+    "labio-palatal": "Labial",
+    "labio-velar": "Labial",
+    "lateral": "Manner",
+    "linguolabial": "Coronal",
+    "long": "Prosodic",
+    "mid": "Dorsal",
+    "nasal": "Manner",
+    "nasalized": "Prosodic",
+    "near-back": "Dorsal",
+    "near-close": "Dorsal",
+    "near-front": "Dorsal",
+    "near-open": "Dorsal",
+    "non-pulmonic": "Manner",
+    "non-syllabic": "Manner",
+    "open": "Dorsal",
+    "open-mid": "Dorsal",
+    "palatal": "Dorsal",
+    "palatal-velar": "Dorsal",
+    "palatalized": "Prosodic",
+    "pharyngeal": "Pharyngeal",
+    "pharyngealized": "Prosodic",
+    "post-alveolar": "Coronal",
+    "primary-stress": "Prosodic",
+    "retracted-tongue-root": "TongueRoot",
+    "retroflex": "Coronal",
+    "rounded": "Labial",
+    "sibilant": "Manner",
+    "stop": "Manner",
+    "syllabic": "Manner",
+    "tap": "Manner",
+    "tone-mid-lower": "TonalMid",
+    "tone-mid-lowered": "TonalMid",
+    "tone-mid-raised": "TonalMid",
+    "tone-mid-upper": "TonalMid",
+    "tone-offset-lower": "TonalOffset",
+    "tone-offset-lowered": "TonalOffset",
+    "tone-offset-raised": "TonalOffset",
+    "tone-offset-upper": "TonalOffset",
+    "tone-onset-lower": "TonalOnset",
+    "tone-onset-lowered": "TonalOnset",
+    "tone-onset-raised": "TonalOnset",
+    "tone-onset-upper": "TonalOnset",
+    "trill": "Manner",
+    "unrounded": "Labial",
+    "uvular": "Dorsal",
+    "velar": "Dorsal",
+    "voiced": "Laryngeal",
+    "voiceless": "Laryngeal"
+  },
+  "tree": {
+    "name": "Root",
+    "children": [
+      {
+        "name": "Laryngeal",
+        "children": [
+          {
+            "name": "voice",
+            "positive": "voiced",
+            "negative": "voiceless"
+          },
+          {
+            "name": "spread_glottis",
+            "positive": "aspirated",
+            "negative": ""
+          },
+          {
+            "name": "constricted_glottis",
+            "positive": "glottalized",
+            "negative": ""
+          },
+          {
+            "name": "breathy_voice",
+            "positive": "breathy",
+            "negative": ""
+          },
+          {
+            "name": "creaky_voice",
+            "positive": "creaky",
+            "negative": ""
+          }
+        ]
+      },
+      {
+        "name": "Manner",
+        "children": [
+          {
+            "name": "sonorant",
+            "positive": "sonorant",
+            "negative": "obstruent"
+          },
+          {
+            "name": "continuant",
+            "positive": "continuant",
+            "negative": ""
+          },
+          {
+            "name": "nasal",
+            "positive": "nasal",
+            "negative": ""
+          },
+          {
+            "name": "lateral",
+            "positive": "lateral",
+            "negative": ""
+          },
+          {
+            "name": "strident",
+            "positive": "sibilant",
+            "negative": ""
+          },
+          {
+            "name": "delayed_release",
+            "positive": "affricate",
+            "negative": ""
+          },
+          {
+            "name": "tap_feature",
+            "positive": "tap",
+            "negative": ""
+          },
+          {
+            "name": "airstream",
+            "positive": "non-pulmonic",
+            "negative": ""
+          },
+          {
+            "name": "syllabic",
+            "positive": "syllabic",
+            "negative": "non-syllabic"
+          }
+        ]
+      },
+      {
+        "name": "Place",
+        "children": [
+          {
+            "name": "Labial",
+            "children": [
+              {
+                "name": "round",
+                "positive": "rounded",
+                "negative": "unrounded"
+              }
+            ]
+          },
+          {
+            "name": "Coronal",
+            "children": [
+              {
+                "name": "anterior",
+                "positive": "anterior",
+                "negative": ""
+              },
+              {
+                "name": "distributed",
+                "positive": "distributed",
+                "negative": ""
+              }
+            ]
+          },
+          {
+            "name": "Dorsal",
+            "children": [
+              {
+                "name": "high",
+                "positive": "close",
+                "negative": "open"
+              },
+              {
+                "name": "low",
+                "positive": "near-open",
+                "negative": "near-close"
+              },
+              {
+                "name": "back",
+                "positive": "back",
+                "negative": "front"
+              }
+            ]
+          },
+          {
+            "name": "Pharyngeal",
+            "children": [
+              {
+                "name": "pharyngeal_place",
+                "positive": "pharyngeal",
+                "negative": ""
+              },
+              {
+                "name": "epiglottal_place",
+                "positive": "epiglottal",
+                "negative": ""
+              }
+            ]
+          },
+          {
+            "name": "Glottal",
+            "children": [
+              {
+                "name": "glottal_place",
+                "positive": "glottal",
+                "negative": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "TongueRoot",
+        "children": [
+          {
+            "name": "atr",
+            "positive": "advanced-tongue-root",
+            "negative": "retracted-tongue-root"
+          }
+        ]
+      },
+      {
+        "name": "Prosodic",
+        "children": [
+          {
+            "name": "long_feature",
+            "positive": "long",
+            "negative": ""
+          },
+          {
+            "name": "nasalized_feature",
+            "positive": "nasalized",
+            "negative": ""
+          },
+          {
+            "name": "labialized_feature",
+            "positive": "labialized",
+            "negative": ""
+          },
+          {
+            "name": "palatalized_feature",
+            "positive": "palatalized",
+            "negative": ""
+          },
+          {
+            "name": "pharyngealized_feature",
+            "positive": "pharyngealized",
+            "negative": ""
+          },
+          {
+            "name": "ejective_feature",
+            "positive": "ejective",
+            "negative": ""
+          },
+          {
+            "name": "stress_feature",
+            "positive": "primary-stress",
+            "negative": ""
+          }
+        ]
+      },
+      {
+        "name": "Tonal",
+        "children": [
+          {
+            "name": "TonalOnset",
+            "children": [
+              {
+                "name": "tone_onset_register",
+                "positive": "tone-onset-upper",
+                "negative": "tone-onset-lower"
+              },
+              {
+                "name": "tone_onset_height",
+                "positive": "tone-onset-raised",
+                "negative": "tone-onset-lowered"
+              }
+            ]
+          },
+          {
+            "name": "TonalMid",
+            "children": [
+              {
+                "name": "tone_mid_register",
+                "positive": "tone-mid-upper",
+                "negative": "tone-mid-lower"
+              },
+              {
+                "name": "tone_mid_height",
+                "positive": "tone-mid-raised",
+                "negative": "tone-mid-lowered"
+              }
+            ]
+          },
+          {
+            "name": "TonalOffset",
+            "children": [
+              {
+                "name": "tone_offset_register",
+                "positive": "tone-offset-upper",
+                "negative": "tone-offset-lower"
+              },
+              {
+                "name": "tone_offset_height",
+                "positive": "tone-offset-raised",
+                "negative": "tone-offset-lowered"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

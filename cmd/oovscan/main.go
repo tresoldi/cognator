@@ -10,7 +10,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/segment"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
@@ -18,15 +18,16 @@ import (
 func main() {
 	var (
 		dataPath   = flag.String("data", "", "arcaverborum-shape TSV/CSV")
-		bundlePath = flag.String("bundle", "tests/fixtures/merkmal/descriptive", "merkmal bundle")
+		merkmalDir = flag.String("merkmal-dir", "tests/fixtures/merkmal-models", "merkmal data root (contains models/ and geometries/)")
+		model      = flag.String("model", "descriptive", "merkmal model name")
 		top        = flag.Int("top", 40, "top-N OOV graphemes to print")
 	)
 	flag.Parse()
 	if *dataPath == "" {
-		fmt.Fprintln(os.Stderr, "usage: oovscan --data=PATH [--bundle=DIR]")
+		fmt.Fprintln(os.Stderr, "usage: oovscan --data=PATH [--merkmal-dir=DIR] [--model=NAME]")
 		os.Exit(2)
 	}
-	b, err := merkmal.LoadBundle(*bundlePath)
+	b, err := phon.LoadDir(*merkmalDir, *model)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "bundle:", err)
 		os.Exit(1)
@@ -83,7 +84,7 @@ func main() {
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].n > rows[j].n })
 
-	fmt.Printf("# OOV graphemes in arcaverborum (system: %s)\n\n", b.System)
+	fmt.Printf("# OOV graphemes in arcaverborum (system: %s)\n\n", b.Name)
 	fmt.Printf("Segments scanned: %d  Distinct OOV types: %d\n\n", totalSeg, len(rows))
 	fmt.Println("| Grapheme | Count | Datasets |")
 	fmt.Println("|---|---|---|")

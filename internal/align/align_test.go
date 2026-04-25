@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 )
 
-var descriptiveBundle *merkmal.Bundle
+var descriptiveBundle *phon.Phon
 
 func init() {
-	b, err := merkmal.LoadBundle("../../tests/fixtures/merkmal/descriptive")
+	b, err := phon.LoadDir("../../tests/fixtures/merkmal-models", "descriptive")
 	if err != nil {
 		panic(err)
 	}
@@ -113,7 +113,7 @@ func TestLatinItalianNokteNotte(t *testing.T) {
 // palatalized reflex ct > čh > č).
 // Expectation: Spanish "č" (here spelled as tʃ) aligns somewhere
 // against the Latin /kt/ cluster; whether the aligner sees it as
-// k~tʃ + t~gap or k~gap + t~tʃ depends on merkmal's distance
+// k~tʃ + t~gap or k~gap + t~tʃ depends on phon's distance
 // between (k, tʃ) and (t, tʃ). We just assert the alignment is
 // produced, tʃ is used, and distance is larger than nokte~notte.
 func TestLatinSpanishNokteNoche(t *testing.T) {

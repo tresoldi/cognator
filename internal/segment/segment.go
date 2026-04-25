@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 )
 
 // Token is the parsed unit of a segmented form. Exactly one of
@@ -19,10 +19,10 @@ type Token struct {
 	Boundary bool   // morpheme boundary marker ("+")
 }
 
-// RoleResolver abstracts the merkmal role lookup so segment does
+// RoleResolver abstracts the phon role lookup so segment does
 // not depend on a concrete Bundle.
 type RoleResolver interface {
-	Role(g string) merkmal.Role
+	Role(g string) phon.Role
 }
 
 const boundary = "+"
@@ -102,10 +102,10 @@ func lastNucleusInSyllable(out []Token) (int, bool) {
 // isToneToken decides whether grapheme g should be treated as a
 // tonal segment for re-attachment. Merkmal's role answer is
 // authoritative when positive; otherwise we fall back to a
-// character-shape heuristic because merkmal inventories typically
+// character-shape heuristic because phon inventories typically
 // do not list standalone tone tokens.
 func isToneToken(g string, resolver RoleResolver) bool {
-	if resolver.Role(g) == merkmal.RoleT {
+	if resolver.Role(g) == phon.RoleT {
 		return true
 	}
 	return IsToneShape(g)

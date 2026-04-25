@@ -146,9 +146,9 @@ def parse_args() -> argparse.Namespace:
         help="arcaverborum datasets.csv",
     )
     parser.add_argument(
-        "--bundle",
-        default="tests/fixtures/merkmal/descriptive",
-        help="Merkmal bundle used by Cognator",
+        "--merkmal-dir",
+        default="tests/fixtures/merkmal-models",
+        help="Merkmal data root used by Cognator",
     )
     parser.add_argument(
         "--track",
@@ -300,8 +300,8 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
             str(split_path),
             "--track",
             args.track,
-            "--bundle",
-            args.bundle,
+            "--merkmal-dir",
+            args.merkmal_dir,
             "--out-tsv",
             str(cognator_results),
             "--out-md",
@@ -371,7 +371,7 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
             "run_label": run_label,
             "forms": str(forms),
             "datasets_csv": args.datasets_csv,
-            "bundle": args.bundle,
+            "merkmal_dir": args.merkmal_dir,
             "split_file": str(split_path),
             "track": args.track,
             "eval_table": str(eval_table),

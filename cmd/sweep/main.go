@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/tresoldi/cognator/internal/eval"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/pipeline"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
@@ -21,7 +21,8 @@ import (
 func main() {
 	var (
 		in        = flag.String("in", "", "arcaverborum-shape TSV/CSV")
-		bundle    = flag.String("bundle", "tests/fixtures/merkmal/descriptive", "merkmal bundle")
+		merkmalDir = flag.String("merkmal-dir", "tests/fixtures/merkmal-models", "merkmal data root (contains models/ and geometries/)")
+		model      = flag.String("model", "descriptive", "merkmal model name")
 		list      = flag.String("thresholds", "auto,0.30,0.40,0.45,0.50,0.55,0.60,0.65,0.70,0.75", "comma list; 'auto' = Otsu")
 		iters     = flag.Int("iterations", 3, "EM iterations")
 		lambda    = flag.Float64("lambda", 0.5, "blend")
@@ -31,7 +32,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: sweep --in=PATH [--thresholds=...] [--iterations=N]")
 		os.Exit(2)
 	}
-	b, err := merkmal.LoadBundle(*bundle)
+	b, err := phon.LoadDir(*merkmalDir, *model)
 	if err != nil {
 		log.Fatal(err)
 	}

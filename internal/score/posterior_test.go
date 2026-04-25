@@ -4,12 +4,12 @@ import (
 	"math"
 	"testing"
 
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 )
 
-func loadTestBundle(t *testing.T) *merkmal.Bundle {
+func loadTestBundle(t *testing.T) *phon.Phon {
 	t.Helper()
-	b, err := merkmal.LoadBundle("../../tests/fixtures/merkmal/descriptive")
+	b, err := phon.LoadDir("../../tests/fixtures/merkmal-models", "descriptive")
 	if err != nil {
 		t.Fatalf("load bundle: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestDirichletPriorAlphaZeroOutsideInventory(t *testing.T) {
 
 func TestDirichletPriorFavorsShorterDistance(t *testing.T) {
 	b := loadTestBundle(t)
-	// p→b should have a much smaller merkmal distance than p→a, so
+	// p→b should have a much smaller phon distance than p→a, so
 	// under the softmax prior Alpha(p, b) > Alpha(p, a).
 	if b.Distance("p", "b") >= b.Distance("p", "a") {
 		t.Skip("bundle does not rank p/b closer than p/a; test assumption false")
@@ -268,8 +268,8 @@ func TestAttachScalingSparseBoostRaisesPriorWeightOnSparseRow(t *testing.T) {
 	boosted := tab.PosteriorMean("i", "o")
 
 	// On the sparse "i" row, sparse-boost should amplify the prior's
-	// influence, pulling the posterior toward the merkmal prior's
-	// base measure. For target "o" (far from source "i" by merkmal
+	// influence, pulling the posterior toward the phon prior's
+	// base measure. For target "o" (far from source "i" by phon
 	// distance) the posterior mean should DROP relative to flat.
 	if !(boosted < flat) {
 		t.Fatalf("sparse-boost should shrink posterior toward prior for sparse rows; flat=%v boosted=%v", flat, boosted)

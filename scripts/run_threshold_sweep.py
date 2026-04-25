@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-table", required=True, help="Exported Track A/Track B TSV")
     parser.add_argument("--split-file", required=True, help="Dataset split file")
     parser.add_argument("--lingpy-results", required=True, help="Existing LingPy results TSV")
-    parser.add_argument("--bundle", default="tests/fixtures/merkmal/descriptive")
+    parser.add_argument("--merkmal-dir", default="tests/fixtures/merkmal-models")
     parser.add_argument("--out-dir", required=True, help="Output directory for sweep artifacts")
     parser.add_argument(
         "--thresholds",
@@ -156,8 +156,8 @@ def main() -> None:
                 args.split_file,
                 "--track",
                 args.track,
-                "--bundle",
-                args.bundle,
+                "--merkmal-dir",
+                args.merkmal_dir,
                 "--out-tsv",
                 str(results_tsv),
                 "--out-md",
@@ -257,7 +257,7 @@ def main() -> None:
                 "eval_table": args.eval_table,
                 "split_file": args.split_file,
                 "lingpy_results": args.lingpy_results,
-                "bundle": args.bundle,
+                "merkmal_dir": args.merkmal_dir,
                 "track": args.track,
                 "threshold_mode": args.threshold_mode,
                 "thresholds": parse_thresholds(args.thresholds),

@@ -1,0 +1,779 @@
+GRAPHEME	NAME
+a	unrounded open front vowel
+a̰ːː	ultra-long creaky unrounded open front vowel
+b	voiced bilabial stop consonant
+bv	voiced labio-dental affricate consonant
+b̪	voiced labio-dental stop consonant
+bβ	voiced bilabial affricate consonant
+c	voiceless palatal stop consonant
+cç	voiceless palatal affricate consonant
+ç	voiceless palatal sibilant fricative consonant
+d	voiced alveolar stop consonant
+dz	voiced alveolar sibilant affricate consonant
+dz̪	voiced dental sibilant affricate consonant
+dz̪ʰ	aspirated voiced dental sibilant affricate consonant
+dz̪ʰː	aspirated long voiced dental sibilant affricate consonant
+dz̪ʰˠ	aspirated velarized voiced dental sibilant affricate consonant
+dz̪ʰˤ	aspirated pharyngealized voiced dental sibilant affricate consonant
+dz̪ʱ	breathy voiced dental sibilant affricate consonant
+dz̪ʱː	long breathy voiced dental sibilant affricate consonant
+dz̪ʱˠ	velarized breathy voiced dental sibilant affricate consonant
+dz̪ʱˤ	pharyngealized breathy voiced dental sibilant affricate consonant
+dz̪ʲ	palatalized voiced dental sibilant affricate consonant
+dz̪ʲʰ	palatalized aspirated voiced dental sibilant affricate consonant
+dz̪ʲʱ	palatalized breathy voiced dental sibilant affricate consonant
+dz̪ʲʷ	palatalized labialized voiced dental sibilant affricate consonant
+dz̪ʲʷʰ	palatalized labialized aspirated voiced dental sibilant affricate consonant
+dz̪ʲː	palatalized long voiced dental sibilant affricate consonant
+dz̪ʷ	labialized voiced dental sibilant affricate consonant
+dz̪ʷʰ	labialized aspirated voiced dental sibilant affricate consonant
+dz̪ʷʰː	labialized aspirated long voiced dental sibilant affricate consonant
+dz̪ʷʰˠ	labialized aspirated velarized voiced dental sibilant affricate consonant
+dz̪ʷʰˤ	labialized aspirated pharyngealized voiced dental sibilant affricate consonant
+dz̪ʷʱ	labialized breathy voiced dental sibilant affricate consonant
+dz̪ʷˀ	labialized glottalized voiced dental sibilant affricate consonant
+dz̪ʷː	labialized long voiced dental sibilant affricate consonant
+dz̪ʷˠ	labialized velarized voiced dental sibilant affricate consonant
+dz̪ʷˤ	labialized pharyngealized voiced dental sibilant affricate consonant
+dz̪ˀ	glottalized voiced dental sibilant affricate consonant
+dz̪ː	long voiced dental sibilant affricate consonant
+dz̪ˠ	velarized voiced dental sibilant affricate consonant
+dz̪ˠː	velarized long voiced dental sibilant affricate consonant
+dz̪ˤ	pharyngealized voiced dental sibilant affricate consonant
+dz̪ˤː	pharyngealized long voiced dental sibilant affricate consonant
+dz̪̃	nasalized voiced dental sibilant affricate consonant
+dz̪̃ː	nasalized long voiced dental sibilant affricate consonant
+dz̪̃ˤ	nasalized pharyngealized voiced dental sibilant affricate consonant
+dz̪̟	advanced voiced dental sibilant affricate consonant
+dz̪̠	retracted voiced dental sibilant affricate consonant
+dz̪̰	creaky voiced dental sibilant affricate consonant
+dz̪̰ʲ	palatalized creaky voiced dental sibilant affricate consonant
+dz̪̰ʷ	labialized creaky voiced dental sibilant affricate consonant
+dz̪̰ː	long creaky voiced dental sibilant affricate consonant
+dz̪̰ˠ	velarized creaky voiced dental sibilant affricate consonant
+dz̪̰ˤ	pharyngealized creaky voiced dental sibilant affricate consonant
+dz̪̰̃	nasalized creaky voiced dental sibilant affricate consonant
+dz̪̺	voiced apical dental sibilant affricate consonant
+dz̪̻	voiced laminal dental sibilant affricate consonant
+dz̪ᶣ	labio-palatalized voiced dental sibilant affricate consonant
+dz̪ᶣʰ	labio-palatalized aspirated voiced dental sibilant affricate consonant
+dð	voiced dental affricate consonant
+dɮ	voiced alveolar lateral affricate consonant
+dʑ	voiced alveolo-palatal sibilant affricate consonant
+dʒ	voiced post-alveolar sibilant affricate consonant
+d̠	voiced post-alveolar stop consonant
+d̠ʰ	aspirated voiced post-alveolar stop consonant
+d̠ʰː	aspirated long voiced post-alveolar stop consonant
+d̠ʲ	palatalized voiced post-alveolar stop consonant
+d̠ʲː	palatalized long voiced post-alveolar stop consonant
+d̠ʷ	labialized voiced post-alveolar stop consonant
+d̠ʷː	labialized long voiced post-alveolar stop consonant
+d̠ː	long voiced post-alveolar stop consonant
+d̠̰	creaky voiced post-alveolar stop consonant
+d̠ⁿ	with-nasal-release voiced post-alveolar stop consonant
+d̪	voiced dental stop consonant
+d̪ɮ	voiced dental lateral affricate consonant
+d̪ʰ	aspirated voiced dental stop consonant
+d̪ʰː	aspirated long voiced dental stop consonant
+d̪ʰˠ	aspirated velarized voiced dental stop consonant
+d̪ʰˤ	aspirated pharyngealized voiced dental stop consonant
+d̪ʱ	breathy voiced dental stop consonant
+d̪ʱː	long breathy voiced dental stop consonant
+d̪ʱˠ	velarized breathy voiced dental stop consonant
+d̪ʱˤ	pharyngealized breathy voiced dental stop consonant
+d̪ʲ	palatalized voiced dental stop consonant
+d̪ʲʰ	palatalized aspirated voiced dental stop consonant
+d̪ʲʱ	palatalized breathy voiced dental stop consonant
+d̪ʲʷ	palatalized labialized voiced dental stop consonant
+d̪ʲʷʰ	palatalized labialized aspirated voiced dental stop consonant
+d̪ʲː	palatalized long voiced dental stop consonant
+d̪ʷ	labialized voiced dental stop consonant
+d̪ʷʰ	labialized aspirated voiced dental stop consonant
+d̪ʷʰː	labialized aspirated long voiced dental stop consonant
+d̪ʷʰˠ	labialized aspirated velarized voiced dental stop consonant
+d̪ʷʰˤ	labialized aspirated pharyngealized voiced dental stop consonant
+d̪ʷʱ	labialized breathy voiced dental stop consonant
+d̪ʷˀ	labialized glottalized voiced dental stop consonant
+d̪ʷː	labialized long voiced dental stop consonant
+d̪ʷˠ	labialized velarized voiced dental stop consonant
+d̪ʷˤ	labialized pharyngealized voiced dental stop consonant
+d̪ˀ	glottalized voiced dental stop consonant
+d̪ː	long voiced dental stop consonant
+d̪ˠ	velarized voiced dental stop consonant
+d̪ˠː	velarized long voiced dental stop consonant
+d̪ˡ	with-lateral-release voiced dental stop consonant
+d̪ˤ	pharyngealized voiced dental stop consonant
+d̪ˤː	pharyngealized long voiced dental stop consonant
+d̪̃	nasalized voiced dental stop consonant
+d̪̃ː	nasalized long voiced dental stop consonant
+d̪̃ˤ	nasalized pharyngealized voiced dental stop consonant
+d̪̚	unreleased voiced dental stop consonant
+d̪̟	advanced voiced dental stop consonant
+d̪̠	retracted voiced dental stop consonant
+d̪̥	devoiced voiced dental stop consonant
+d̪̥ʱ	devoiced breathy voiced dental stop consonant
+d̪̥̚	unreleased devoiced voiced dental stop consonant
+d̪̥ⁿ	with-nasal-release devoiced voiced dental stop consonant
+d̪̰	creaky voiced dental stop consonant
+d̪̰ʲ	palatalized creaky voiced dental stop consonant
+d̪̰ʷ	labialized creaky voiced dental stop consonant
+d̪̰ː	long creaky voiced dental stop consonant
+d̪̰ˠ	velarized creaky voiced dental stop consonant
+d̪̰ˤ	pharyngealized creaky voiced dental stop consonant
+d̪̰̃	nasalized creaky voiced dental stop consonant
+d̪̺	voiced apical dental stop consonant
+d̪̻	voiced laminal dental stop consonant
+d̪ᶣ	labio-palatalized voiced dental stop consonant
+d̪ᶣʰ	labio-palatalized aspirated voiced dental stop consonant
+d̪ⁿ	with-nasal-release voiced dental stop consonant
+d̼	voiced linguolabial stop consonant
+e	unrounded close-mid front vowel
+eːː	ultra-long unrounded close-mid front vowel
+e̞	unrounded mid front vowel
+e̞ː	long unrounded mid front vowel
+e̞ˑ	mid-long unrounded mid front vowel
+e̞ˑ̟	mid-long advanced unrounded mid front vowel
+e̞ˤ	pharyngealized unrounded mid front vowel
+ê̞ː	long unrounded mid front vowel
+ê̞ˑ	mid-long unrounded mid front vowel
+ẽ̞	nasalized unrounded mid front vowel
+ẽ̞ː	long nasalized unrounded mid front vowel
+e̞̠	retracted unrounded mid front vowel
+e̞̥	devoiced unrounded mid front vowel
+e̞̰	creaky unrounded mid front vowel
+e̞̹ˑ	mid-long more-rounded unrounded mid front vowel
+f	voiceless labio-dental fricative consonant
+g	voiced velar stop consonant
+gǀ	voiced dental click consonant
+gǁ	voiced lateral click consonant
+gǂ	voiced palatal click consonant
+gǃ	voiced alveolar click consonant
+gǃǃ	voiced retroflex click consonant
+gɣ	voiced velar affricate consonant
+gʘ	voiced labial click consonant
+h	voiceless glottal fricative consonant
+i	unrounded close front vowel
+iːː	ultra-long unrounded close front vowel
+ḭːː	ultra-long creaky unrounded close front vowel
+j	voiced palatal approximant consonant
+k	voiceless velar stop consonant
+kx	voiceless velar affricate consonant
+k̬	revoiced voiced velar stop consonant
+k	voiceless velar lateral affricate consonant
+l	voiced alveolar lateral approximant consonant
+l̠	voiced post-alveolar lateral approximant consonant
+l̠ʱ	breathy voiced post-alveolar lateral approximant consonant
+l̠ʲ	palatalized voiced post-alveolar lateral approximant consonant
+l̠ˑ	mid-long voiced post-alveolar lateral approximant consonant
+l̪	voiced dental lateral approximant consonant
+l̪ʰ	aspirated voiced dental lateral approximant consonant
+l̪ʱ	breathy voiced dental lateral approximant consonant
+l̪ʱː	long breathy voiced dental lateral approximant consonant
+l̪ʱˠ	velarized breathy voiced dental lateral approximant consonant
+l̪ʱˤ	pharyngealized breathy voiced dental lateral approximant consonant
+l̪ʲ	palatalized voiced dental lateral approximant consonant
+l̪ʲʱ	palatalized breathy voiced dental lateral approximant consonant
+l̪ʲʷ	palatalized labialized voiced dental lateral approximant consonant
+l̪ʲː	palatalized long voiced dental lateral approximant consonant
+l̪ʷ	labialized voiced dental lateral approximant consonant
+l̪ʷʱ	labialized breathy voiced dental lateral approximant consonant
+l̪ʷˀ	labialized glottalized voiced dental lateral approximant consonant
+l̪ʷː	labialized long voiced dental lateral approximant consonant
+l̪ʷˠ	labialized velarized voiced dental lateral approximant consonant
+l̪ʷˤ	labialized pharyngealized voiced dental lateral approximant consonant
+l̪ˀ	glottalized voiced dental lateral approximant consonant
+l̪ː	long voiced dental lateral approximant consonant
+l̪ˠ	velarized voiced dental lateral approximant consonant
+l̪ˠː	velarized long voiced dental lateral approximant consonant
+l̪ˤ	pharyngealized voiced dental lateral approximant consonant
+l̪ˤː	pharyngealized long voiced dental lateral approximant consonant
+l̪̃	nasalized voiced dental lateral approximant consonant
+l̪̃ː	nasalized long voiced dental lateral approximant consonant
+l̪̃ˤ	nasalized pharyngealized voiced dental lateral approximant consonant
+l̪̝	raised voiced dental lateral approximant consonant
+l̪̞	lowered voiced dental lateral approximant consonant
+l̪̟	advanced voiced dental lateral approximant consonant
+l̪̠	retracted voiced dental lateral approximant consonant
+l̪̥	devoiced voiced dental lateral approximant consonant
+l̪̥ʱ	devoiced breathy voiced dental lateral approximant consonant
+l̪̥ʲ	palatalized devoiced voiced dental lateral approximant consonant
+l̪̥ʷ	labialized devoiced voiced dental lateral approximant consonant
+l̪̥ː	long devoiced voiced dental lateral approximant consonant
+l̪̥ˠ	velarized devoiced voiced dental lateral approximant consonant
+l̪̥ˤ	pharyngealized devoiced voiced dental lateral approximant consonant
+l̪̩	syllabic voiced dental lateral approximant consonant
+l̪̰	creaky voiced dental lateral approximant consonant
+l̪̰ʲ	palatalized creaky voiced dental lateral approximant consonant
+l̪̰ʷ	labialized creaky voiced dental lateral approximant consonant
+l̪̰ː	long creaky voiced dental lateral approximant consonant
+l̪̰ˠ	velarized creaky voiced dental lateral approximant consonant
+l̪̰ˤ	pharyngealized creaky voiced dental lateral approximant consonant
+l̪̰̃	nasalized creaky voiced dental lateral approximant consonant
+l̪̺	voiced apical dental lateral approximant consonant
+l̪̻	voiced laminal dental lateral approximant consonant
+l̪ᶣ	labio-palatalized voiced dental lateral approximant consonant
+l̪’	voiced dental ejective lateral approximant consonant
+l̼	voiced linguolabial lateral approximant consonant
+m	voiced bilabial nasal consonant
+n	voiced alveolar nasal consonant
+n̪	voiced dental nasal consonant
+n̪ʰ	aspirated voiced dental nasal consonant
+n̪ʰː	aspirated long voiced dental nasal consonant
+n̪ʱ	breathy voiced dental nasal consonant
+n̪ʱː	long breathy voiced dental nasal consonant
+n̪ʱˠ	velarized breathy voiced dental nasal consonant
+n̪ʱˤ	pharyngealized breathy voiced dental nasal consonant
+n̪ʲ	palatalized voiced dental nasal consonant
+n̪ʲʱ	palatalized breathy voiced dental nasal consonant
+n̪ʲʷ	palatalized labialized voiced dental nasal consonant
+n̪ʲː	palatalized long voiced dental nasal consonant
+n̪ʷ	labialized voiced dental nasal consonant
+n̪ʷʱ	labialized breathy voiced dental nasal consonant
+n̪ʷˀ	labialized glottalized voiced dental nasal consonant
+n̪ʷː	labialized long voiced dental nasal consonant
+n̪ʷˠ	labialized velarized voiced dental nasal consonant
+n̪ʷˤ	labialized pharyngealized voiced dental nasal consonant
+n̪ˀ	glottalized voiced dental nasal consonant
+n̪ː	long voiced dental nasal consonant
+n̪ˠ	velarized voiced dental nasal consonant
+n̪ˠː	velarized long voiced dental nasal consonant
+n̪ˤ	pharyngealized voiced dental nasal consonant
+n̪ˤː	pharyngealized long voiced dental nasal consonant
+n̪̟	advanced voiced dental nasal consonant
+n̪̠	retracted voiced dental nasal consonant
+n̪̥	devoiced voiced dental nasal consonant
+n̪̥ʱ	devoiced breathy voiced dental nasal consonant
+n̪̥ʲ	palatalized devoiced voiced dental nasal consonant
+n̪̥ʷ	labialized devoiced voiced dental nasal consonant
+n̪̥ː	long devoiced voiced dental nasal consonant
+n̪̥ˠ	velarized devoiced voiced dental nasal consonant
+n̪̥ˤ	pharyngealized devoiced voiced dental nasal consonant
+n̪̩	syllabic voiced dental nasal consonant
+n̪̰	creaky voiced dental nasal consonant
+n̪̰ʲ	palatalized creaky voiced dental nasal consonant
+n̪̰ʷ	labialized creaky voiced dental nasal consonant
+n̪̰ː	long creaky voiced dental nasal consonant
+n̪̰ˠ	velarized creaky voiced dental nasal consonant
+n̪̰ˤ	pharyngealized creaky voiced dental nasal consonant
+n̪̺	voiced apical dental nasal consonant
+n̪̻	voiced laminal dental nasal consonant
+n̪ᶣ	labio-palatalized voiced dental nasal consonant
+n̪’	voiced dental ejective nasal consonant
+n̼	voiced linguolabial nasal consonant
+o	rounded close-mid back vowel
+oz̻	voiced laminal alveolar sibilant fricative consonant
+oːː	ultra-long rounded close-mid back vowel
+o̞	rounded mid back vowel
+o̞ː	long rounded mid back vowel
+o̞ˑ	mid-long rounded mid back vowel
+o̞ˤ	pharyngealized rounded mid back vowel
+o̞ˤː	long pharyngealized rounded mid back vowel
+ô̞	rounded mid back vowel
+ô̞ː	long rounded mid back vowel
+ô̞ˑ	mid-long rounded mid back vowel
+õ̞	nasalized rounded mid back vowel
+õ̞ː	long nasalized rounded mid back vowel
+õ̞ˑ	mid-long nasalized rounded mid back vowel
+o̞̙	retracted-tongue-root rounded mid back vowel
+o̞̜	less-rounded rounded mid back vowel
+o̞̜ː	long less-rounded rounded mid back vowel
+o̞̜ˑ	mid-long less-rounded rounded mid back vowel
+o̞̟	advanced rounded mid back vowel
+o̞̥	devoiced rounded mid back vowel
+o̞̰	creaky rounded mid back vowel
+p	voiceless bilabial stop consonant
+pf	voiceless labio-dental affricate consonant
+pɸ	voiceless bilabial affricate consonant
+p̪	voiceless labio-dental stop consonant
+q	voiceless uvular stop consonant
+qχ	voiceless uvular affricate consonant
+r	voiced alveolar trill consonant
+r̪	voiced dental trill consonant
+r̪ʱ	breathy voiced dental trill consonant
+r̪ʱː	long breathy voiced dental trill consonant
+r̪ʱˠ	velarized breathy voiced dental trill consonant
+r̪ʱˤ	pharyngealized breathy voiced dental trill consonant
+r̪ʲ	palatalized voiced dental trill consonant
+r̪ʲʱ	palatalized breathy voiced dental trill consonant
+r̪ʲʷ	palatalized labialized voiced dental trill consonant
+r̪ʲː	palatalized long voiced dental trill consonant
+r̪ʷ	labialized voiced dental trill consonant
+r̪ʷʱ	labialized breathy voiced dental trill consonant
+r̪ʷˀ	labialized glottalized voiced dental trill consonant
+r̪ʷː	labialized long voiced dental trill consonant
+r̪ʷˠ	labialized velarized voiced dental trill consonant
+r̪ʷˤ	labialized pharyngealized voiced dental trill consonant
+r̪ˀ	glottalized voiced dental trill consonant
+r̪ː	long voiced dental trill consonant
+r̪ˠ	velarized voiced dental trill consonant
+r̪ˠː	velarized long voiced dental trill consonant
+r̪ˤ	pharyngealized voiced dental trill consonant
+r̪ˤː	pharyngealized long voiced dental trill consonant
+r̪̃	nasalized voiced dental trill consonant
+r̪̃ː	nasalized long voiced dental trill consonant
+r̪̃ˤ	nasalized pharyngealized voiced dental trill consonant
+r̪̝	raised voiced dental trill consonant
+r̪̞	lowered voiced dental trill consonant
+r̪̟	advanced voiced dental trill consonant
+r̪̠	retracted voiced dental trill consonant
+r̪̥	devoiced voiced dental trill consonant
+r̪̥ʱ	devoiced breathy voiced dental trill consonant
+r̪̥ʲ	palatalized devoiced voiced dental trill consonant
+r̪̥ʷ	labialized devoiced voiced dental trill consonant
+r̪̥ː	long devoiced voiced dental trill consonant
+r̪̥ˠ	velarized devoiced voiced dental trill consonant
+r̪̥ˤ	pharyngealized devoiced voiced dental trill consonant
+r̪̩	syllabic voiced dental trill consonant
+r̪̰	creaky voiced dental trill consonant
+r̪̰ʲ	palatalized creaky voiced dental trill consonant
+r̪̰ʷ	labialized creaky voiced dental trill consonant
+r̪̰ː	long creaky voiced dental trill consonant
+r̪̰ˠ	velarized creaky voiced dental trill consonant
+r̪̰ˤ	pharyngealized creaky voiced dental trill consonant
+r̪̰̃	nasalized creaky voiced dental trill consonant
+r̪̺	voiced apical dental trill consonant
+r̪̻	voiced laminal dental trill consonant
+r̪ᶣ	labio-palatalized voiced dental trill consonant
+r̼	voiced linguolabial trill consonant
+s	voiceless alveolar sibilant fricative consonant
+s̪	voiceless dental sibilant fricative consonant
+s̪ʰ	aspirated voiceless dental sibilant fricative consonant
+s̪ʰː	aspirated long voiceless dental sibilant fricative consonant
+s̪ʰˠ	aspirated velarized voiceless dental sibilant fricative consonant
+s̪ʰˤ	aspirated pharyngealized voiceless dental sibilant fricative consonant
+s̪ʲ	palatalized voiceless dental sibilant fricative consonant
+s̪ʲʰ	palatalized aspirated voiceless dental sibilant fricative consonant
+s̪ʲʷ	palatalized labialized voiceless dental sibilant fricative consonant
+s̪ʲʷʰ	palatalized labialized aspirated voiceless dental sibilant fricative consonant
+s̪ʲː	palatalized long voiceless dental sibilant fricative consonant
+s̪ʷ	labialized voiceless dental sibilant fricative consonant
+s̪ʷʰ	labialized aspirated voiceless dental sibilant fricative consonant
+s̪ʷʰː	labialized aspirated long voiceless dental sibilant fricative consonant
+s̪ʷʰˠ	labialized aspirated velarized voiceless dental sibilant fricative consonant
+s̪ʷʰˤ	labialized aspirated pharyngealized voiceless dental sibilant fricative consonant
+s̪ʷˀ	labialized glottalized voiceless dental sibilant fricative consonant
+s̪ʷː	labialized long voiceless dental sibilant fricative consonant
+s̪ʷˠ	labialized velarized voiceless dental sibilant fricative consonant
+s̪ʷˤ	labialized pharyngealized voiceless dental sibilant fricative consonant
+s̪ʼ	voiceless dental ejective sibilant fricative consonant
+s̪ˀ	glottalized voiceless dental sibilant fricative consonant
+s̪ˀː	glottalized long voiceless dental sibilant fricative consonant
+s̪ː	long voiceless dental sibilant fricative consonant
+s̪ˠ	velarized voiceless dental sibilant fricative consonant
+s̪ˠː	velarized long voiceless dental sibilant fricative consonant
+s̪ˤ	pharyngealized voiceless dental sibilant fricative consonant
+s̪ˤː	pharyngealized long voiceless dental sibilant fricative consonant
+s̪̝	raised voiceless dental sibilant fricative consonant
+s̪̞	lowered voiceless dental sibilant fricative consonant
+s̪̟	advanced voiceless dental sibilant fricative consonant
+s̪̠	retracted voiceless dental sibilant fricative consonant
+s̪̩	syllabic voiceless dental sibilant fricative consonant
+s̪̺	voiceless apical dental sibilant fricative consonant
+s̪̻	voiceless laminal dental sibilant fricative consonant
+s̪ᶣ	labio-palatalized voiceless dental sibilant fricative consonant
+s̪ᶣʰ	labio-palatalized aspirated voiceless dental sibilant fricative consonant
+s̪’ʲ	palatalized voiceless dental ejective sibilant fricative consonant
+s̪’ʷ	labialized voiceless dental ejective sibilant fricative consonant
+s̪’ʷˤ	labialized pharyngealized voiceless dental ejective sibilant fricative consonant
+s̪’ː	long voiceless dental ejective sibilant fricative consonant
+s̪’ˤ	pharyngealized voiceless dental ejective sibilant fricative consonant
+t	voiceless alveolar stop consonant
+ts	voiceless alveolar sibilant affricate consonant
+ts̪	voiceless dental sibilant affricate consonant
+ts̪ʰ	aspirated voiceless dental affricate consonant
+ts̪ʲ	palatalized voiceless dental sibilant affricate consonant
+ts̪ʲʰ	palatalized aspirated voiceless dental sibilant affricate consonant
+ts̪ʲʷ	palatalized labialized voiceless dental sibilant affricate consonant
+ts̪ʲʷʰ	palatalized labialized aspirated voiceless dental sibilant affricate consonant
+ts̪ʲː	palatalized long voiceless dental sibilant affricate consonant
+ts̪ʷ	labialized voiceless dental sibilant affricate consonant
+ts̪ʷʰ	labialized aspirated voiceless dental sibilant affricate consonant
+ts̪ʷʰː	labialized aspirated long voiceless dental sibilant affricate consonant
+ts̪ʷʰˠ	labialized aspirated velarized voiceless dental sibilant affricate consonant
+ts̪ʷʰˤ	labialized aspirated pharyngealized voiceless dental sibilant affricate consonant
+ts̪ʷˀ	labialized glottalized voiceless dental sibilant affricate consonant
+ts̪ʷː	labialized long voiceless dental sibilant affricate consonant
+ts̪ʷˠ	labialized velarized voiceless dental sibilant affricate consonant
+ts̪ʷˤ	labialized pharyngealized voiceless dental sibilant affricate consonant
+ts̪ʼ	voiceless dental ejective sibilant affricate consonant
+ts̪ˀ	glottalized voiceless dental sibilant affricate consonant
+ts̪ː	long voiceless dental sibilant affricate consonant
+ts̪ˠ	velarized voiceless dental sibilant affricate consonant
+ts̪ˠː	velarized long voiceless dental sibilant affricate consonant
+ts̪ˤ	pharyngealized voiceless dental sibilant affricate consonant
+ts̪ˤː	pharyngealized long voiceless dental sibilant affricate consonant
+ts̪̟	advanced voiceless dental sibilant affricate consonant
+ts̪̠	retracted voiceless dental sibilant affricate consonant
+ts̪̺	voiceless apical dental sibilant affricate consonant
+ts̪̻	voiceless laminal dental sibilant affricate consonant
+ts̪ᶣ	labio-palatalized voiceless dental sibilant affricate consonant
+ts̪’ʲ	palatalized voiceless dental ejective sibilant affricate consonant
+ts̪’ʲʷ	palatalized labialized voiceless dental ejective sibilant affricate consonant
+ts̪’ʷ	labialized voiceless dental ejective sibilant affricate consonant
+ts̪’ʷˤ	labialized pharyngealized voiceless dental ejective sibilant affricate consonant
+ts̪’ː	long voiceless dental ejective sibilant affricate consonant
+ts̪’ˤ	pharyngealized voiceless dental ejective sibilant affricate consonant
+tɕ	voiceless alveolo-palatal sibilant affricate consonant
+tɬ	voiceless alveolar lateral affricate consonant
+tɬ̪	voiceless dental lateral affricate consonant
+tɬ̪ʰ	aspirated voiceless dental lateral affricate consonant
+tɬ̪ʰː	aspirated long voiceless dental lateral affricate consonant
+tɬ̪ʰˠ	aspirated velarized voiceless dental lateral affricate consonant
+tɬ̪ʰˤ	aspirated pharyngealized voiceless dental lateral affricate consonant
+tɬ̪ʲ	palatalized voiceless dental lateral affricate consonant
+tɬ̪ʲʰ	palatalized aspirated voiceless dental lateral affricate consonant
+tɬ̪ʲʷ	palatalized labialized voiceless dental lateral affricate consonant
+tɬ̪ʲʷʰ	palatalized labialized aspirated voiceless dental lateral affricate consonant
+tɬ̪ʲː	palatalized long voiceless dental lateral affricate consonant
+tɬ̪ʷ	labialized voiceless dental lateral affricate consonant
+tɬ̪ʷʰ	labialized aspirated voiceless dental lateral affricate consonant
+tɬ̪ʷʰː	labialized aspirated long voiceless dental lateral affricate consonant
+tɬ̪ʷʰˠ	labialized aspirated velarized voiceless dental lateral affricate consonant
+tɬ̪ʷʰˤ	labialized aspirated pharyngealized voiceless dental lateral affricate consonant
+tɬ̪ʷˀ	labialized glottalized voiceless dental lateral affricate consonant
+tɬ̪ʷː	labialized long voiceless dental lateral affricate consonant
+tɬ̪ʷˠ	labialized velarized voiceless dental lateral affricate consonant
+tɬ̪ʷˤ	labialized pharyngealized voiceless dental lateral affricate consonant
+tɬ̪ʼ	voiceless dental ejective lateral affricate consonant
+tɬ̪ˀ	glottalized voiceless dental lateral affricate consonant
+tɬ̪ː	long voiceless dental lateral affricate consonant
+tɬ̪ˠ	velarized voiceless dental lateral affricate consonant
+tɬ̪ˠː	velarized long voiceless dental lateral affricate consonant
+tɬ̪ˤ	pharyngealized voiceless dental lateral affricate consonant
+tɬ̪ˤː	pharyngealized long voiceless dental lateral affricate consonant
+tɬ̪̟	advanced voiceless dental lateral affricate consonant
+tɬ̪̠	retracted voiceless dental lateral affricate consonant
+tɬ̪̺	voiceless apical dental lateral affricate consonant
+tɬ̪̻	voiceless laminal dental lateral affricate consonant
+tɬ̪ᶣ	labio-palatalized voiceless dental lateral affricate consonant
+tɬ̪ᶣʰ	labio-palatalized aspirated voiceless dental lateral affricate consonant
+tɬ̪’ʲ	palatalized voiceless dental ejective lateral affricate consonant
+tɬ̪’ʷ	labialized voiceless dental ejective lateral affricate consonant
+tɬ̪’ʷˤ	labialized pharyngealized voiceless dental ejective lateral affricate consonant
+tɬ̪’ː	long voiceless dental ejective lateral affricate consonant
+tɬ̪’ˤ	pharyngealized voiceless dental ejective lateral affricate consonant
+tʃ	voiceless post-alveolar sibilant affricate consonant
+t̠	voiceless post-alveolar stop consonant
+t̠ʰ	aspirated voiceless post-alveolar stop consonant
+t̠ʰː	aspirated long voiceless post-alveolar stop consonant
+t̠ʲ	palatalized voiceless post-alveolar stop consonant
+t̠ʲː	palatalized long voiceless post-alveolar stop consonant
+t̠ʷ	labialized voiceless post-alveolar stop consonant
+t̠ʷː	labialized long voiceless post-alveolar stop consonant
+t̠ː	long voiceless post-alveolar stop consonant
+t̪	voiceless dental stop consonant
+t̪ʰ	aspirated voiceless dental stop consonant
+t̪ʰʲ	palatalized aspirated voiceless dental stop consonant
+t̪ʰː	aspirated long voiceless dental stop consonant
+t̪ʰˠ	aspirated velarized voiceless dental stop consonant
+t̪ʰˤ	aspirated pharyngealized voiceless dental stop consonant
+t̪ʲ	palatalized voiceless dental stop consonant
+t̪ʲʷ	palatalized labialized voiceless dental stop consonant
+t̪ʲʷʰ	palatalized labialized aspirated voiceless dental stop consonant
+t̪ʲː	palatalized long voiceless dental stop consonant
+t̪ʷ	labialized voiceless dental stop consonant
+t̪ʷʰ	labialized aspirated voiceless dental stop consonant
+t̪ʷʰː	labialized aspirated long voiceless dental stop consonant
+t̪ʷʰˠ	labialized aspirated velarized voiceless dental stop consonant
+t̪ʷʰˤ	labialized aspirated pharyngealized voiceless dental stop consonant
+t̪ʷˀ	labialized glottalized voiceless dental stop consonant
+t̪ʷː	labialized long voiceless dental stop consonant
+t̪ʷˠ	labialized velarized voiceless dental stop consonant
+t̪ʷˤ	labialized pharyngealized voiceless dental stop consonant
+t̪ʼ	voiceless dental ejective stop consonant
+t̪ˀ	glottalized voiceless dental stop consonant
+t̪ː	long voiceless dental stop consonant
+t̪ˠ	velarized voiceless dental stop consonant
+t̪ˠː	velarized long voiceless dental stop consonant
+t̪ˡ	with-lateral-release voiceless dental stop consonant
+t̪ˤ	pharyngealized voiceless dental stop consonant
+t̪ˤː	pharyngealized long voiceless dental stop consonant
+t̪̚	unreleased voiceless dental stop consonant
+t̪̟	advanced voiceless dental stop consonant
+t̪̠	retracted voiceless dental stop consonant
+t̪̰	creaky voiceless dental stop consonant
+t̪̺	voiceless apical dental stop consonant
+t̪̻	voiceless laminal dental stop consonant
+t̪ᶣ	labio-palatalized voiceless dental stop consonant
+t̪ᶣʰ	labio-palatalized aspirated voiceless dental stop consonant
+t̪’ʲ	palatalized voiceless dental ejective stop consonant
+t̪’ʲʷ	palatalized labialized voiceless dental ejective stop consonant
+t̪’ʷ	labialized voiceless dental ejective stop consonant
+t̪’ʷˤ	labialized pharyngealized voiceless dental ejective stop consonant
+t̪’ː	long voiceless dental ejective stop consonant
+t̪’ˤ	pharyngealized voiceless dental ejective stop consonant
+t̪ⁿ	with-nasal-release voiceless dental stop consonant
+t̼	voiceless linguolabial stop consonant
+tθ	voiceless dental affricate consonant
+u	rounded close back vowel
+uːː	ultra-long rounded close back vowel
+v	voiced labio-dental fricative consonant
+w	voiced labio-velar approximant consonant
+x	voiceless velar fricative consonant
+y	rounded close front vowel
+yːː	ultra-long rounded close front vowel
+z	voiced alveolar sibilant fricative consonant
+z̪	voiced dental sibilant fricative consonant
+z̪ʱ	breathy voiced dental sibilant fricative consonant
+z̪ʱː	long breathy voiced dental sibilant fricative consonant
+z̪ʱˠ	velarized breathy voiced dental sibilant fricative consonant
+z̪ʱˤ	pharyngealized breathy voiced dental sibilant fricative consonant
+z̪ʲ	palatalized voiced dental sibilant fricative consonant
+z̪ʲʱ	palatalized breathy voiced dental sibilant fricative consonant
+z̪ʲʷ	palatalized labialized voiced dental sibilant fricative consonant
+z̪ʲː	palatalized long voiced dental sibilant fricative consonant
+z̪ʷ	labialized voiced dental sibilant fricative consonant
+z̪ʷʱ	labialized breathy voiced dental sibilant fricative consonant
+z̪ʷˀ	labialized glottalized voiced dental sibilant fricative consonant
+z̪ʷː	labialized long voiced dental sibilant fricative consonant
+z̪ʷˠ	labialized velarized voiced dental sibilant fricative consonant
+z̪ʷˤ	labialized pharyngealized voiced dental sibilant fricative consonant
+z̪ˀ	glottalized voiced dental sibilant fricative consonant
+z̪ː	long voiced dental sibilant fricative consonant
+z̪ˠ	velarized voiced dental sibilant fricative consonant
+z̪ˠː	velarized long voiced dental sibilant fricative consonant
+z̪ˤ	pharyngealized voiced dental sibilant fricative consonant
+z̪ˤː	pharyngealized long voiced dental sibilant fricative consonant
+z̪̃	nasalized voiced dental sibilant fricative consonant
+z̪̃ː	nasalized long voiced dental sibilant fricative consonant
+z̪̃ˤ	nasalized pharyngealized voiced dental sibilant fricative consonant
+z̪̝	raised voiced dental sibilant fricative consonant
+z̪̞	lowered voiced dental sibilant fricative consonant
+z̪̟	advanced voiced dental sibilant fricative consonant
+z̪̠	retracted voiced dental sibilant fricative consonant
+z̪̥	devoiced voiced dental sibilant fricative consonant
+z̪̩	syllabic voiced dental sibilant fricative consonant
+z̪̰	creaky voiced dental sibilant fricative consonant
+z̪̰ʲ	palatalized creaky voiced dental sibilant fricative consonant
+z̪̰ʷ	labialized creaky voiced dental sibilant fricative consonant
+z̪̰ː	long creaky voiced dental sibilant fricative consonant
+z̪̰ˠ	velarized creaky voiced dental sibilant fricative consonant
+z̪̰ˤ	pharyngealized creaky voiced dental sibilant fricative consonant
+z̪̰̃	nasalized creaky voiced dental sibilant fricative consonant
+z̪̺	voiced apical dental sibilant fricative consonant
+z̪̻	voiced laminal dental sibilant fricative consonant
+z̪ᶣ	labio-palatalized voiced dental sibilant fricative consonant
+æ	unrounded near-open front vowel
+æːː	ultra-long unrounded near-open front vowel
+ð	voiced dental fricative consonant
+ð̞	voiced dental approximant consonant
+ð̞ʲ	palatalized voiced dental approximant consonant
+ð̼	voiced linguolabial fricative consonant
+ø	rounded close-mid front vowel
+øːː	ultra-long rounded close-mid front vowel
+ø̞	rounded mid front vowel
+ø̞ː	long rounded mid front vowel
+ø̞ˑ	mid-long rounded mid front vowel
+ø̞ˤ	pharyngealized rounded mid front vowel
+ø̞̂	rounded mid front vowel
+ø̞̂ˑ	mid-long rounded mid front vowel
+ø̞̃	nasalized rounded mid front vowel
+ø̞̃ː	long nasalized rounded mid front vowel
+ø̞̃ˑ	mid-long nasalized rounded mid front vowel
+ø̞̜	less-rounded rounded mid front vowel
+ø̞̜ː	long less-rounded rounded mid front vowel
+ħ	voiceless pharyngeal fricative consonant
+ŋ	voiced velar nasal consonant
+ŋǀ	voiced dental nasal-click consonant
+ŋǁ	voiced lateral nasal-click consonant
+ŋǂ	voiced palatal nasal-click consonant
+ŋǃ	voiced alveolar nasal-click consonant
+ŋǃǃ	voiced retroflex nasal-click consonant
+ŋʘ	voiced labial nasal-click consonant
+œ	rounded open-mid front vowel
+ǀ	voiceless dental click consonant
+ǁ	voiceless lateral click consonant
+ǂ	voiceless palatal click consonant
+ǃ	voiceless alveolar click consonant
+ǃǃ	voiceless retroflex click consonant
+ȡ	voiced alveolo-palatal stop consonant
+ȴ	voiced alveolo-palatal lateral approximant consonant
+ȵ	voiced alveolo-palatal nasal consonant
+ȶ	voiceless alveolo-palatal stop consonant
+ɐ	unrounded near-open central vowel
+ɑ	unrounded open back vowel
+ɒ	rounded open back vowel
+ɓ	voiced bilabial implosive consonant
+ɔ	rounded open-mid back vowel
+ɕ	voiceless alveolo-palatal sibilant fricative consonant
+ɖ	voiced retroflex stop consonant
+ɖʐ	voiced retroflex sibilant affricate consonant
+ɗ	voiced dental implosive consonant
+ɘ	unrounded close-mid central vowel
+ə	unrounded mid central vowel
+ɛ	unrounded open-mid front vowel
+ɛːː	ultra-long unrounded open-mid front vowel
+ɜ	unrounded open-mid central vowel
+ɞ	rounded open-mid central vowel
+ɞ̞	rounded near-open central vowel
+ɞ̞ː	long rounded near-open central vowel
+ɞ̞̃	nasalized rounded near-open central vowel
+ɞ̞̃ː	long nasalized rounded near-open central vowel
+ɞ̞̆	ultra-short rounded near-open central vowel
+ɟ	voiced palatal stop consonant
+ɟʝ	voiced palatal affricate consonant
+ɠ	voiced velar implosive consonant
+ɢ	voiced uvular stop consonant
+ɢʁ	voiced uvular affricate consonant
+ɣ	voiced velar fricative consonant
+ɤ	unrounded close-mid back vowel
+ɤ̞	unrounded mid back vowel
+ɤ̞ː	long unrounded mid back vowel
+ɤ̞̃	nasalized unrounded mid back vowel
+ɤ̞̃ː	long nasalized unrounded mid back vowel
+ɤ̞̟̃	advanced nasalized unrounded mid back vowel
+ɤ̞̆	ultra-short unrounded mid back vowel
+ɥ	voiced labio-palatal approximant consonant
+ɦ	voiced glottal fricative consonant
+ɧ	voiceless palatal-velar fricative consonant
+ɨ	unrounded close central vowel
+ɪ	unrounded near-close near-front vowel
+ɪ̈	unrounded near-close central vowel
+ɪ̈ː	long unrounded near-close central vowel
+ɪ̈̃	nasalized unrounded near-close central vowel
+ɪ̈̃ː	long nasalized unrounded near-close central vowel
+ɬ	voiceless alveolar lateral fricative consonant
+ɬ̪	voiceless dental lateral fricative consonant
+ɬ̪ʰ	aspirated voiceless dental lateral fricative consonant
+ɬ̪ʰː	aspirated long voiceless dental lateral fricative consonant
+ɬ̪ʰˠ	aspirated velarized voiceless dental lateral fricative consonant
+ɬ̪ʰˤ	aspirated pharyngealized voiceless dental lateral fricative consonant
+ɬ̪ʲ	palatalized voiceless dental lateral fricative consonant
+ɬ̪ʲʰ	palatalized aspirated voiceless dental lateral fricative consonant
+ɬ̪ʲʷ	palatalized labialized voiceless dental lateral fricative consonant
+ɬ̪ʲʷʰ	palatalized labialized aspirated voiceless dental lateral fricative consonant
+ɬ̪ʲː	palatalized long voiceless dental lateral fricative consonant
+ɬ̪ʷ	labialized voiceless dental lateral fricative consonant
+ɬ̪ʷʰ	labialized aspirated voiceless dental lateral fricative consonant
+ɬ̪ʷʰː	labialized aspirated long voiceless dental lateral fricative consonant
+ɬ̪ʷʰˠ	labialized aspirated velarized voiceless dental lateral fricative consonant
+ɬ̪ʷʰˤ	labialized aspirated pharyngealized voiceless dental lateral fricative consonant
+ɬ̪ʷˀ	labialized glottalized voiceless dental lateral fricative consonant
+ɬ̪ʷː	labialized long voiceless dental lateral fricative consonant
+ɬ̪ʷˠ	labialized velarized voiceless dental lateral fricative consonant
+ɬ̪ʷˤ	labialized pharyngealized voiceless dental lateral fricative consonant
+ɬ̪ʼ	voiceless dental ejective lateral fricative consonant
+ɬ̪ˀ	glottalized voiceless dental lateral fricative consonant
+ɬ̪ː	long voiceless dental lateral fricative consonant
+ɬ̪ˠ	velarized voiceless dental lateral fricative consonant
+ɬ̪ˠː	velarized long voiceless dental lateral fricative consonant
+ɬ̪ˤ	pharyngealized voiceless dental lateral fricative consonant
+ɬ̪ˤː	pharyngealized long voiceless dental lateral fricative consonant
+ɬ̪̝	raised voiceless dental lateral fricative consonant
+ɬ̪̞	lowered voiceless dental lateral fricative consonant
+ɬ̪̟	advanced voiceless dental lateral fricative consonant
+ɬ̪̠	retracted voiceless dental lateral fricative consonant
+ɬ̪̺	voiceless apical dental lateral fricative consonant
+ɬ̪̻	voiceless laminal dental lateral fricative consonant
+ɬ̪ᶣ	labio-palatalized voiceless dental lateral fricative consonant
+ɬ̪ᶣʰ	labio-palatalized aspirated voiceless dental lateral fricative consonant
+ɬ̪’ʲ	palatalized voiceless dental ejective lateral fricative consonant
+ɬ̪’ʷ	labialized voiceless dental ejective lateral fricative consonant
+ɬ̪’ʷˤ	labialized pharyngealized voiceless dental ejective lateral fricative consonant
+ɬ̪’ː	long voiceless dental ejective lateral fricative consonant
+ɬ̪’ˤ	pharyngealized voiceless dental ejective lateral fricative consonant
+ɬ̼	voiceless linguolabial lateral fricative consonant
+ɭ	voiced retroflex lateral approximant consonant
+ɮ	voiced alveolar lateral fricative consonant
+ɮ̼	voiced linguolabial lateral fricative consonant
+ɯ	unrounded close back vowel
+ɯ̽	unrounded near-close near-back vowel
+ɯ̽ː	long unrounded near-close near-back vowel
+ɯ̽̃	nasalized unrounded near-close near-back vowel
+ɯ̽̃ː	long nasalized unrounded near-close near-back vowel
+ɰ	voiced velar approximant consonant
+ɱ	voiced labio-dental nasal consonant
+ɲ	voiced palatal nasal consonant
+ɳ	voiced retroflex nasal consonant
+ɴ	voiced uvular nasal consonant
+ɵ	rounded close-mid central vowel
+ɵ̞	rounded mid central vowel
+ɵ̞ː	long rounded mid central vowel
+ɵ̞̃	nasalized rounded mid central vowel
+ɵ̞̃ː	long nasalized rounded mid central vowel
+ɵ̞̆	ultra-short rounded mid central vowel
+ɵ̞̰	creaky rounded mid central vowel
+ɶ	rounded open front vowel
+ɸ	voiceless bilabial fricative consonant
+ɹ	voiced alveolar approximant consonant
+ɹ̠	voiced post-alveolar approximant consonant
+ɹ̠ʲ	palatalized voiced post-alveolar approximant consonant
+ɺ	voiced alveolar lateral tap consonant
+ɻ	voiced retroflex approximant consonant
+ɽ	voiced retroflex tap consonant
+ɾ	voiced alveolar tap consonant
+ɾ̼	voiced linguolabial tap consonant
+ɿ	unrounded close with-frication back vowel
+ʀ	voiced uvular trill consonant
+ʁ	voiced uvular fricative consonant
+ʁ̞	voiced uvular approximant consonant
+ʁ̞ʷ	labialized voiced uvular approximant consonant
+ʁ̞̰ʷ	labialized creaky voiced uvular approximant consonant
+ʂ	voiceless retroflex sibilant fricative consonant
+ʃ	voiceless post-alveolar sibilant fricative consonant
+ʄ	voiced palatal implosive consonant
+ʅ	unrounded close with-frication central vowel
+ʇ̼	voiced linguolabial click consonant
+ʈ	voiceless retroflex stop consonant
+ʈʂ	voiceless retroflex sibilant affricate consonant
+ʈʂː	long voiced retroflex sibilant affricate consonant
+ʉ	rounded close central vowel
+ʊ	rounded near-close near-back vowel
+ʊ̈	rounded near-close central vowel
+ʊ̈ː	long rounded near-close central vowel
+ʊ̈̃	nasalized rounded near-close central vowel
+ʊ̈̃ː	long nasalized rounded near-close central vowel
+ʋ	voiced labio-dental approximant consonant
+ʌ	unrounded open-mid back vowel
+ʍ	voiceless labio-velar approximant consonant
+ʎ	voiced palatal lateral approximant consonant
+ʏ	rounded near-close near-front vowel
+ʐ	voiced retroflex sibilant fricative consonant
+ʑ	voiced alveolo-palatal sibilant fricative consonant
+ʒ	voiced post-alveolar sibilant fricative consonant
+ʔ	voiceless glottal stop consonant
+ʔh	voiceless glottal affricate consonant
+ʕ	voiced pharyngeal fricative consonant
+ʘ	voiceless labial click consonant
+ʙ	voiced bilabial trill consonant
+ʛ	voiced uvular implosive consonant
+ʛ̥	voiceless uvular implosive consonant
+ʜ	voiceless epiglottal fricative consonant
+ʝ	voiced palatal fricative consonant
+ʟ	voiced velar lateral approximant consonant
+ʡ	voiceless epiglottal stop consonant
+ʢ	voiced epiglottal fricative consonant
+ʮ	rounded close with-frication back vowel
+ʯ	rounded close with-frication central vowel
+ʰs̪	pre-aspirated voiceless dental sibilant fricative consonant
+ʰt̪	pre-aspirated voiceless dental stop consonant
+ʰt̪ʰ	pre-aspirated aspirated voiceless dental stop consonant
+ˀdz̪	pre-glottalized voiced dental sibilant affricate consonant
+ˀd̪	pre-glottalized voiced dental stop consonant
+ˀl̪	pre-glottalized voiced dental lateral approximant consonant
+ˀl̪̥	pre-glottalized devoiced voiced dental lateral approximant consonant
+ˀn̪	pre-glottalized voiced dental nasal consonant
+ˀn̪̥	pre-glottalized devoiced voiced dental nasal consonant
+ˀr̪	pre-glottalized voiced dental trill consonant
+ˀs̪	pre-glottalized voiceless dental sibilant fricative consonant
+ˀts̪	pre-glottalized voiceless dental sibilant affricate consonant
+ˀtɬ̪	pre-glottalized voiceless dental lateral affricate consonant
+ˀt̪	pre-glottalized voiceless dental stop consonant
+ˀt̪ʰ	pre-glottalized aspirated voiceless dental stop consonant
+ˀz̪	pre-glottalized voiced dental sibilant fricative consonant
+ˀɬ̪	pre-glottalized voiceless dental lateral fricative consonant
+β	voiced bilabial fricative consonant
+β̞	voiced bilabial approximant consonant
+β̞ʲ	palatalized voiced bilabial approximant consonant
+β̞ː	long voiced bilabial approximant consonant
+β̞ˠ	velarized voiced bilabial approximant consonant
+θ	voiceless dental fricative consonant
+θ̼	voiceless linguolabial fricative consonant
+χ	voiceless uvular fricative consonant
+ᶑ	voiced retroflex implosive consonant
+ⁿdʒ	pre-nasalized voiced post-alveolar affricate consonant
+ⁿd̪	pre-nasalized voiced dental stop consonant
+ⁿd̼	pre-nasalized voiced linguolabial stop consonant
+ⁿgǃ	pre-nasalized voiced alveolar nasal-click consonant
+ⁿt̪	pre-nasalized voiceless dental stop consonant
+ⱱ	voiced labio-dental tap consonant

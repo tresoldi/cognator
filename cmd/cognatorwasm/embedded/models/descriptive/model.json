@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "name": "descriptive",
+  "version": "1.0.0",
+  "type": "categorical",
+  "description": "Articulatory feature system based on IPA descriptions",
+  "author": "Tiago Tresoldi",
+  "license": "MIT",
+  "default_geometry": "clements-hume",
+  "feature_extraction": "filtered",
+  "partitions": {
+    "coarse": {
+      "C": [
+        "manner"
+      ],
+      "V": [
+        "height"
+      ]
+    },
+    "medium": {
+      "C": [
+        "manner",
+        "place"
+      ],
+      "V": [
+        "height",
+        "centrality"
+      ]
+    },
+    "fine": {
+      "C": [
+        "manner",
+        "place",
+        "phonation"
+      ],
+      "V": [
+        "height",
+        "centrality",
+        "roundedness"
+      ]
+    }
+  }
+}

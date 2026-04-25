@@ -1,12 +1,12 @@
 // Package align implements direction-aware Needleman-Wunsch
 // alignment over grapheme sequences. Scores are produced by a
-// Scorer (see PriorScorer for the merkmal-distance-based default);
+// Scorer (see PriorScorer for the phon-distance-based default);
 // gap costs are per-direction so that source insertions and target
 // insertions can be priced differently when a learned asymmetric
 // scorer is introduced in M3.
 package align
 
-import "github.com/tresoldi/cognator/internal/merkmal"
+import "github.com/tresoldi/cognator/internal/phon"
 
 // Scorer supplies similarity scores between source and target
 // graphemes and direction-specific gap costs. Score may return any
@@ -228,15 +228,15 @@ const DefaultGapCost = 0.5
 // RoleMismatchPenalty subtracts from the raw similarity score when
 // two graphemes have known but different prosodic roles (e.g., a
 // consonant aligned to a vowel). Chosen so that a C↔V column
-// discourages pairing even when merkmal's feature distance happens
+// discourages pairing even when phon's feature distance happens
 // to be small, while still permitting it in cases like glide↔vowel
 // where roles differ but sound change is attested.
 const RoleMismatchPenalty = 0.3
 
-// priorScorer wraps a merkmal.Bundle as a Scorer. Similarity is
+// priorScorer wraps a phon.Phon as a Scorer. Similarity is
 // 1 - 2·d, i.e. identity = +1, maximally distant = -1.
 type priorScorer struct {
-	b    *merkmal.Bundle
+	b    *phon.Phon
 	gapT float64
 	gapS float64
 }
@@ -245,23 +245,23 @@ type priorScorer struct {
 // table. Gaps default to DefaultGapCost; use WithGaps to override.
 // Role (prosody) awareness is NOT applied here — wrap with
 // ProsodyAwareScorer for framework-native skeleton sensitivity.
-func PriorScorer(b *merkmal.Bundle) Scorer {
+func PriorScorer(b *phon.Phon) Scorer {
 	return &priorScorer{b: b, gapT: DefaultGapCost, gapS: DefaultGapCost}
 }
 
-// roleAware wraps a Scorer with merkmal prosody-role awareness: when
+// roleAware wraps a Scorer with phon prosody-role awareness: when
 // two graphemes have known, distinct roles the column is penalized by
 // RoleMismatchPenalty. Gaps are unaffected (the gap cost is the
 // column-level price of skipping a grapheme, independent of role).
 type roleAware struct {
 	inner   Scorer
-	bundle  *merkmal.Bundle
+	bundle  *phon.Phon
 	penalty float64
 }
 
 // ProsodyAwareScorer returns a role-aware wrapper over PriorScorer(b).
 // Cheap wrapper that costs one bundle.Role lookup per Score() call.
-func ProsodyAwareScorer(b *merkmal.Bundle) Scorer {
+func ProsodyAwareScorer(b *phon.Phon) Scorer {
 	return &roleAware{
 		inner:   PriorScorer(b),
 		bundle:  b,
@@ -272,7 +272,7 @@ func ProsodyAwareScorer(b *merkmal.Bundle) Scorer {
 // WrapWithProsody wraps any Scorer with role-awareness using the
 // given bundle. Used when a LearnedScorer (or other composed scorer)
 // needs the same penalty applied on top of its internal blending.
-func WrapWithProsody(s Scorer, b *merkmal.Bundle) Scorer {
+func WrapWithProsody(s Scorer, b *phon.Phon) Scorer {
 	return &roleAware{inner: s, bundle: b, penalty: RoleMismatchPenalty}
 }
 
@@ -280,7 +280,7 @@ func (r *roleAware) Score(a, b string) float64 {
 	s := r.inner.Score(a, b)
 	ra := r.bundle.Role(a)
 	rb := r.bundle.Role(b)
-	if ra != merkmal.RoleUnknown && rb != merkmal.RoleUnknown && ra != rb {
+	if ra != phon.RoleUnknown && rb != phon.RoleUnknown && ra != rb {
 		s -= r.penalty
 	}
 	return s

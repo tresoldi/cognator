@@ -2,7 +2,7 @@ package score
 
 import (
 	"github.com/tresoldi/cognator/internal/align"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 )
 
 // TrainIterated runs EM-style refinement: align with the current
@@ -19,7 +19,7 @@ import (
 //
 // The expectation model is marginal-product. For shuffle-null see
 // TrainIteratedWithShuffle.
-func TrainIterated(srcLect, tgtLect string, pairs []FormPair, bundle *merkmal.Bundle, iterations int, lambda float64) *CorrespondenceTable {
+func TrainIterated(srcLect, tgtLect string, pairs []FormPair, bundle *phon.Phon, iterations int, lambda float64) *CorrespondenceTable {
 	return TrainIteratedWithShuffle(srcLect, tgtLect, pairs, bundle, iterations, lambda, nil)
 }
 
@@ -29,7 +29,7 @@ func TrainIterated(srcLect, tgtLect string, pairs []FormPair, bundle *merkmal.Bu
 // EM loop only re-estimates attested counts, not the null.
 //
 // Pass nil for null to fall back to marginal-product expectation.
-func TrainIteratedWithShuffle(srcLect, tgtLect string, pairs []FormPair, bundle *merkmal.Bundle, iterations int, lambda float64, null *NullDistribution) *CorrespondenceTable {
+func TrainIteratedWithShuffle(srcLect, tgtLect string, pairs []FormPair, bundle *phon.Phon, iterations int, lambda float64, null *NullDistribution) *CorrespondenceTable {
 	if iterations < 1 {
 		iterations = 1
 	}
@@ -49,6 +49,6 @@ func TrainIteratedWithShuffle(srcLect, tgtLect string, pairs []FormPair, bundle 
 // LearnedScorerOf returns the LearnedScorer wrapping table at the
 // supplied lambda. Sugar for pipeline consumers who have a table but
 // no explicit scorer handle.
-func LearnedScorerOf(bundle *merkmal.Bundle, table *CorrespondenceTable, lambda float64) align.Scorer {
+func LearnedScorerOf(bundle *phon.Phon, table *CorrespondenceTable, lambda float64) align.Scorer {
 	return LearnedScorer(bundle, table, lambda)
 }

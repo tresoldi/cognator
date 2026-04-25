@@ -35,9 +35,9 @@ def parse_args() -> argparse.Namespace:
         help="Path to arcaverborum datasets.csv",
     )
     parser.add_argument(
-        "--bundle",
-        default="tests/fixtures/merkmal/descriptive",
-        help="Merkmal bundle for Cognator runs",
+        "--merkmal-dir",
+        default="tests/fixtures/merkmal-models",
+        help="Merkmal data root for Cognator runs",
     )
     parser.add_argument(
         "--split-file",
@@ -175,8 +175,8 @@ def main() -> None:
         args.split_file,
         "--track",
         args.track,
-        "--bundle",
-        args.bundle,
+        "--merkmal-dir",
+        args.merkmal_dir,
         "--out-tsv",
         str(cognator_results),
         "--out-md",
@@ -282,7 +282,7 @@ def main() -> None:
         "timestamp_utc": timestamp,
         "forms": args.forms,
         "datasets_csv": args.datasets_csv,
-        "bundle": args.bundle,
+        "merkmal_dir": args.merkmal_dir,
         "split_file": args.split_file,
         "track": args.track,
         "export_dir": str(export_dir),

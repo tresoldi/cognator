@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-table", required=True, help="Exported Track A/Track B TSV")
     parser.add_argument("--dev-split-file", required=True, help="Development split file")
     parser.add_argument("--lingpy-results", required=True, help="LingPy results TSV for the dev split")
-    parser.add_argument("--bundle", default="tests/fixtures/merkmal/descriptive")
+    parser.add_argument("--merkmal-dir", default="tests/fixtures/merkmal-models")
     parser.add_argument("--out-dir", required=True, help="Output directory for sweep artifacts")
     parser.add_argument("--track", default="A")
     parser.add_argument("--threshold", default="0.68")
@@ -144,7 +144,7 @@ def run_config(
     eval_table: str,
     split_file: str,
     lingpy_results: str,
-    bundle: str,
+    merkmal_dir: str,
     out_dir: Path,
     env: dict[str, str],
     track: str,
@@ -169,8 +169,8 @@ def run_config(
         split_file,
         "--track",
         track,
-        "--bundle",
-        bundle,
+        "--merkmal-dir",
+        merkmal_dir,
         "--out-tsv",
         str(results_tsv),
         "--out-md",
@@ -280,7 +280,7 @@ def main() -> None:
                     eval_table=args.eval_table,
                     split_file=args.dev_split_file,
                     lingpy_results=args.lingpy_results,
-                    bundle=args.bundle,
+                    merkmal_dir=args.merkmal_dir,
                     out_dir=out_dir / "dev",
                     env=env,
                     track=args.track,
@@ -385,7 +385,7 @@ def main() -> None:
             eval_table=args.eval_table,
             split_file=args.secondary_split_file,
             lingpy_results=args.secondary_lingpy_results,
-            bundle=args.bundle,
+            merkmal_dir=args.merkmal_dir,
             out_dir=out_dir / "secondary",
             env=env,
             track=args.track,

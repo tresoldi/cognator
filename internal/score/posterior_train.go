@@ -2,7 +2,7 @@ package score
 
 import (
 	"github.com/tresoldi/cognator/internal/align"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 )
 
 // InventoryFromPairs collects the sorted unique grapheme inventory
@@ -50,7 +50,7 @@ func TrainPosterior(srcLect, tgtLect string, pairs []FormPair, scorer align.Scor
 }
 
 // TrainPosteriorIterated is the Bayesian analog of TrainIterated.
-// Iteration 0 aligns under the merkmal-similarity prior; subsequent
+// Iteration 0 aligns under the phon-similarity prior; subsequent
 // iterations align under the posterior scorer derived from the
 // previous pass's counts. With iterations=1 this is equivalent to
 // TrainPosterior under the prior scorer.
@@ -62,7 +62,7 @@ func TrainPosterior(srcLect, tgtLect string, pairs []FormPair, scorer align.Scor
 //
 // scaleMode selects the per-row α₀ scaling mode (see
 // PosteriorTable.AttachScaling). Empty string keeps the flat α₀.
-func TrainPosteriorIterated(srcLect, tgtLect string, pairs []FormPair, bundle *merkmal.Bundle, iterations int, prior *DirichletPrior, null *NullDistribution, scaleMode string) *PosteriorTable {
+func TrainPosteriorIterated(srcLect, tgtLect string, pairs []FormPair, bundle *phon.Phon, iterations int, prior *DirichletPrior, null *NullDistribution, scaleMode string) *PosteriorTable {
 	if iterations < 1 {
 		iterations = 1
 	}

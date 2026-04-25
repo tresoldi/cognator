@@ -10,7 +10,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/segment"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
@@ -18,15 +18,16 @@ import (
 func main() {
 	var (
 		dataPath   = flag.String("data", "", "path to arcaverborum-shape TSV/CSV")
-		bundlePath = flag.String("bundle", "tests/fixtures/merkmal/descriptive", "merkmal bundle dir")
+		merkmalDir = flag.String("merkmal-dir", "tests/fixtures/merkmal-models", "merkmal data root (contains models/ and geometries/)")
+		model      = flag.String("model", "descriptive", "merkmal model name")
 		family     = flag.String("family", "", "filter to a single family/dataset")
 	)
 	flag.Parse()
 	if *dataPath == "" {
-		fmt.Fprintln(os.Stderr, "usage: diag --data=PATH [--bundle=DIR] [--family=NAME]")
+		fmt.Fprintln(os.Stderr, "usage: diag --data=PATH [--merkmal-dir=DIR] [--model=NAME] [--family=NAME]")
 		os.Exit(2)
 	}
-	b, err := merkmal.LoadBundle(*bundlePath)
+	b, err := phon.LoadDir(*merkmalDir, *model)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "bundle:", err)
 		os.Exit(1)
@@ -45,7 +46,7 @@ func main() {
 		}
 		recs = filtered
 	}
-	fmt.Printf("rows: %d  system: %s (%d graphemes)\n", len(recs), b.System, b.Manifest.GraphemeCount)
+	fmt.Printf("rows: %d  system: %s (%d graphemes)\n", len(recs), b.Name, b.GraphemeCount)
 
 	langs := map[string]int{}
 	concepts := map[string]struct{}{}

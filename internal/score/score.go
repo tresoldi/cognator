@@ -2,8 +2,8 @@
 // form-pairs sharing a concept. Counts are tallied from
 // Needleman-Wunsch alignments under a starting scorer; smoothed
 // log-odds are then computed against a marginal-product null with
-// a merkmal-weighted pseudocount. A LearnedScorer blends these
-// learned log-odds with the merkmal prior and can be fed back into
+// a phon-weighted pseudocount. A LearnedScorer blends these
+// learned log-odds with the phon prior and can be fed back into
 // align.NeedlemanWunsch for a second alignment pass (EM-style) or
 // directly into distance computation for cluster input.
 package score
@@ -14,7 +14,7 @@ import (
 	"sync"
 
 	"github.com/tresoldi/cognator/internal/align"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/segment"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
@@ -23,7 +23,7 @@ import (
 // alignment columns.
 const Gap = "-"
 
-// priorSharpness controls how quickly the merkmal-distance prior
+// priorSharpness controls how quickly the phon-distance prior
 // decays. exp(-priorSharpness·d): d=0 → 1.0, d=0.5 → 0.135, d=1 →
 // 0.018. Chosen to give identical graphemes dominant prior mass
 // while still distinguishing nearby-similar from distant pairs.
@@ -149,13 +149,13 @@ func TrainMany(pairs map[PairKey][]FormPair, prior align.Scorer) map[PairKey]*Co
 // LogOdds is the smoothed log-base-2 ratio of observed to expected
 // correspondence frequency. Positive means the pair (source, target)
 // occurs more often than a null independence model predicts,
-// weighted by a merkmal-derived Dirichlet pseudocount.
+// weighted by a phon-derived Dirichlet pseudocount.
 //
 // If a shuffle null has been attached (via TrainWithNull /
 // ComputeShuffleNull) it is used as the expectation. Otherwise the
 // fallback is marginal-product independence — faster but looser
 // on sparse lect-pairs where the marginal approximation breaks down.
-func (t *CorrespondenceTable) LogOdds(b *merkmal.Bundle, source, target string, alpha float64) float64 {
+func (t *CorrespondenceTable) LogOdds(b *phon.Phon, source, target string, alpha float64) float64 {
 	if t.totalColumns == 0 {
 		return 0
 	}
@@ -199,7 +199,7 @@ func (t *CorrespondenceTable) TotalPairs() int { return t.totalPairs }
 // for many (src, tgt) pairs (classic in a full-family pipeline),
 // prefer PairByConceptIndexed, which amortizes the bucketing to O(1)
 // per call.
-func PairByConcept(recs []wordlist.Record, srcLect, tgtLect string, b *merkmal.Bundle) []FormPair {
+func PairByConcept(recs []wordlist.Record, srcLect, tgtLect string, b *phon.Phon) []FormPair {
 	idx := IndexByLect(recs, b)
 	return PairByConceptIndexed(idx, srcLect, tgtLect)
 }
@@ -222,7 +222,7 @@ type indexedForm struct {
 //
 // Backwards-compatible wrapper: calls IndexByLectOpts with
 // ClassReduce=false.
-func IndexByLect(recs []wordlist.Record, b *merkmal.Bundle) *LectIndex {
+func IndexByLect(recs []wordlist.Record, b *phon.Phon) *LectIndex {
 	return IndexByLectOpts(recs, b, false)
 }
 
@@ -231,7 +231,7 @@ func IndexByLect(recs []wordlist.Record, b *merkmal.Bundle) *LectIndex {
 // segment.ClassReduce (stripping modifier letters, diacritics, tone
 // markers) so correspondence tables train on ~30 coarse classes
 // rather than 700+ IPA graphemes — matching lingpy's SCA strategy.
-func IndexByLectOpts(recs []wordlist.Record, b *merkmal.Bundle, classReduce bool) *LectIndex {
+func IndexByLectOpts(recs []wordlist.Record, b *phon.Phon, classReduce bool) *LectIndex {
 	var reducer func(string) string
 	if classReduce {
 		reducer = segment.ClassReduce
@@ -240,11 +240,11 @@ func IndexByLectOpts(recs []wordlist.Record, b *merkmal.Bundle, classReduce bool
 }
 
 // IndexByLectWithReducer is IndexByLectOpts with a caller-supplied
-// grapheme→class function. Pass nil for no reduction. For merkmal
+// grapheme→class function. Pass nil for no reduction. For phon
 // partition-based reduction, pass `func(g string) string {
 // if c := b.Partition(level, g); c != "" { return c }; return g }`
 // or similar.
-func IndexByLectWithReducer(recs []wordlist.Record, b *merkmal.Bundle, reducer func(string) string) *LectIndex {
+func IndexByLectWithReducer(recs []wordlist.Record, b *phon.Phon, reducer func(string) string) *LectIndex {
 	idx := &LectIndex{byLect: map[string]map[string][]indexedForm{}}
 	for _, r := range recs {
 		gs := graphemesOnly(r.Segments, b)
@@ -312,7 +312,7 @@ func PairByConceptIndexed(idx *LectIndex, srcLect, tgtLect string) []FormPair {
 	return out
 }
 
-func graphemesOnly(raw string, b *merkmal.Bundle) []string {
+func graphemesOnly(raw string, b *phon.Phon) []string {
 	toks, _ := segment.Parse(raw, b)
 	out := make([]string, 0, len(toks))
 	for _, t := range toks {
@@ -324,10 +324,10 @@ func graphemesOnly(raw string, b *merkmal.Bundle) []string {
 	return out
 }
 
-// learnedScorer blends merkmal-based prior similarity with learned
+// learnedScorer blends phon-based prior similarity with learned
 // correspondence log-odds. It satisfies align.Scorer.
 type learnedScorer struct {
-	bundle *merkmal.Bundle
+	bundle *phon.Phon
 	prior  align.Scorer
 	table  *CorrespondenceTable
 	lambda float64
@@ -339,7 +339,7 @@ type learnedScorer struct {
 // LearnedScorer returns an align.Scorer whose Score is a weighted
 // blend of the prior's similarity and the learned table's log-odds.
 // lambda in [0, 1]: 0 → pure prior, 1 → pure learned.
-func LearnedScorer(b *merkmal.Bundle, table *CorrespondenceTable, lambda float64) align.Scorer {
+func LearnedScorer(b *phon.Phon, table *CorrespondenceTable, lambda float64) align.Scorer {
 	return &learnedScorer{
 		bundle: b,
 		prior:  align.ProsodyAwareScorer(b),

@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/tresoldi/cognator/internal/align"
-	"github.com/tresoldi/cognator/internal/merkmal"
+	"github.com/tresoldi/cognator/internal/phon"
 	"github.com/tresoldi/cognator/internal/score"
 	"github.com/tresoldi/cognator/internal/wordlist"
 )
@@ -17,10 +17,11 @@ import (
 func main() {
 	var (
 		path       = flag.String("data", "/tmp/arcaverborum_corecog/arcaverborum-A-corecog-20251008/forms.csv", "arcaverborum forms.csv")
-		bundlePath = flag.String("bundle", "tests/fixtures/merkmal/descriptive", "merkmal bundle")
+		merkmalDir = flag.String("merkmal-dir", "tests/fixtures/merkmal-models", "merkmal data root (contains models/ and geometries/)")
+		model      = flag.String("model", "descriptive", "merkmal model name")
 	)
 	flag.Parse()
-	b, err := merkmal.LoadBundle(*bundlePath)
+	b, err := phon.LoadDir(*merkmalDir, *model)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
