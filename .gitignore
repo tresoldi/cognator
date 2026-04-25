@@ -9,3 +9,4 @@
 *.prof
 *.test
 *.out
+__pycache__/
