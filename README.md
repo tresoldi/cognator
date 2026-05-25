@@ -47,8 +47,8 @@ go build ./...
 go test ./...
 ```
 
-During development, prefer `go run ./cmd/...` because binaries on shared or SMB
-mounts may lose the executable bit.
+During development, `go run ./cmd/...` is convenient; `go build` works too on
+this box (local disk — no SMB execute-bit caveat).
 
 ## Input Format
 
