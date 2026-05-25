@@ -10,3 +10,14 @@
 *.test
 *.out
 __pycache__/
+
+
+
+
+
+# Go build/test caches from local benchmark sweeps
+.gocache*/
+
+# generated benchmark outputs (manifest.json is config — keep it tracked)
+benchmark/runs/
+benchmark/reports/
