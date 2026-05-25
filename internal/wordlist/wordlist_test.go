@@ -67,6 +67,40 @@ func TestReadArcaverborumCSVAliasColumns(t *testing.T) {
 	}
 }
 
+func TestReadArcaverborumNativeColumns(t *testing.T) {
+	// bestof-rewrite forms.csv: av_id → Language_ID, concept_id → Concept,
+	// no ID column (synthesized from av_id + source_form_id; row number
+	// when source_form_id is empty).
+	content := strings.Join([]string{
+		"av_id,Glottocode,concept_id,concept_label,Segments,Cognacy,source_form_id",
+		"aav-alak,alak1253,kin-i,i,ʔ a l,,alak1253-1",
+		"aav-arem,arem1240,kin-i,i,ʔ a l,,arem1240-9",
+		"aav-bit,bit1240,kin-i,i,ʔ a l,,", // empty source_form_id → row-number fallback
+		"",
+	}, "\n")
+	path := writeTemp(t, "native.csv", content)
+
+	recs, err := ReadTable(path)
+	if err != nil {
+		t.Fatalf("ReadTable: %v", err)
+	}
+	if len(recs) != 3 {
+		t.Fatalf("got %d rows, want 3", len(recs))
+	}
+	if recs[0].LanguageID != "aav-alak" {
+		t.Errorf("av_id→LanguageID failed: %q", recs[0].LanguageID)
+	}
+	if recs[0].Concept != "kin-i" {
+		t.Errorf("concept_id→Concept failed: %q", recs[0].Concept)
+	}
+	if recs[0].ID != "aav-alak::alak1253-1" {
+		t.Errorf("synthesized ID failed: %q", recs[0].ID)
+	}
+	if recs[2].ID != "aav-bit::r4" {
+		t.Errorf("row-number fallback ID failed: %q", recs[2].ID)
+	}
+}
+
 func TestReadMissingRequiredColumnErrors(t *testing.T) {
 	content := strings.Join([]string{
 		"ID\tLanguage_ID\tSegments", // missing Concept/Concepticon_Gloss

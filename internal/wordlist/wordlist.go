@@ -1,8 +1,12 @@
 // Package wordlist reads arcaverborum-shaped tabular input and
-// writes cognator's sidecar output. Supports both cognator's
-// canonical column names and arcaverborum's CLDF-derived aliases
-// (Concepticon_Gloss → Concept, Dataset → Family). CSV and TSV are
-// auto-detected by file extension.
+// writes cognator's sidecar output. It supports cognator's canonical
+// column names, arcaverborum's CoreCog-export aliases (Concepticon_Gloss
+// or Parameter_ID → Concept, Dataset → Family), and the bestof-rewrite
+// native names (av_id → Language_ID; concept_id or concept_label →
+// Concept). When no ID column is present (the aggregate output has none),
+// a per-form join key is synthesized from av_id + source_form_id —
+// reconstructable from forms.csv — falling back to the row number.
+// CSV and TSV are auto-detected by file extension.
 package wordlist
 
 import (
@@ -11,6 +15,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -69,6 +74,7 @@ func ReadTable(path string) ([]Record, error) {
 	}
 
 	var out []Record
+	line := 1 // header is line 1
 	for {
 		row, err := r.Read()
 		if err == io.EOF {
@@ -77,7 +83,8 @@ func ReadTable(path string) ([]Record, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read row: %w", err)
 		}
-		rec := idx.extract(row)
+		line++
+		rec := idx.extract(row, line)
 		if rec.ID == "" || rec.LanguageID == "" || rec.Segments == "" {
 			continue
 		}
@@ -100,19 +107,31 @@ func delimiterFor(path string) rune {
 
 type columnIndex struct {
 	id, language, concept, segments int
-	family, cognacy                 int // -1 when absent
+	family, cognacy, formid         int // -1 when absent
 }
 
-func (c columnIndex) extract(row []string) Record {
+func (c columnIndex) extract(row []string, line int) Record {
 	get := func(i int) string {
 		if i < 0 || i >= len(row) {
 			return ""
 		}
 		return strings.TrimSpace(row[i])
 	}
+	lang := get(c.language)
+	id := get(c.id)
+	if id == "" && lang != "" {
+		// Aggregate output carries no per-form ID. Synthesize a join
+		// key reconstructable from forms.csv (av_id + source_form_id),
+		// falling back to the row number when source_form_id is empty.
+		if fid := get(c.formid); fid != "" {
+			id = lang + "::" + fid
+		} else {
+			id = lang + "::r" + strconv.Itoa(line)
+		}
+	}
 	return Record{
-		ID:         get(c.id),
-		LanguageID: get(c.language),
+		ID:         id,
+		LanguageID: lang,
 		Concept:    get(c.concept),
 		Segments:   get(c.segments),
 		Family:     get(c.family),
@@ -121,7 +140,7 @@ func (c columnIndex) extract(row []string) Record {
 }
 
 func resolveColumns(header []string) (columnIndex, error) {
-	idx := columnIndex{id: -1, language: -1, concept: -1, segments: -1, family: -1, cognacy: -1}
+	idx := columnIndex{id: -1, language: -1, concept: -1, segments: -1, family: -1, cognacy: -1, formid: -1}
 	pos := make(map[string]int, len(header))
 	for i, name := range header {
 		pos[name] = i
@@ -135,20 +154,18 @@ func resolveColumns(header []string) (columnIndex, error) {
 		return -1
 	}
 	idx.id = pick("ID")
-	idx.language = pick("Language_ID")
-	idx.concept = pick("Concept", "Concepticon_Gloss", "Parameter_ID")
+	idx.language = pick("Language_ID", "av_id")
+	idx.concept = pick("Concept", "Concepticon_Gloss", "Parameter_ID", "concept_id", "concept_label")
 	idx.segments = pick("Segments")
 	idx.family = pick("Family", "Dataset")
 	idx.cognacy = pick("Cognacy")
+	idx.formid = pick("source_form_id")
 	var missing []string
-	if idx.id < 0 {
-		missing = append(missing, "ID")
-	}
 	if idx.language < 0 {
-		missing = append(missing, "Language_ID")
+		missing = append(missing, "Language_ID|av_id")
 	}
 	if idx.concept < 0 {
-		missing = append(missing, "Concept|Concepticon_Gloss|Parameter_ID")
+		missing = append(missing, "Concept|Concepticon_Gloss|Parameter_ID|concept_id|concept_label")
 	}
 	if idx.segments < 0 {
 		missing = append(missing, "Segments")
