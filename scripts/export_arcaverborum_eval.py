@@ -34,9 +34,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--collection",
-        default="corecog",
-        choices=("full", "core", "corecog"),
-        help="arcaverborum output collection to use when --arcaverborum-root is provided",
+        default="aggregate",
+        choices=("aggregate", "full", "core", "corecog"),
+        help="arcaverborum output/<collection>/forms.csv (default: aggregate, the bestof-rewrite layout)",
     )
     parser.add_argument(
         "--datasets-csv",
@@ -72,14 +72,20 @@ def resolve_forms_path(args: argparse.Namespace) -> Path:
         return candidate
     raise FileNotFoundError(
         f"could not find built collection at {candidate}; run "
-        f"'python {root / 'merge_cldf_datasets.py'}' first or pass --forms explicitly"
+        f"'python {root / 'build.py'} aggregate' first or pass --forms explicitly"
     )
 
 
 def load_corecog_datasets(path: Path) -> list[str]:
+    # bestof-rewrite renamed the marker column CoreCog -> ExpertCognates
+    # (same 58-dataset subset). Accept either so old datasets.csv dumps
+    # keep working.
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
-        return sorted(row["NAME"] for row in reader if row.get("CoreCog") == "TRUE")
+        return sorted(
+            row["NAME"] for row in reader
+            if (row.get("CoreCog") or row.get("ExpertCognates") or "").strip().upper() == "TRUE"
+        )
 
 
 def requested_datasets(corecog: list[str], dataset_list: str) -> list[str]:
@@ -98,10 +104,44 @@ def clean(value: str | None) -> str:
 
 
 def concept_of(row: dict[str, str]) -> str:
-    for key in ("Concept", "Concepticon_Gloss", "Parameter_ID"):
+    # CoreCog-export aliases first, then bestof-rewrite native names.
+    for key in ("Concept", "Concepticon_Gloss", "Parameter_ID", "concept_id", "concept_label"):
         if nonempty(row.get(key)):
             return clean(row[key])
     return ""
+
+
+def dataset_of(row: dict[str, str]) -> str:
+    # Native forms.csv has no Dataset column; transcription_source carries it.
+    for key in ("Dataset", "transcription_source"):
+        v = clean(row.get(key))
+        if v:
+            return v
+    return ""
+
+
+def language_of(row: dict[str, str]) -> str:
+    for key in ("Language_ID", "av_id"):
+        v = clean(row.get(key))
+        if v:
+            return v
+    return ""
+
+
+def raw_id_of(row: dict[str, str], row_num: int) -> str:
+    # The bestof-rewrite aggregate has no per-form ID; synthesize a key
+    # reconstructable from forms.csv (av_id + source_form_id), with the
+    # row number as a fallback. Mirrors cognator's Go reader.
+    rid = clean(row.get("ID"))
+    if rid:
+        return rid
+    lang = language_of(row)
+    if not lang:
+        return ""
+    fid = clean(row.get("source_form_id"))
+    if fid:
+        return f"{lang}::{fid}"
+    return f"{lang}::r{row_num}"
 
 
 def has_partial_cognacy(row: dict[str, str]) -> bool:
@@ -135,13 +175,13 @@ def export_rows(
             raise ValueError(f"{forms_path} has no header row")
 
         for row_num, row in enumerate(reader, start=2):
-            dataset = clean(row.get("Dataset"))
+            dataset = dataset_of(row)
             if dataset not in datasets:
                 continue
 
             stats[dataset]["rows_total"] += 1
 
-            raw_id = clean(row.get("ID"))
+            raw_id = raw_id_of(row, row_num)
             if not nonempty(row.get("Segments")):
                 stats[dataset]["rows_missing_segments"] += 1
                 continue
@@ -166,7 +206,7 @@ def export_rows(
                 "Eval_ID": eval_id,
                 "Raw_ID": raw_id,
                 "Dataset": dataset,
-                "Language_ID": clean(row.get("Language_ID")),
+                "Language_ID": language_of(row),
                 "Concept": concept_of(row),
                 "Segments": clean(row.get("Segments")),
                 "Gold_Cognacy": clean(row.get("Cognacy")),
