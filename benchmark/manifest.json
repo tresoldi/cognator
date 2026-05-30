@@ -1,0 +1,28 @@
+{
+  "benchmark_target": "LingPy LexStat + Infomap",
+  "dataset_source": "../arcaverborum/datasets.csv",
+  "corecog_dataset_count": 58,
+  "tracks": {
+    "A": {
+      "description": "Simple full-form cognacy. Excludes semicolon-separated cognacy rows and partial-cognacy annotations.",
+      "export_path": "benchmark/export/track_a.tsv"
+    },
+    "B": {
+      "description": "Partial/complex cognacy benchmark. Includes semicolon cognacy rows and rows with partial-cognacy annotations.",
+      "export_path": "benchmark/export/track_b.tsv"
+    }
+  },
+  "splits": {
+    "dev_core": "benchmark/splits/dev_core.txt",
+    "holdout": "benchmark/splits/holdout.txt"
+  },
+  "primary_metric": "mean per-dataset BCubed F1 on Track A",
+  "secondary_metrics": [
+    "win/loss/tie count vs LingPy",
+    "mean precision",
+    "mean recall",
+    "form-weighted F1",
+    "runtime",
+    "confidence calibration"
+  ]
+}
