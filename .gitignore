@@ -17,3 +17,5 @@ __pycache__/
 # generated benchmark outputs (manifest.json is config — keep it tracked)
 benchmark/runs/
 benchmark/reports/
+
+/build/
