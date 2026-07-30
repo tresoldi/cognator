@@ -1,0 +1,53 @@
+scope	selector	observations	mean_f1	best_count	mean_rank
+cognator_config	support-adaptive-bridge, threshold=0.64, min_pairs=1	7	0.867225	3	15.29
+cognator_config	support-adaptive-bridge, threshold=0.64, min_pairs=5	7	0.867225	0	16.29
+cognator_config	support-adaptive-bridge, threshold=0.66, min_pairs=1	7	0.866586	0	17.86
+cognator_config	support-adaptive-bridge, threshold=0.66, min_pairs=5	7	0.866586	0	18.86
+cognator_config	support-adaptive-bridge, threshold=0.68, min_pairs=1	7	0.867503	2	15.71
+cognator_config	support-adaptive-bridge, threshold=0.68, min_pairs=5	7	0.867503	0	16.71
+cognator_config	support-adaptive-bridge, threshold=0.70, min_pairs=1	7	0.865670	0	18.00
+cognator_config	support-adaptive-bridge, threshold=0.70, min_pairs=5	7	0.865670	0	19.00
+cognator_config	support-adaptive-bridge, threshold=0.72, min_pairs=1	7	0.864056	1	18.00
+cognator_config	support-adaptive-bridge, threshold=0.72, min_pairs=5	7	0.864056	0	19.00
+cognator_config	support-adaptive-bridge, threshold=0.74, min_pairs=1	7	0.862608	1	17.57
+cognator_config	support-adaptive-bridge, threshold=0.74, min_pairs=5	7	0.862608	0	18.57
+cognator_min_pairs	1	42	0.865608	7	17.07
+cognator_min_pairs	5	42	0.865608	0	18.07
+cognator_threshold	0.64	14	0.867225	3	15.79
+cognator_threshold	0.66	14	0.866586	0	18.36
+cognator_threshold	0.68	14	0.867503	2	16.21
+cognator_threshold	0.70	14	0.865670	0	18.50
+cognator_threshold	0.72	14	0.864056	1	18.50
+cognator_threshold	0.74	14	0.862608	1	18.07
+lingpy_cluster_method	infomap	98	0.841565	3	21.78
+lingpy_cluster_method	upgma	98	0.856267	4	21.73
+lingpy_config	lexstat, infomap, threshold=0.45	7	0.853678	0	26.71
+lingpy_config	lexstat, infomap, threshold=0.50	7	0.881008	0	15.71
+lingpy_config	lexstat, infomap, threshold=0.55	7	0.893224	1	11.29
+lingpy_config	lexstat, infomap, threshold=0.60	7	0.893356	0	10.29
+lingpy_config	lexstat, infomap, threshold=0.65	7	0.885818	0	12.86
+lingpy_config	lexstat, infomap, threshold=0.70	7	0.869866	1	14.43
+lingpy_config	lexstat, infomap, threshold=0.75	7	0.844680	1	19.00
+lingpy_config	lexstat, upgma, threshold=0.45	7	0.818683	0	30.57
+lingpy_config	lexstat, upgma, threshold=0.50	7	0.845478	0	28.00
+lingpy_config	lexstat, upgma, threshold=0.55	7	0.864907	1	25.00
+lingpy_config	lexstat, upgma, threshold=0.60	7	0.880197	0	20.14
+lingpy_config	lexstat, upgma, threshold=0.65	7	0.893894	0	12.00
+lingpy_config	lexstat, upgma, threshold=0.70	7	0.897264	1	8.71
+lingpy_config	lexstat, upgma, threshold=0.75	7	0.890382	1	8.86
+lingpy_config	sca, infomap, threshold=0.45	7	0.870447	0	19.43
+lingpy_config	sca, infomap, threshold=0.50	7	0.859619	0	20.71
+lingpy_config	sca, infomap, threshold=0.55	7	0.840162	0	23.57
+lingpy_config	sca, infomap, threshold=0.60	7	0.810862	0	29.71
+lingpy_config	sca, infomap, threshold=0.65	7	0.782587	0	32.29
+lingpy_config	sca, infomap, threshold=0.70	7	0.756726	0	33.71
+lingpy_config	sca, infomap, threshold=0.75	7	0.739875	0	35.14
+lingpy_config	sca, upgma, threshold=0.45	7	0.867050	1	23.71
+lingpy_config	sca, upgma, threshold=0.50	7	0.875622	0	18.71
+lingpy_config	sca, upgma, threshold=0.55	7	0.872417	0	19.86
+lingpy_config	sca, upgma, threshold=0.60	7	0.857920	0	20.43
+lingpy_config	sca, upgma, threshold=0.65	7	0.836841	0	24.86
+lingpy_config	sca, upgma, threshold=0.70	7	0.810714	0	30.86
+lingpy_config	sca, upgma, threshold=0.75	7	0.776365	0	32.57
+lingpy_method	lexstat	98	0.872317	6	17.40
+lingpy_method	sca	98	0.825515	1	26.11

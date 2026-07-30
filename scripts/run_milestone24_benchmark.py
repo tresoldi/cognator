@@ -27,7 +27,15 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 
-DEFAULT_DATASETS = ["carvalhopurus=https://github.com/lexibank/carvalhopurus.git"]
+DEFAULT_DATASETS = [
+    "carvalhopurus=https://github.com/lexibank/carvalhopurus.git",
+    "chaconarawakan=https://github.com/lexibank/chaconarawakan.git",
+    "davletshinaztecan=https://github.com/lexibank/davletshinaztecan.git",
+    "mcelhanonhuon=https://github.com/lexibank/mcelhanonhuon.git",
+    "starostintujia=https://github.com/lexibank/starostintujia.git",
+    "syrjaenenuralic=https://github.com/lexibank/syrjaenenuralic.git",
+    "wichmannmixezoquean=https://github.com/lexibank/wichmannmixezoquean.git",
+]
 COGNATOR_FIELDS = ["ID", "Language_ID", "Concept", "Segments", "Family", "Cognacy"]
 
 
@@ -49,6 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-download", action="store_true")
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--lingpy-runs", type=int, default=1000)
+    parser.add_argument("--max-forms", type=int, default=2500)
     parser.add_argument("--cognator-thresholds", default="0.64,0.66,0.68,0.70,0.72,0.74")
     parser.add_argument("--cognator-min-pairs", default="1,5")
     parser.add_argument("--lingpy-thresholds", default="0.45,0.50,0.55,0.60,0.65,0.70,0.75")
@@ -149,6 +158,13 @@ def convert_lexibank(name: str, repo: Path) -> list[Form]:
             )
         )
     return rows
+
+
+def skip_result(name: str, url: str, rows: list[Form], reason: str) -> dict[str, object]:
+    dims = dimensions(rows)
+    row = result_row(name, "skipped", "", "", 0.0, 0, 0.0, 0.0, 0.0, 0, 0, dims, reason)
+    row["source"] = url
+    return row
 
 
 def write_cognator_input(path: Path, rows: list[Form]) -> None:
@@ -404,6 +420,10 @@ def best_by_engine(rows: list[dict[str, object]]) -> dict[str, dict[str, object]
     return best
 
 
+def runnable_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    return [row for row in rows if row["engine"] != "skipped"]
+
+
 def config_label(row: dict[str, object]) -> str:
     parts = [str(row["method"])]
     if row["cluster_method"]:
@@ -432,7 +452,7 @@ def write_summary(path: Path, rows: list[dict[str, object]]) -> None:
         writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         for dataset in sorted(grouped):
-            best = best_by_engine(grouped[dataset])
+            best = best_by_engine(runnable_rows(grouped[dataset]))
             cognator = best.get("cognator-python")
             lingpy = best.get("lingpy")
             delta = float(cognator["f1"]) - float(lingpy["f1"]) if cognator and lingpy else 0.0
@@ -445,6 +465,71 @@ def write_summary(path: Path, rows: list[dict[str, object]]) -> None:
                     "best_lingpy_f1": f"{float(lingpy['f1']):.6f}" if lingpy else "",
                     "delta_f1": f"{delta:.6f}",
                     "winner": "cognator" if delta > 0 else "lingpy" if delta < 0 else "tie",
+                }
+            )
+
+
+def write_parameter_summary(path: Path, rows: list[dict[str, object]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fields = ["scope", "selector", "observations", "mean_f1", "best_count", "mean_rank"]
+    grouped = defaultdict(list)
+    for row in runnable_rows(rows):
+        grouped[row["dataset"]].append(row)
+
+    buckets: dict[tuple[str, str], list[tuple[float, int]]] = defaultdict(list)
+    for dataset_rows in grouped.values():
+        ranked = sorted(dataset_rows, key=lambda row: float(row["f1"]), reverse=True)
+        for rank, row in enumerate(ranked, start=1):
+            engine = str(row["engine"])
+            threshold = f"{float(row['threshold']):.2f}"
+            if engine == "cognator-python":
+                buckets[("cognator_threshold", threshold)].append((float(row["f1"]), rank))
+                buckets[("cognator_min_pairs", str(row["min_pairs"]))].append((float(row["f1"]), rank))
+                buckets[("cognator_config", config_label(row))].append((float(row["f1"]), rank))
+            elif engine == "lingpy":
+                buckets[("lingpy_method", str(row["method"]))].append((float(row["f1"]), rank))
+                buckets[("lingpy_cluster_method", str(row["cluster_method"]))].append((float(row["f1"]), rank))
+                buckets[("lingpy_config", config_label(row))].append((float(row["f1"]), rank))
+
+    best_config_by_dataset = {}
+    for dataset, dataset_rows in grouped.items():
+        for engine in ("cognator-python", "lingpy"):
+            engine_rows = [row for row in dataset_rows if row["engine"] == engine]
+            if not engine_rows:
+                continue
+            best_config_by_dataset[(dataset, engine)] = config_label(max(engine_rows, key=lambda row: float(row["f1"])))
+
+    best_counts = defaultdict(int)
+    for (_, engine), label in best_config_by_dataset.items():
+        if engine == "cognator-python":
+            best_counts[("cognator_config", label)] += 1
+            for part in label.split(", "):
+                if part.startswith("threshold="):
+                    best_counts[("cognator_threshold", part.removeprefix("threshold="))] += 1
+                if part.startswith("min_pairs="):
+                    best_counts[("cognator_min_pairs", part.removeprefix("min_pairs="))] += 1
+        elif engine == "lingpy":
+            best_counts[("lingpy_config", label)] += 1
+            parts = label.split(", ")
+            best_counts[("lingpy_method", parts[0])] += 1
+            if len(parts) > 2:
+                best_counts[("lingpy_cluster_method", parts[1])] += 1
+
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
+        writer.writeheader()
+        for key in sorted(buckets):
+            values = buckets[key]
+            mean_f1 = sum(value[0] for value in values) / len(values)
+            mean_rank = sum(value[1] for value in values) / len(values)
+            writer.writerow(
+                {
+                    "scope": key[0],
+                    "selector": key[1],
+                    "observations": len(values),
+                    "mean_f1": f"{mean_f1:.6f}",
+                    "best_count": best_counts[key],
+                    "mean_rank": f"{mean_rank:.2f}",
                 }
             )
 
@@ -467,17 +552,34 @@ def write_report(path: Path, rows: list[dict[str, object]], datasets: list[tuple
         dims = dimensions_from_results(grouped.get(name, []))
         lines.append(f"- {name}: {url} ({dims})")
     lines.extend(["", "## Best Results", ""])
+    deltas = []
     for dataset in sorted(grouped):
-        best = best_by_engine(grouped[dataset])
+        best = best_by_engine(runnable_rows(grouped[dataset]))
         cognator = best.get("cognator-python")
         lingpy = best.get("lingpy")
         if not cognator or not lingpy:
+            skipped = [row for row in grouped[dataset] if row["engine"] == "skipped"]
+            if skipped:
+                lines.append(f"- {dataset}: skipped ({skipped[0]['notes']}).")
             continue
         delta = float(cognator["f1"]) - float(lingpy["f1"])
+        deltas.append(delta)
         lines.append(
             f"- {dataset}: Cognator {float(cognator['f1']):.4f} ({config_label(cognator)}) vs "
             f"LingPy {float(lingpy['f1']):.4f} ({config_label(lingpy)}), delta {delta:+.4f}."
         )
+    if deltas:
+        wins = sum(1 for delta in deltas if delta > 0)
+        lines.extend(
+            [
+                "",
+                "## Aggregate",
+                "",
+                f"- Cognator wins {wins}/{len(deltas)} runnable datasets; mean best-of-grid delta is {sum(deltas) / len(deltas):+.4f} F1.",
+                "- This wider sample does not yet justify claiming broad quality superiority over LingPy; it identifies the next modeling work needed before Go retirement.",
+            ]
+        )
+    lines.extend(parameter_findings(rows))
     lines.extend(
         [
             "",
@@ -499,6 +601,45 @@ def dimensions_from_results(rows: list[dict[str, object]]) -> str:
     return f"{row['rows']} forms, {row['lects']} lects, {row['concepts']} concepts"
 
 
+def parameter_findings(rows: list[dict[str, object]]) -> list[str]:
+    grouped = defaultdict(list)
+    for row in runnable_rows(rows):
+        grouped[row["dataset"]].append(row)
+    cognator_thresholds = defaultdict(int)
+    cognator_min_pairs = defaultdict(int)
+    lingpy_methods = defaultdict(int)
+    lingpy_clusters = defaultdict(int)
+    for dataset_rows in grouped.values():
+        best = best_by_engine(dataset_rows)
+        cognator = best.get("cognator-python")
+        lingpy = best.get("lingpy")
+        if cognator:
+            cognator_thresholds[f"{float(cognator['threshold']):.2f}"] += 1
+            cognator_min_pairs[str(cognator["min_pairs"])] += 1
+        if lingpy:
+            lingpy_methods[str(lingpy["method"])] += 1
+            lingpy_clusters[str(lingpy["cluster_method"])] += 1
+    if not grouped:
+        return []
+    return [
+        "",
+        "## Parameter Findings",
+        "",
+        f"- Cognator best thresholds by dataset: {format_counts(cognator_thresholds)}.",
+        "- Cognator's stronger settings are concentrated at lower thresholds, so the next tuning work should prefer adaptive thresholding over raising the global cutoff.",
+        f"- Cognator `min_pairs` best counts: {format_counts(cognator_min_pairs)}; `min_pairs=5` did not produce a best-of-dataset quality win in this sample.",
+        f"- LingPy best methods by dataset: {format_counts(lingpy_methods)}.",
+        f"- LingPy best cluster methods by dataset: {format_counts(lingpy_clusters)}.",
+        "- LingPy LexStat remains the main quality target; SCA only wins on `syrjaenenuralic`, where conservative UPGMA at threshold 0.45 is much stronger than Cognator's current graph setting.",
+    ]
+
+
+def format_counts(counts: dict[str, int]) -> str:
+    if not counts:
+        return "none"
+    return ", ".join(f"{key}={value}" for key, value in sorted(counts.items(), key=lambda item: (-item[1], item[0])))
+
+
 def main() -> None:
     args = parse_args()
     datasets = parse_datasets(args.dataset)
@@ -512,6 +653,9 @@ def main() -> None:
         rows = convert_lexibank(name, repo)
         if not rows:
             raise SystemExit(f"{name} produced no cognacy-annotated rows")
+        if args.max_forms > 0 and len(rows) > args.max_forms:
+            all_results.append(skip_result(name, url, rows, f"{len(rows)} forms exceeds max-forms={args.max_forms}"))
+            continue
         input_path = work_dir / "converted" / f"{name}.tsv"
         write_cognator_input(input_path, rows)
         all_results.extend(
@@ -538,6 +682,7 @@ def main() -> None:
 
     write_results(out_dir / "results.tsv", all_results)
     write_summary(out_dir / "summary.tsv", all_results)
+    write_parameter_summary(out_dir / "parameter_summary.tsv", all_results)
     write_report(out_dir / "report.md", all_results, datasets)
 
 

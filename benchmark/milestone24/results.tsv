@@ -1,41 +1,281 @@
 dataset	engine	method	cluster_method	threshold	min_pairs	precision	recall	f1	elapsed_ms	rows	lects	concepts	clusters	notes
-carvalhopurus	cognator-python	support-adaptive-bridge		0.640000	1	0.995896	0.990196	0.993038	3481	731	4	199	208	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.640000	5	0.995896	0.990196	0.993038	3497	731	4	199	208	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.660000	1	0.995896	0.990196	0.993038	3244	731	4	199	208	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.660000	5	0.995896	0.990196	0.993038	2162	731	4	199	208	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.680000	1	0.995896	0.990196	0.993038	2180	731	4	199	208	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.680000	5	0.995896	0.990196	0.993038	2181	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.640000	1	0.995896	0.990196	0.993038	2152	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.640000	5	0.995896	0.990196	0.993038	2152	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.660000	1	0.995896	0.990196	0.993038	2154	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.660000	5	0.995896	0.990196	0.993038	2164	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.680000	1	0.995896	0.990196	0.993038	2148	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.680000	5	0.995896	0.990196	0.993038	2163	731	4	199	208	none
 carvalhopurus	cognator-python	support-adaptive-bridge		0.700000	1	0.995896	0.990196	0.993038	2182	731	4	199	208	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.700000	5	0.995896	0.990196	0.993038	2190	731	4	199	208	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.720000	1	0.995759	0.992248	0.994001	2191	731	4	199	207	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.720000	5	0.995759	0.992248	0.994001	2181	731	4	199	207	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.740000	1	0.995759	0.992248	0.994001	2202	731	4	199	207	none
-carvalhopurus	cognator-python	support-adaptive-bridge		0.740000	5	0.995759	0.992248	0.994001	2191	731	4	199	207	none
-carvalhopurus	lingpy	lexstat	infomap	0.450000	0	0.993258	0.786959	0.878155	173	731	4	199	328	runs=1000
+carvalhopurus	cognator-python	support-adaptive-bridge		0.700000	5	0.995896	0.990196	0.993038	2174	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.720000	1	0.995759	0.992248	0.994001	2161	731	4	199	207	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.720000	5	0.995759	0.992248	0.994001	2198	731	4	199	207	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.740000	1	0.995759	0.992248	0.994001	2179	731	4	199	207	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.740000	5	0.995759	0.992248	0.994001	2186	731	4	199	207	none
+carvalhopurus	lingpy	lexstat	infomap	0.450000	0	0.993258	0.786959	0.878155	175	731	4	199	328	runs=1000
 carvalhopurus	lingpy	lexstat	infomap	0.500000	0	0.993258	0.849430	0.915731	175	731	4	199	287	runs=1000
-carvalhopurus	lingpy	lexstat	infomap	0.550000	0	0.993258	0.903967	0.946511	184	731	4	199	255	runs=1000
-carvalhopurus	lingpy	lexstat	infomap	0.600000	0	0.991206	0.925308	0.957124	183	731	4	199	245	runs=1000
-carvalhopurus	lingpy	lexstat	infomap	0.650000	0	0.991206	0.958048	0.974345	173	731	4	199	226	runs=1000
+carvalhopurus	lingpy	lexstat	infomap	0.550000	0	0.993258	0.903967	0.946511	186	731	4	199	255	runs=1000
+carvalhopurus	lingpy	lexstat	infomap	0.600000	0	0.991206	0.925308	0.957124	198	731	4	199	245	runs=1000
+carvalhopurus	lingpy	lexstat	infomap	0.650000	0	0.991206	0.958048	0.974345	193	731	4	199	226	runs=1000
 carvalhopurus	lingpy	lexstat	infomap	0.700000	0	0.991206	0.982672	0.986921	177	731	4	199	213	runs=1000
-carvalhopurus	lingpy	lexstat	infomap	0.750000	0	0.985734	0.989968	0.987846	176	731	4	199	208	runs=1000
-carvalhopurus	lingpy	lexstat	upgma	0.450000	0	0.994528	0.726311	0.839517	100	731	4	199	360	runs=1000
-carvalhopurus	lingpy	lexstat	upgma	0.500000	0	0.993844	0.794710	0.883192	98	731	4	199	316	runs=1000
-carvalhopurus	lingpy	lexstat	upgma	0.550000	0	0.993258	0.839626	0.910003	98	731	4	199	289	runs=1000
-carvalhopurus	lingpy	lexstat	upgma	0.600000	0	0.993258	0.883630	0.935242	98	731	4	199	266	runs=1000
-carvalhopurus	lingpy	lexstat	upgma	0.650000	0	0.993258	0.916370	0.953266	98	731	4	199	248	runs=1000
-carvalhopurus	lingpy	lexstat	upgma	0.700000	0	0.993258	0.933470	0.962436	98	731	4	199	238	runs=1000
-carvalhopurus	lingpy	lexstat	upgma	0.750000	0	0.993258	0.960876	0.976798	99	731	4	199	223	runs=1000
-carvalhopurus	lingpy	sca	infomap	0.450000	0	0.993258	0.828956	0.903700	135	731	4	199	297	none
-carvalhopurus	lingpy	sca	infomap	0.500000	0	0.984138	0.876151	0.927010	151	731	4	199	267	none
-carvalhopurus	lingpy	sca	infomap	0.550000	0	0.982086	0.919927	0.949991	149	731	4	199	244	none
-carvalhopurus	lingpy	sca	infomap	0.600000	0	0.980262	0.947424	0.963563	140	731	4	199	229	none
+carvalhopurus	lingpy	lexstat	infomap	0.750000	0	0.985734	0.989968	0.987846	180	731	4	199	208	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.450000	0	0.994528	0.726311	0.839517	101	731	4	199	360	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.500000	0	0.993844	0.794710	0.883192	99	731	4	199	316	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.550000	0	0.993258	0.839626	0.910003	101	731	4	199	289	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.600000	0	0.993258	0.883630	0.935242	100	731	4	199	266	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.650000	0	0.993258	0.916370	0.953266	99	731	4	199	248	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.700000	0	0.993258	0.933470	0.962436	99	731	4	199	238	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.750000	0	0.993258	0.960876	0.976798	100	731	4	199	223	runs=1000
+carvalhopurus	lingpy	sca	infomap	0.450000	0	0.993258	0.828956	0.903700	138	731	4	199	297	none
+carvalhopurus	lingpy	sca	infomap	0.500000	0	0.984138	0.876151	0.927010	126	731	4	199	267	none
+carvalhopurus	lingpy	sca	infomap	0.550000	0	0.982086	0.919927	0.949991	148	731	4	199	244	none
+carvalhopurus	lingpy	sca	infomap	0.600000	0	0.980262	0.947424	0.963563	126	731	4	199	229	none
 carvalhopurus	lingpy	sca	infomap	0.650000	0	0.970860	0.979024	0.974925	120	731	4	199	211	none
-carvalhopurus	lingpy	sca	infomap	0.700000	0	0.973292	0.981897	0.977575	123	731	4	199	208	none
-carvalhopurus	lingpy	sca	infomap	0.750000	0	0.966756	0.990652	0.978558	112	731	4	199	203	none
-carvalhopurus	lingpy	sca	upgma	0.450000	0	0.993258	0.781304	0.874623	60	731	4	199	324	none
+carvalhopurus	lingpy	sca	infomap	0.700000	0	0.973292	0.981897	0.977575	118	731	4	199	208	none
+carvalhopurus	lingpy	sca	infomap	0.750000	0	0.966756	0.990652	0.978558	118	731	4	199	203	none
+carvalhopurus	lingpy	sca	upgma	0.450000	0	0.993258	0.781304	0.874623	59	731	4	199	324	none
 carvalhopurus	lingpy	sca	upgma	0.500000	0	0.993258	0.835112	0.907345	59	731	4	199	290	none
-carvalhopurus	lingpy	sca	upgma	0.550000	0	0.989610	0.871135	0.926601	59	731	4	199	269	none
-carvalhopurus	lingpy	sca	upgma	0.600000	0	0.984138	0.907159	0.944082	59	731	4	199	248	none
-carvalhopurus	lingpy	sca	upgma	0.650000	0	0.984138	0.941131	0.962154	59	731	4	199	230	none
+carvalhopurus	lingpy	sca	upgma	0.550000	0	0.989610	0.871135	0.926601	58	731	4	199	269	none
+carvalhopurus	lingpy	sca	upgma	0.600000	0	0.984138	0.907159	0.944082	58	731	4	199	248	none
+carvalhopurus	lingpy	sca	upgma	0.650000	0	0.984138	0.941131	0.962154	58	731	4	199	230	none
 carvalhopurus	lingpy	sca	upgma	0.700000	0	0.982086	0.964797	0.973365	58	731	4	199	218	none
-carvalhopurus	lingpy	sca	upgma	0.750000	0	0.974964	0.982900	0.978916	59	731	4	199	209	none
+carvalhopurus	lingpy	sca	upgma	0.750000	0	0.974964	0.982900	0.978916	58	731	4	199	209	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.640000	1	0.771546	0.806694	0.788729	5453	711	8	100	233	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.640000	5	0.771546	0.806694	0.788729	5467	711	8	100	233	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.660000	1	0.768967	0.821000	0.794132	5463	711	8	100	227	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.660000	5	0.768967	0.821000	0.794132	5501	711	8	100	227	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.680000	1	0.768740	0.832278	0.799248	5515	711	8	100	224	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.680000	5	0.768740	0.832278	0.799248	5528	711	8	100	224	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.700000	1	0.766161	0.832747	0.798068	5575	711	8	100	222	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.700000	5	0.766161	0.832747	0.798068	5583	711	8	100	222	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.720000	1	0.760770	0.837553	0.797317	5521	711	8	100	220	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.720000	5	0.760770	0.837553	0.797317	5481	711	8	100	220	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.740000	1	0.763348	0.850938	0.804767	5628	711	8	100	216	none
+chaconarawakan	cognator-python	support-adaptive-bridge		0.740000	5	0.763348	0.850938	0.804767	5580	711	8	100	216	none
+chaconarawakan	lingpy	lexstat	infomap	0.450000	0	0.987074	0.530634	0.690219	310	711	8	100	570	runs=1000
+chaconarawakan	lingpy	lexstat	infomap	0.500000	0	0.973034	0.606541	0.747271	271	711	8	100	511	runs=1000
+chaconarawakan	lingpy	lexstat	infomap	0.550000	0	0.950802	0.665884	0.783237	285	711	8	100	450	runs=1000
+chaconarawakan	lingpy	lexstat	infomap	0.600000	0	0.921302	0.737569	0.819261	296	711	8	100	399	runs=1000
+chaconarawakan	lingpy	lexstat	infomap	0.650000	0	0.873142	0.805623	0.838024	281	711	8	100	332	runs=1000
+chaconarawakan	lingpy	lexstat	infomap	0.700000	0	0.835101	0.862839	0.848744	266	711	8	100	282	runs=1000
+chaconarawakan	lingpy	lexstat	infomap	0.750000	0	0.758446	0.918418	0.830802	283	711	8	100	222	runs=1000
+chaconarawakan	lingpy	lexstat	upgma	0.450000	0	0.993905	0.497908	0.663452	192	711	8	100	591	runs=1000
+chaconarawakan	lingpy	lexstat	upgma	0.500000	0	0.987811	0.529201	0.689184	192	711	8	100	556	runs=1000
+chaconarawakan	lingpy	lexstat	upgma	0.550000	0	0.981622	0.578509	0.727986	192	711	8	100	510	runs=1000
+chaconarawakan	lingpy	lexstat	upgma	0.600000	0	0.972714	0.617502	0.755435	193	711	8	100	473	runs=1000
+chaconarawakan	lingpy	lexstat	upgma	0.650000	0	0.951242	0.688766	0.799000	194	711	8	100	418	runs=1000
+chaconarawakan	lingpy	lexstat	upgma	0.700000	0	0.931237	0.763006	0.838770	195	711	8	100	367	runs=1000
+chaconarawakan	lingpy	lexstat	upgma	0.750000	0	0.886769	0.810391	0.846861	194	711	8	100	318	runs=1000
+chaconarawakan	lingpy	sca	infomap	0.450000	0	0.869626	0.767327	0.815280	179	711	8	100	344	none
+chaconarawakan	lingpy	sca	infomap	0.500000	0	0.826342	0.845561	0.835841	178	711	8	100	287	none
+chaconarawakan	lingpy	sca	infomap	0.550000	0	0.792552	0.899531	0.842660	216	711	8	100	245	none
+chaconarawakan	lingpy	sca	infomap	0.600000	0	0.676554	0.936749	0.785669	276	711	8	100	174	none
+chaconarawakan	lingpy	sca	infomap	0.650000	0	0.619398	0.965475	0.754651	175	711	8	100	133	none
+chaconarawakan	lingpy	sca	infomap	0.700000	0	0.581242	0.987717	0.731826	161	711	8	100	111	none
+chaconarawakan	lingpy	sca	infomap	0.750000	0	0.565949	1.000000	0.722819	207	711	8	100	101	none
+chaconarawakan	lingpy	sca	upgma	0.450000	0	0.941752	0.671899	0.784261	106	711	8	100	417	none
+chaconarawakan	lingpy	sca	upgma	0.500000	0	0.910629	0.723513	0.806358	102	711	8	100	373	none
+chaconarawakan	lingpy	sca	upgma	0.550000	0	0.877945	0.784791	0.828759	103	711	8	100	326	none
+chaconarawakan	lingpy	sca	upgma	0.600000	0	0.843108	0.837440	0.840265	101	711	8	100	281	none
+chaconarawakan	lingpy	sca	upgma	0.650000	0	0.758371	0.901336	0.823696	102	711	8	100	217	none
+chaconarawakan	lingpy	sca	upgma	0.700000	0	0.672011	0.941464	0.784238	103	711	8	100	165	none
+chaconarawakan	lingpy	sca	upgma	0.750000	0	0.597948	0.972835	0.740656	103	711	8	100	122	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.640000	1	0.897078	0.935335	0.915807	5829	854	9	100	167	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.640000	5	0.897078	0.935335	0.915807	5767	854	9	100	167	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.660000	1	0.895029	0.928570	0.911491	5865	854	9	100	168	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.660000	5	0.895029	0.928570	0.911491	5886	854	9	100	168	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.680000	1	0.890000	0.931321	0.910192	5984	854	9	100	163	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.680000	5	0.890000	0.931321	0.910192	6071	854	9	100	163	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.700000	1	0.891288	0.933078	0.911704	5908	854	9	100	163	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.700000	5	0.891288	0.933078	0.911704	6053	854	9	100	163	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.720000	1	0.884523	0.933078	0.908152	6013	854	9	100	161	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.720000	5	0.884523	0.933078	0.908152	5963	854	9	100	161	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.740000	1	0.884490	0.941892	0.912289	5927	854	9	100	158	none
+davletshinaztecan	cognator-python	support-adaptive-bridge		0.740000	5	0.884490	0.941892	0.912289	5930	854	9	100	158	none
+davletshinaztecan	lingpy	lexstat	infomap	0.450000	0	0.938412	0.853989	0.894212	411	854	9	100	237	runs=1000
+davletshinaztecan	lingpy	lexstat	infomap	0.500000	0	0.940220	0.905951	0.922768	446	854	9	100	213	runs=1000
+davletshinaztecan	lingpy	lexstat	infomap	0.550000	0	0.923955	0.935234	0.929560	415	854	9	100	193	runs=1000
+davletshinaztecan	lingpy	lexstat	infomap	0.600000	0	0.899635	0.944095	0.921329	403	854	9	100	176	runs=1000
+davletshinaztecan	lingpy	lexstat	infomap	0.650000	0	0.892370	0.955080	0.922661	445	854	9	100	169	runs=1000
+davletshinaztecan	lingpy	lexstat	infomap	0.700000	0	0.880913	0.968416	0.922594	419	854	9	100	157	runs=1000
+davletshinaztecan	lingpy	lexstat	infomap	0.750000	0	0.871871	0.970465	0.918530	426	854	9	100	151	runs=1000
+davletshinaztecan	lingpy	lexstat	upgma	0.450000	0	0.982798	0.727040	0.835791	289	854	9	100	317	runs=1000
+davletshinaztecan	lingpy	lexstat	upgma	0.500000	0	0.968003	0.776855	0.861959	294	854	9	100	285	runs=1000
+davletshinaztecan	lingpy	lexstat	upgma	0.550000	0	0.953584	0.813391	0.877926	295	854	9	100	261	runs=1000
+davletshinaztecan	lingpy	lexstat	upgma	0.600000	0	0.944099	0.847371	0.893123	297	854	9	100	239	runs=1000
+davletshinaztecan	lingpy	lexstat	upgma	0.650000	0	0.936014	0.888980	0.911891	298	854	9	100	215	runs=1000
+davletshinaztecan	lingpy	lexstat	upgma	0.700000	0	0.920862	0.911326	0.916069	297	854	9	100	199	runs=1000
+davletshinaztecan	lingpy	lexstat	upgma	0.750000	0	0.915560	0.947803	0.931402	297	854	9	100	183	runs=1000
+davletshinaztecan	lingpy	sca	infomap	0.450000	0	0.908997	0.923405	0.916144	249	854	9	100	189	none
+davletshinaztecan	lingpy	sca	infomap	0.500000	0	0.884383	0.942565	0.912548	247	854	9	100	167	none
+davletshinaztecan	lingpy	sca	infomap	0.550000	0	0.866591	0.956072	0.909135	248	854	9	100	151	none
+davletshinaztecan	lingpy	sca	infomap	0.600000	0	0.857345	0.963944	0.907525	254	854	9	100	146	none
+davletshinaztecan	lingpy	sca	infomap	0.650000	0	0.841798	0.974339	0.903232	265	854	9	100	134	none
+davletshinaztecan	lingpy	sca	infomap	0.700000	0	0.829945	0.980051	0.898774	256	854	9	100	126	none
+davletshinaztecan	lingpy	sca	infomap	0.750000	0	0.811045	0.987194	0.890492	253	854	9	100	116	none
+davletshinaztecan	lingpy	sca	upgma	0.450000	0	0.942668	0.845811	0.891617	172	854	9	100	237	none
+davletshinaztecan	lingpy	sca	upgma	0.500000	0	0.927636	0.880828	0.903626	168	854	9	100	215	none
+davletshinaztecan	lingpy	sca	upgma	0.550000	0	0.910401	0.902458	0.906412	168	854	9	100	196	none
+davletshinaztecan	lingpy	sca	upgma	0.600000	0	0.895322	0.929185	0.911939	168	854	9	100	178	none
+davletshinaztecan	lingpy	sca	upgma	0.650000	0	0.879767	0.947325	0.912297	168	854	9	100	163	none
+davletshinaztecan	lingpy	sca	upgma	0.700000	0	0.860114	0.961472	0.907973	168	854	9	100	149	none
+davletshinaztecan	lingpy	sca	upgma	0.750000	0	0.844377	0.976096	0.905471	169	854	9	100	134	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.640000	1	0.697278	0.951738	0.804875	22454	1960	14	140	563	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.640000	5	0.697278	0.951738	0.804875	21956	1960	14	140	563	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.660000	1	0.687580	0.948974	0.797402	22123	1960	14	140	552	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.660000	5	0.687580	0.948974	0.797402	22195	1960	14	140	552	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.680000	1	0.678376	0.956713	0.793854	22149	1960	14	140	537	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.680000	5	0.678376	0.956713	0.793854	21663	1960	14	140	537	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.700000	1	0.664162	0.962010	0.785809	22101	1960	14	140	521	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.700000	5	0.664162	0.962010	0.785809	22055	1960	14	140	521	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.720000	1	0.650818	0.965786	0.777619	21488	1960	14	140	510	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.720000	5	0.650818	0.965786	0.777619	21423	1960	14	140	510	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.740000	1	0.632337	0.969286	0.765368	21518	1960	14	140	489	none
+mcelhanonhuon	cognator-python	support-adaptive-bridge		0.740000	5	0.632337	0.969286	0.765368	21404	1960	14	140	489	none
+mcelhanonhuon	lingpy	lexstat	infomap	0.450000	0	0.917636	0.857281	0.886433	1153	1960	14	140	1048	runs=1000
+mcelhanonhuon	lingpy	lexstat	infomap	0.500000	0	0.886015	0.896821	0.891385	1135	1960	14	140	947	runs=1000
+mcelhanonhuon	lingpy	lexstat	infomap	0.550000	0	0.813526	0.931898	0.868698	1137	1960	14	140	822	runs=1000
+mcelhanonhuon	lingpy	lexstat	infomap	0.600000	0	0.749682	0.950408	0.838195	1155	1960	14	140	713	runs=1000
+mcelhanonhuon	lingpy	lexstat	infomap	0.650000	0	0.653670	0.968997	0.780696	1146	1960	14	140	581	runs=1000
+mcelhanonhuon	lingpy	lexstat	infomap	0.700000	0	0.559862	0.981341	0.712970	1192	1960	14	140	452	runs=1000
+mcelhanonhuon	lingpy	lexstat	infomap	0.750000	0	0.483071	0.983340	0.647871	1122	1960	14	140	351	runs=1000
+mcelhanonhuon	lingpy	lexstat	upgma	0.450000	0	0.973795	0.782938	0.867999	886	1960	14	140	1187	runs=1000
+mcelhanonhuon	lingpy	lexstat	upgma	0.500000	0	0.954406	0.829089	0.887345	888	1960	14	140	1099	runs=1000
+mcelhanonhuon	lingpy	lexstat	upgma	0.550000	0	0.925123	0.863101	0.893036	887	1960	14	140	1015	runs=1000
+mcelhanonhuon	lingpy	lexstat	upgma	0.600000	0	0.875809	0.897268	0.886408	893	1960	14	140	903	runs=1000
+mcelhanonhuon	lingpy	lexstat	upgma	0.650000	0	0.831063	0.928525	0.877094	894	1960	14	140	815	runs=1000
+mcelhanonhuon	lingpy	lexstat	upgma	0.700000	0	0.755714	0.949256	0.841500	904	1960	14	140	695	runs=1000
+mcelhanonhuon	lingpy	lexstat	upgma	0.750000	0	0.684771	0.967657	0.802000	930	1960	14	140	600	runs=1000
+mcelhanonhuon	lingpy	sca	infomap	0.450000	0	0.668288	0.965352	0.789810	746	1960	14	140	603	none
+mcelhanonhuon	lingpy	sca	infomap	0.500000	0	0.578571	0.977373	0.726864	727	1960	14	140	476	none
+mcelhanonhuon	lingpy	sca	infomap	0.550000	0	0.505410	0.981752	0.667294	830	1960	14	140	379	none
+mcelhanonhuon	lingpy	sca	infomap	0.600000	0	0.424555	0.983766	0.593136	746	1960	14	140	286	none
+mcelhanonhuon	lingpy	sca	infomap	0.650000	0	0.370922	0.990654	0.539750	745	1960	14	140	220	none
+mcelhanonhuon	lingpy	sca	infomap	0.700000	0	0.317006	0.996684	0.481019	726	1960	14	140	170	none
+mcelhanonhuon	lingpy	sca	infomap	0.750000	0	0.293610	1.000000	0.453939	691	1960	14	140	147	none
+mcelhanonhuon	lingpy	sca	upgma	0.450000	0	0.775923	0.926966	0.844746	515	1960	14	140	757	none
+mcelhanonhuon	lingpy	sca	upgma	0.500000	0	0.724334	0.952743	0.822984	511	1960	14	140	668	none
+mcelhanonhuon	lingpy	sca	upgma	0.550000	0	0.669358	0.963457	0.789921	513	1960	14	140	586	none
+mcelhanonhuon	lingpy	sca	upgma	0.600000	0	0.581204	0.972179	0.727489	518	1960	14	140	475	none
+mcelhanonhuon	lingpy	sca	upgma	0.650000	0	0.508211	0.978122	0.668884	522	1960	14	140	388	none
+mcelhanonhuon	lingpy	sca	upgma	0.700000	0	0.434932	0.986717	0.603743	524	1960	14	140	301	none
+mcelhanonhuon	lingpy	sca	upgma	0.750000	0	0.354248	0.992227	0.522095	533	1960	14	140	212	none
+starostintujia	cognator-python	support-adaptive-bridge		0.640000	1	0.904938	0.927875	0.916263	1300	513	5	109	167	none
+starostintujia	cognator-python	support-adaptive-bridge		0.640000	5	0.904938	0.927875	0.916263	1259	513	5	109	167	none
+starostintujia	cognator-python	support-adaptive-bridge		0.660000	1	0.904938	0.934113	0.919294	1224	513	5	109	165	none
+starostintujia	cognator-python	support-adaptive-bridge		0.660000	5	0.904938	0.934113	0.919294	1229	513	5	109	165	none
+starostintujia	cognator-python	support-adaptive-bridge		0.680000	1	0.904938	0.943470	0.923802	1231	513	5	109	163	none
+starostintujia	cognator-python	support-adaptive-bridge		0.680000	5	0.904938	0.943470	0.923802	1228	513	5	109	163	none
+starostintujia	cognator-python	support-adaptive-bridge		0.700000	1	0.900260	0.943470	0.921359	1233	513	5	109	162	none
+starostintujia	cognator-python	support-adaptive-bridge		0.700000	5	0.900260	0.943470	0.921359	1233	513	5	109	162	none
+starostintujia	cognator-python	support-adaptive-bridge		0.720000	1	0.900260	0.943470	0.921359	1227	513	5	109	162	none
+starostintujia	cognator-python	support-adaptive-bridge		0.720000	5	0.900260	0.943470	0.921359	1226	513	5	109	162	none
+starostintujia	cognator-python	support-adaptive-bridge		0.740000	1	0.900260	0.948148	0.923584	1266	513	5	109	161	none
+starostintujia	cognator-python	support-adaptive-bridge		0.740000	5	0.900260	0.948148	0.923584	1301	513	5	109	161	none
+starostintujia	lingpy	lexstat	infomap	0.450000	0	0.990578	0.771670	0.867528	190	513	5	109	255	runs=1000
+starostintujia	lingpy	lexstat	infomap	0.500000	0	0.988629	0.821118	0.897121	194	513	5	109	234	runs=1000
+starostintujia	lingpy	lexstat	infomap	0.550000	0	0.986680	0.874919	0.927444	178	513	5	109	216	runs=1000
+starostintujia	lingpy	lexstat	infomap	0.600000	0	0.973879	0.903769	0.937515	196	513	5	109	202	runs=1000
+starostintujia	lingpy	lexstat	infomap	0.650000	0	0.946589	0.931579	0.939024	191	513	5	109	186	runs=1000
+starostintujia	lingpy	lexstat	infomap	0.700000	0	0.905458	0.956660	0.930355	178	513	5	109	168	runs=1000
+starostintujia	lingpy	lexstat	infomap	0.750000	0	0.887329	0.970630	0.927112	169	513	5	109	159	runs=1000
+starostintujia	lingpy	lexstat	upgma	0.450000	0	0.996101	0.711111	0.829819	111	513	5	109	277	runs=1000
+starostintujia	lingpy	lexstat	upgma	0.500000	0	0.991553	0.753411	0.856232	108	513	5	109	255	runs=1000
+starostintujia	lingpy	lexstat	upgma	0.550000	0	0.989604	0.786810	0.876631	107	513	5	109	240	runs=1000
+starostintujia	lingpy	lexstat	upgma	0.600000	0	0.989604	0.835153	0.905842	106	513	5	109	222	runs=1000
+starostintujia	lingpy	lexstat	upgma	0.650000	0	0.987005	0.870240	0.924952	106	513	5	109	210	runs=1000
+starostintujia	lingpy	lexstat	upgma	0.700000	0	0.979727	0.903639	0.940146	106	513	5	109	199	runs=1000
+starostintujia	lingpy	lexstat	upgma	0.750000	0	0.943990	0.926901	0.935367	106	513	5	109	184	runs=1000
+starostintujia	lingpy	sca	infomap	0.450000	0	0.941391	0.880507	0.909931	118	513	5	109	205	none
+starostintujia	lingpy	sca	infomap	0.500000	0	0.930669	0.904743	0.917523	120	513	5	109	193	none
+starostintujia	lingpy	sca	infomap	0.550000	0	0.890383	0.928785	0.909179	109	513	5	109	174	none
+starostintujia	lingpy	sca	infomap	0.600000	0	0.863548	0.967641	0.912636	109	513	5	109	155	none
+starostintujia	lingpy	sca	infomap	0.650000	0	0.821442	0.976608	0.892330	110	513	5	109	140	none
+starostintujia	lingpy	sca	infomap	0.700000	0	0.814815	0.976608	0.888405	104	513	5	109	138	none
+starostintujia	lingpy	sca	infomap	0.750000	0	0.790253	0.984405	0.876709	111	513	5	109	128	none
+starostintujia	lingpy	sca	upgma	0.450000	0	0.969526	0.832554	0.895834	64	513	5	109	227	none
+starostintujia	lingpy	sca	upgma	0.500000	0	0.952567	0.864782	0.906554	63	513	5	109	211	none
+starostintujia	lingpy	sca	upgma	0.550000	0	0.940611	0.890968	0.915117	62	513	5	109	199	none
+starostintujia	lingpy	sca	upgma	0.600000	0	0.922157	0.916699	0.919420	62	513	5	109	184	none
+starostintujia	lingpy	sca	upgma	0.650000	0	0.876023	0.931124	0.902734	62	513	5	109	166	none
+starostintujia	lingpy	sca	upgma	0.700000	0	0.842365	0.945419	0.890922	62	513	5	109	153	none
+starostintujia	lingpy	sca	upgma	0.750000	0	0.813840	0.969006	0.884671	61	513	5	109	139	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.640000	1	0.654883	0.919965	0.765114	12796	1401	7	173	538	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.640000	5	0.654883	0.919965	0.765114	12597	1401	7	173	538	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.660000	1	0.650457	0.926328	0.764260	12635	1401	7	173	530	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.660000	5	0.650457	0.926328	0.764260	12750	1401	7	173	530	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.680000	1	0.643522	0.931865	0.761306	12830	1401	7	173	520	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.680000	5	0.643522	0.931865	0.761306	12553	1401	7	173	520	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.700000	1	0.645253	0.933959	0.763216	12694	1401	7	173	520	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.700000	5	0.645253	0.933959	0.763216	13110	1401	7	173	520	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.720000	1	0.643982	0.937130	0.763380	12745	1401	7	173	514	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.720000	5	0.643982	0.937130	0.763380	12717	1401	7	173	514	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.740000	1	0.635138	0.939057	0.757760	12822	1401	7	173	505	none
+syrjaenenuralic	cognator-python	support-adaptive-bridge		0.740000	5	0.635138	0.939057	0.757760	12711	1401	7	173	505	none
+syrjaenenuralic	lingpy	lexstat	infomap	0.450000	0	0.952089	0.821437	0.881950	657	1401	7	173	1023	runs=1000
+syrjaenenuralic	lingpy	lexstat	infomap	0.500000	0	0.939604	0.849825	0.892462	967	1401	7	173	976	runs=1000
+syrjaenenuralic	lingpy	lexstat	infomap	0.550000	0	0.914660	0.872530	0.893098	876	1401	7	173	913	runs=1000
+syrjaenenuralic	lingpy	lexstat	infomap	0.600000	0	0.880823	0.897447	0.889058	695	1401	7	173	846	runs=1000
+syrjaenenuralic	lingpy	lexstat	infomap	0.650000	0	0.806529	0.925057	0.861736	652	1401	7	173	734	runs=1000
+syrjaenenuralic	lingpy	lexstat	infomap	0.700000	0	0.705064	0.958030	0.812308	752	1401	7	173	603	runs=1000
+syrjaenenuralic	lingpy	lexstat	infomap	0.750000	0	0.606785	0.974222	0.747806	733	1401	7	173	471	runs=1000
+syrjaenenuralic	lingpy	lexstat	upgma	0.450000	0	0.986200	0.793246	0.879262	379	1401	7	173	1084	runs=1000
+syrjaenenuralic	lingpy	lexstat	upgma	0.500000	0	0.976755	0.815795	0.889048	380	1401	7	173	1043	runs=1000
+syrjaenenuralic	lingpy	lexstat	upgma	0.550000	0	0.955579	0.838904	0.893449	387	1401	7	173	985	runs=1000
+syrjaenenuralic	lingpy	lexstat	upgma	0.600000	0	0.929883	0.863115	0.895256	382	1401	7	173	927	runs=1000
+syrjaenenuralic	lingpy	lexstat	upgma	0.650000	0	0.900452	0.886523	0.893433	389	1401	7	173	862	runs=1000
+syrjaenenuralic	lingpy	lexstat	upgma	0.700000	0	0.850156	0.913956	0.880903	388	1401	7	173	779	runs=1000
+syrjaenenuralic	lingpy	lexstat	upgma	0.750000	0	0.771196	0.940376	0.847425	385	1401	7	173	669	runs=1000
+syrjaenenuralic	lingpy	sca	infomap	0.450000	0	0.822027	0.937422	0.875941	357	1401	7	173	741	none
+syrjaenenuralic	lingpy	sca	infomap	0.500000	0	0.734572	0.964253	0.833886	387	1401	7	173	621	none
+syrjaenenuralic	lingpy	sca	infomap	0.550000	0	0.632784	0.976551	0.767952	396	1401	7	173	491	none
+syrjaenenuralic	lingpy	sca	infomap	0.600000	0	0.554840	0.985612	0.709995	374	1401	7	173	407	none
+syrjaenenuralic	lingpy	sca	infomap	0.650000	0	0.459967	0.993392	0.628789	417	1401	7	173	309	none
+syrjaenenuralic	lingpy	sca	infomap	0.700000	0	0.390183	0.997621	0.560965	345	1401	7	173	240	none
+syrjaenenuralic	lingpy	sca	infomap	0.750000	0	0.352370	0.999286	0.521018	361	1401	7	173	205	none
+syrjaenenuralic	lingpy	sca	upgma	0.450000	0	0.885653	0.906492	0.895951	224	1401	7	173	831	none
+syrjaenenuralic	lingpy	sca	upgma	0.500000	0	0.835135	0.936759	0.883033	224	1401	7	173	744	none
+syrjaenenuralic	lingpy	sca	upgma	0.550000	0	0.770494	0.955222	0.852971	224	1401	7	173	653	none
+syrjaenenuralic	lingpy	sca	upgma	0.600000	0	0.693879	0.968675	0.808567	225	1401	7	173	563	none
+syrjaenenuralic	lingpy	sca	upgma	0.650000	0	0.616208	0.977836	0.756002	224	1401	7	173	478	none
+syrjaenenuralic	lingpy	sca	upgma	0.700000	0	0.543814	0.988087	0.701527	226	1401	7	173	394	none
+syrjaenenuralic	lingpy	sca	upgma	0.750000	0	0.448544	0.996431	0.618617	227	1401	7	173	298	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.640000	1	0.845834	0.931828	0.886751	8817	1106	10	110	277	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.640000	5	0.845834	0.931828	0.886751	8803	1106	10	110	277	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.660000	1	0.842720	0.935037	0.886482	8862	1106	10	110	273	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.660000	5	0.842720	0.935037	0.886482	8909	1106	10	110	273	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.680000	1	0.843641	0.944169	0.891079	8819	1106	10	110	269	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.680000	5	0.843641	0.944169	0.891079	8488	1106	10	110	269	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.700000	1	0.836602	0.942723	0.886498	8681	1106	10	110	266	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.700000	5	0.836602	0.942723	0.886498	8575	1106	10	110	266	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.720000	1	0.835115	0.944772	0.886566	8511	1106	10	110	264	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.720000	5	0.835115	0.944772	0.886566	8686	1106	10	110	264	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.740000	1	0.823631	0.945777	0.880488	9109	1106	10	110	258	none
+wichmannmixezoquean	cognator-python	support-adaptive-bridge		0.740000	5	0.823631	0.945777	0.880488	9037	1106	10	110	258	none
+wichmannmixezoquean	lingpy	lexstat	infomap	0.450000	0	0.946005	0.817813	0.877250	608	1106	10	110	454	runs=1000
+wichmannmixezoquean	lingpy	lexstat	infomap	0.500000	0	0.934941	0.868173	0.900321	637	1106	10	110	406	runs=1000
+wichmannmixezoquean	lingpy	lexstat	infomap	0.550000	0	0.916315	0.892046	0.904018	600	1106	10	110	378	runs=1000
+wichmannmixezoquean	lingpy	lexstat	infomap	0.600000	0	0.864360	0.919363	0.891013	671	1106	10	110	331	runs=1000
+wichmannmixezoquean	lingpy	lexstat	infomap	0.650000	0	0.835531	0.938974	0.884237	581	1106	10	110	297	runs=1000
+wichmannmixezoquean	lingpy	lexstat	infomap	0.700000	0	0.807015	0.955895	0.875168	591	1106	10	110	267	runs=1000
+wichmannmixezoquean	lingpy	lexstat	infomap	0.750000	0	0.767689	0.959120	0.852794	608	1106	10	110	239	runs=1000
+wichmannmixezoquean	lingpy	lexstat	upgma	0.450000	0	0.977645	0.698666	0.814941	403	1106	10	110	546	runs=1000
+wichmannmixezoquean	lingpy	lexstat	upgma	0.500000	0	0.968603	0.759479	0.851388	385	1106	10	110	489	runs=1000
+wichmannmixezoquean	lingpy	lexstat	upgma	0.550000	0	0.959329	0.804841	0.875321	371	1106	10	110	453	runs=1000
+wichmannmixezoquean	lingpy	lexstat	upgma	0.600000	0	0.940856	0.844487	0.890070	380	1106	10	110	414	runs=1000
+wichmannmixezoquean	lingpy	lexstat	upgma	0.650000	0	0.919353	0.876899	0.897624	381	1106	10	110	382	runs=1000
+wichmannmixezoquean	lingpy	lexstat	upgma	0.700000	0	0.890020	0.912300	0.901022	380	1106	10	110	338	runs=1000
+wichmannmixezoquean	lingpy	lexstat	upgma	0.750000	0	0.861066	0.927008	0.892821	383	1106	10	110	311	runs=1000
+wichmannmixezoquean	lingpy	sca	infomap	0.450000	0	0.847003	0.920723	0.882326	512	1106	10	110	317	none
+wichmannmixezoquean	lingpy	sca	infomap	0.500000	0	0.794946	0.945376	0.863660	534	1106	10	110	276	none
+wichmannmixezoquean	lingpy	sca	infomap	0.550000	0	0.746625	0.946914	0.834926	530	1106	10	110	242	none
+wichmannmixezoquean	lingpy	sca	infomap	0.600000	0	0.688489	0.964665	0.803508	573	1106	10	110	196	none
+wichmannmixezoquean	lingpy	sca	infomap	0.650000	0	0.653410	0.981178	0.784432	456	1106	10	110	166	none
+wichmannmixezoquean	lingpy	sca	infomap	0.700000	0	0.614691	0.990205	0.758516	384	1106	10	110	142	none
+wichmannmixezoquean	lingpy	sca	infomap	0.750000	0	0.582071	0.999096	0.735590	347	1106	10	110	125	none
+wichmannmixezoquean	lingpy	sca	upgma	0.450000	0	0.917348	0.849863	0.882317	206	1106	10	110	398	none
+wichmannmixezoquean	lingpy	sca	upgma	0.500000	0	0.899430	0.899472	0.899451	207	1106	10	110	356	none
+wichmannmixezoquean	lingpy	sca	upgma	0.550000	0	0.856206	0.920386	0.887137	216	1106	10	110	314	none
+wichmannmixezoquean	lingpy	sca	upgma	0.600000	0	0.783852	0.937166	0.853680	207	1106	10	110	266	none
+wichmannmixezoquean	lingpy	sca	upgma	0.650000	0	0.739526	0.951223	0.832122	209	1106	10	110	233	none
+wichmannmixezoquean	lingpy	sca	upgma	0.700000	0	0.702597	0.965208	0.813227	214	1106	10	110	201	none
+wichmannmixezoquean	lingpy	sca	upgma	0.750000	0	0.656303	0.973797	0.784131	209	1106	10	110	170	none
