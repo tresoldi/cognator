@@ -186,7 +186,31 @@ Bootstrap intervals are optional and more expensive:
 
 ## Benchmarking
 
-The benchmark path used in this project is based on `arcaverborum` exports.
+The normal benchmark path uses the C CLI for local datasets and the Python
+wrapper for reproducible C/Python-vs-LingPy quality samples.
+
+Run the C benchmark summary on a Cognator-shaped table:
+
+```sh
+./build/cognator bench \
+  --in forms.csv \
+  --out-tsv benchmark/results.tsv \
+  --preset support-adaptive-bridge \
+  --threshold 0.68 \
+  --bootstrap 0 \
+  --min-pairs 1
+```
+
+Run the reproducible C/Python-vs-LingPy Lexibank sample:
+
+```sh
+PYTHONPATH=python python scripts/run_milestone24_benchmark.py \
+  --out-dir benchmark/milestone24
+```
+
+Historical arcaverborum comparison scripts still exist for old eval-table
+artifacts, but fresh runs require `--allow-archival-go` because they shell out
+to the frozen Go benchmark harness.
 
 Export evaluation tables from a built arcaverborum repository:
 
@@ -205,28 +229,8 @@ python scripts/run_benchmark_pipeline.py \
   --datasets-csv ../arcaverborum/datasets.csv \
   --split-file benchmark/splits/dev_core.txt \
   --track A \
+  --allow-archival-go \
   --cognator-extra-args "--threshold 0.68 --graph-mode support --graph-expansion-mode adaptive --graph-top-k 3 --graph-contrastive-penalty 0.20 --graph-contrastive-floor 0.05 --refine-mode bridge-cut --refine-confidence-threshold 0.55 --refine-bridge-ratio 0.7"
-```
-
-Run Cognator only on an exported eval table:
-
-```sh
-go run ./cmd/bench \
-  --eval-table benchmark/export/track_a.tsv \
-  --split-file benchmark/splits/dev_core.txt \
-  --out-tsv benchmark/results.tsv \
-  --out-md benchmark/results.md \
-  --pred-out benchmark/predictions.tsv
-```
-
-Compare existing Cognator and LingPy result TSVs:
-
-```sh
-go run ./cmd/benchcompare \
-  --cognator benchmark/cognator_results.tsv \
-  --lingpy benchmark/lingpy_results.tsv \
-  --out-tsv benchmark/comparison.tsv \
-  --out-md benchmark/comparison.md
 ```
 
 Generate a detailed rerunnable arcaverborum comparison report:
@@ -243,7 +247,8 @@ runs, use:
 ```sh
 python scripts/generate_arcaverborum_report.py \
   --mode fresh \
-  --arcaverborum-root ../arcaverborum
+  --arcaverborum-root ../arcaverborum \
+  --allow-archival-go
 ```
 
 ## Diagnostics

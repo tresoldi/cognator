@@ -5,11 +5,15 @@ The script has two workflows:
 
 1. Existing mode, the default: read existing benchmark run directories and
    regenerate a detailed markdown/TSV report.
-2. Fresh mode: export arcaverborum data, run Cognator and LingPy for selected
-   splits, generate comparisons and diagnostics, then write the same report.
+2. Fresh mode: export arcaverborum data, run the frozen Go benchmark harness
+   and LingPy for selected splits, generate comparisons and diagnostics, then
+   write the same report.
 
 The report intentionally works from benchmark artifacts rather than hard-coded
 numbers, so it can be rerun after future experiments.
+
+Fresh mode is archival-only until the C/Python benchmark harness reaches feature
+parity with the old eval-table pipeline.
 """
 
 from __future__ import annotations
@@ -174,7 +178,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cognator-extra-args",
         default=CURRENT_COGNATOR_ARGS,
-        help="Fresh-mode extra args passed to cmd/bench",
+        help="Fresh-mode extra args passed to frozen Go cmd/bench",
     )
     parser.add_argument(
         "--lingpy-method",
@@ -215,7 +219,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gocache",
         default=".gocache",
-        help="Workspace-local Go cache for fresh mode",
+        help="Workspace-local Go cache for archival fresh mode",
+    )
+    parser.add_argument(
+        "--allow-archival-go",
+        action="store_true",
+        help="Required with --mode=fresh because fresh mode still shells out to frozen Go benchmark commands",
     )
     parser.add_argument(
         "--skip-error-reports",
@@ -731,6 +740,11 @@ def write_delta_list(handle, rows: list[ComparisonRow]) -> None:
 
 def main() -> None:
     args = parse_args()
+    if args.mode == "fresh" and not args.allow_archival_go:
+        raise SystemExit(
+            "fresh mode uses frozen Go benchmark commands; rerun with "
+            "--allow-archival-go only for archival comparison work"
+        )
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     report_md = Path(args.report_md) if args.report_md else out_dir / "arcaverborum_performance_report.md"

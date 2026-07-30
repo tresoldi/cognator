@@ -2,7 +2,7 @@
 """Compute pairwise error decomposition from prediction TSVs.
 
 The script expects the prediction format emitted by:
-- `go run ./cmd/bench --pred-out ...`
+- Cognator benchmark prediction exports
 - `python scripts/run_lingpy_baseline.py --pred-out ...`
 
 It writes:

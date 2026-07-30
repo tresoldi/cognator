@@ -6,13 +6,15 @@ repository is the model: C99 core, opaque public handles, explicit status
 codes, CMake build, native C tests, Python `abi3` wrapper, and a WebAssembly
 path with no required runtime filesystem access for built-in assets.
 
-The C core and C CLI are now implemented. The Go implementation is frozen as
-archival reference code while the Python wrapper is still future work.
+The C core, C CLI, and Python wrapper are now implemented. The Go
+implementation is retired from the normal workflow and remains only as
+archival reference code until the old eval-table benchmark harness and WASM
+path are replaced.
 
 ## Target Outcome
 
-- Drop the Go implementation after the C and Python surfaces cover the selected
-  behavior and pass quality/regression checks.
+- Physically drop the Go implementation after the remaining archival benchmark
+  and WASM paths are ported or retired.
 - Provide a reusable C core for cognate detection.
 - Keep the C core modular enough to add future detection methods without
   rewiring file IO, clustering, diagnostics, or wrappers.
@@ -24,9 +26,10 @@ archival reference code while the Python wrapper is still future work.
 - Keep WebAssembly viable from the beginning: explicit ownership, no global
   mutable state, predictable memory use, and a narrow ABI-friendly facade.
 
-## Current Go Surface To Preserve
+## Frozen Go Surface
 
-The frozen Go reference workflow was:
+The frozen Go reference workflow was preserved by the C/Python surfaces and is
+no longer the supported user path:
 
 ```sh
 go run ./cmd/cognator detect --in forms.csv --out sidecar.tsv
@@ -471,12 +474,14 @@ module plus a small JS worker wrapper.
 - Expose B-cubed evaluation.
 - Add Python tests for wrapper behavior and error translation.
 
-### Milestone 8: Go Removal
+### Milestone 8: Go Retirement Cutover
 
-- Remove Go source and module files.
-- Update README, AGENTS.md, docs, scripts, and benchmark commands.
-- Replace `go run` invocations in scripts with the C CLI or Python wrapper.
+- Remove Go from the normal README, AGENTS.md, docs, and benchmark commands.
+- Require explicit archival opt-in for scripts that still invoke Go-only
+  benchmark harnesses.
 - Keep historical Go benchmark artifacts under `benchmark/` if useful.
+- Defer physical Go source deletion until the old eval-table benchmark harness
+  and WASM path have C/Python replacements or are declared unnecessary.
 
 ### Milestone 9: WebAssembly
 

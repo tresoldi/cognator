@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Run the full Track-A benchmark pipeline for Cognator vs LingPy.
 
-This orchestrates:
+This archival helper orchestrates:
 - arcaverborum export -> Track A / Track B tables
-- Cognator benchmark on Track A
+- frozen Go Cognator benchmark on Track A
 - LingPy baseline on Track A
-- joined comparison via cmd/benchcompare
+- joined comparison via frozen Go cmd/benchcompare
 
-The script is intentionally thin and shells out to the repo's native
-tools instead of re-implementing benchmark logic.
+The normal development path is the C CLI and Python wrapper. This script is
+kept only to inspect historical arcaverborum benchmark artifacts until the C
+benchmark path grows equivalent eval-table and prediction-output support.
 """
 
 from __future__ import annotations
@@ -104,7 +105,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cognator-extra-args",
         default="",
-        help="Extra raw args appended to `go run ./cmd/bench`",
+        help="Extra raw args appended to frozen `go run ./cmd/bench`",
     )
     parser.add_argument(
         "--lingpy-extra-args",
@@ -119,7 +120,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gocache",
         default=".gocache",
-        help="Workspace-local GOCACHE path for Go commands",
+        help="Workspace-local GOCACHE path for archival Go commands",
+    )
+    parser.add_argument(
+        "--allow-archival-go",
+        action="store_true",
+        help="Required opt-in because this helper still shells out to frozen Go benchmark commands",
     )
     return parser.parse_args()
 
@@ -131,6 +137,11 @@ def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
 
 def main() -> None:
     args = parse_args()
+    if not args.allow_archival_go:
+        raise SystemExit(
+            "scripts/run_benchmark_pipeline.py uses frozen Go benchmark commands; "
+            "rerun with --allow-archival-go only for archival comparison work"
+        )
     split_path = Path(args.split_file)
     split_stem = split_path.stem or "split"
     run_label = args.run_label or f"{args.track.lower()}-{split_stem}"
