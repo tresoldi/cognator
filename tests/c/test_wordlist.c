@@ -51,6 +51,29 @@ int main(void) {
     assert(strcmp(rec->family, "romance") == 0);
     assert(strcmp(rec->cognacy, "42") == 0);
     cg_records_free(records);
+    records = NULL;
+
+    write_text(
+        "test_families.tsv",
+        "ID\tLanguage_ID\tConcept\tSegments\tFamily\tCognacy\n"
+        "a\tL1\tC\tp a\tfam1\t1\n"
+        "b\tL2\tC\tp a\tfam2\t1\n"
+        "c\tL3\tC\tp a\tfam1\t1\n"
+    );
+    assert(cg_read_table("test_families.tsv", &records) == CG_OK);
+    {
+        cg_records *filtered = NULL;
+        assert(cg_records_filter_family(records, "fam1", &filtered) == CG_OK);
+        assert(cg_records_count(filtered) == 2);
+        assert(strcmp(cg_records_get(filtered, 0)->id, "a") == 0);
+        assert(strcmp(cg_records_get(filtered, 1)->id, "c") == 0);
+        cg_records_free(filtered);
+        assert(cg_records_filter_family(records, "missing", &filtered) == CG_OK);
+        assert(cg_records_count(filtered) == 0);
+        cg_records_free(filtered);
+    }
+    cg_records_free(records);
+    records = NULL;
 
     write_text(
         "test_alias.csv",

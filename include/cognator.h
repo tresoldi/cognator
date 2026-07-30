@@ -224,6 +224,11 @@ CG_API cg_status cg_read_table(const char *path, cg_records **out);
 CG_API void cg_records_free(cg_records *records);
 CG_API uint64_t cg_records_count(const cg_records *records);
 CG_API const cg_record *cg_records_get(const cg_records *records, uint64_t index);
+CG_API cg_status cg_records_filter_family(
+    const cg_records *records,
+    const char *family,
+    cg_records **out
+);
 
 CG_API cg_status cg_write_sidecar_rows(
     const char *path,
@@ -247,6 +252,13 @@ CG_API cg_status cg_write_oov_report(const char *path, const cg_result *result);
 CG_API cg_status cg_eval_b_cubed(
     const char *pred_path,
     const char *truth_path,
+    const char *truth_col,
+    int per_concept,
+    cg_eval_result *out
+);
+CG_API cg_status cg_eval_b_cubed_result(
+    const cg_result *pred,
+    const cg_records *truth,
     const char *truth_col,
     int per_concept,
     cg_eval_result *out

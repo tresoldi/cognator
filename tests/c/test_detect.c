@@ -49,6 +49,7 @@ int main(void) {
     const cg_sidecar_row *a1;
     const cg_sidecar_row *b1;
     const cg_sidecar_row *c1;
+    cg_eval_result eval_result;
     cg_status status;
     char *text;
 
@@ -98,6 +99,9 @@ int main(void) {
     assert(a1->confidence >= 0.0 && a1->confidence <= 1.0);
     assert(a1->cluster_size == 3);
     assert(a1->bootstrap > 0.0);
+    assert(cg_eval_b_cubed_result(result, records, "Cognacy", 1, &eval_result) == CG_OK);
+    assert(eval_result.scored_count == cg_records_count(records));
+    assert(eval_result.f1 > 0.5);
 
     assert(cg_write_sidecar("detect_sidecar.tsv", result) == CG_OK);
     text = read_text("detect_sidecar.tsv");

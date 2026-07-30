@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 typedef struct detect_args {
     const char *in;
@@ -13,12 +14,31 @@ typedef struct detect_args {
     cg_options options;
 } detect_args;
 
+typedef struct sweep_args {
+    const char *in;
+    const char *out_tsv;
+    const char *thresholds;
+    cg_options options;
+} sweep_args;
+
+typedef struct bench_args {
+    const char *in;
+    const char *out_tsv;
+    const char *families;
+    int max_forms;
+    int max_lects;
+    int min_cognacy;
+    cg_options options;
+} bench_args;
+
 static void usage(FILE *stream) {
     fprintf(stream,
             "usage: cognator <command> [options]\n\n"
             "commands:\n"
             "  detect    cluster forms into cognate sets\n"
             "  eval      score predicted clusters against Cognacy truth\n"
+            "  sweep     run detect/eval across thresholds\n"
+            "  bench     run per-family detect/eval summary\n"
             "  version   print version\n"
             "  help      show this help\n");
 }
@@ -72,6 +92,37 @@ static void detect_usage(FILE *stream) {
             "  --dirichlet-scale NAME\n");
 }
 
+static void sweep_usage(FILE *stream) {
+    fprintf(stream,
+            "usage: cognator sweep --in PATH [options]\n\n"
+            "options:\n"
+            "  --out-tsv PATH\n"
+            "  --thresholds LIST  comma list; auto means Otsu\n"
+            "  --preset NAME\n"
+            "  --iterations N\n"
+            "  --bootstrap N\n"
+            "  --seed N\n"
+            "  --scorer NAME\n"
+            "  --min-pairs N\n");
+}
+
+static void bench_usage(FILE *stream) {
+    fprintf(stream,
+            "usage: cognator bench --in PATH --out-tsv PATH [options]\n\n"
+            "options:\n"
+            "  --families LIST    comma list of Family values\n"
+            "  --preset NAME\n"
+            "  --threshold X\n"
+            "  --iterations N\n"
+            "  --bootstrap N\n"
+            "  --seed N\n"
+            "  --scorer NAME\n"
+            "  --min-pairs N\n"
+            "  --min-cognacy N\n"
+            "  --max-forms N\n"
+            "  --max-lects N\n");
+}
+
 static void eval_usage(FILE *stream) {
     fprintf(stream,
             "usage: cognator eval --pred PATH --truth PATH [options]\n\n"
@@ -106,6 +157,14 @@ static const char *detect_arg_value(int argc, char **argv, int *index, const cha
 
 static const char *eval_arg_value(int argc, char **argv, int *index, const char *arg, const char *name) {
     return arg_value_for("eval", argc, argv, index, arg, name);
+}
+
+static const char *sweep_arg_value(int argc, char **argv, int *index, const char *arg, const char *name) {
+    return arg_value_for("sweep", argc, argv, index, arg, name);
+}
+
+static const char *bench_arg_value(int argc, char **argv, int *index, const char *arg, const char *name) {
+    return arg_value_for("bench", argc, argv, index, arg, name);
 }
 
 static int is_flag(const char *arg, const char *name) {
@@ -189,6 +248,84 @@ static int set_double_option(const char *name, const char *value, double *field)
     }
     *field = parsed;
     return 1;
+}
+
+static double elapsed_seconds(clock_t start, clock_t end) {
+    return (double)(end - start) / (double)CLOCKS_PER_SEC;
+}
+
+static char *copy_string(const char *value) {
+    size_t len = strlen(value == NULL ? "" : value);
+    char *out = (char *)malloc(len + 1);
+    if (out == NULL) return NULL;
+    memcpy(out, value == NULL ? "" : value, len + 1);
+    return out;
+}
+
+static int string_in_csv(const char *list, const char *value) {
+    const char *p;
+    if (list == NULL || list[0] == '\0') return 1;
+    p = list;
+    while (*p != '\0') {
+        const char *start;
+        size_t len;
+        while (*p == ' ' || *p == '\t' || *p == ',') p++;
+        start = p;
+        while (*p != '\0' && *p != ',') p++;
+        len = (size_t)(p - start);
+        while (len > 0 && (start[len - 1] == ' ' || start[len - 1] == '\t')) len--;
+        if (strlen(value == NULL ? "" : value) == len && strncmp(start, value == NULL ? "" : value, len) == 0) return 1;
+    }
+    return 0;
+}
+
+static int unique_push_const(const char ***items, size_t *count, const char *value) {
+    size_t i;
+    const char **next;
+    for (i = 0; i < *count; i++) {
+        if (strcmp((*items)[i] == NULL ? "" : (*items)[i], value == NULL ? "" : value) == 0) return 1;
+    }
+    next = (const char **)realloc((void *)*items, (*count + 1) * sizeof(*next));
+    if (next == NULL) return 0;
+    *items = next;
+    (*items)[(*count)++] = value == NULL ? "" : value;
+    return 1;
+}
+
+static uint64_t count_unique_clusters(const cg_result *result) {
+    const char **clusters = NULL;
+    size_t count = 0;
+    uint64_t i;
+    for (i = 0; i < cg_result_row_count(result); i++) {
+        const cg_sidecar_row *row = cg_result_row_at(result, i);
+        if (row != NULL && !unique_push_const(&clusters, &count, row->cognator_id)) {
+            free((void *)clusters);
+            return 0;
+        }
+    }
+    free((void *)clusters);
+    return (uint64_t)count;
+}
+
+static void summarize_records(const cg_records *records, uint64_t *lects, uint64_t *concepts, uint64_t *cognacy) {
+    const char **lect_list = NULL;
+    const char **concept_list = NULL;
+    size_t lect_count = 0;
+    size_t concept_count = 0;
+    uint64_t cog_count = 0;
+    uint64_t i;
+    for (i = 0; i < cg_records_count(records); i++) {
+        const cg_record *record = cg_records_get(records, i);
+        if (record == NULL) continue;
+        if (!unique_push_const(&lect_list, &lect_count, record->language_id)) break;
+        if (!unique_push_const(&concept_list, &concept_count, record->concept)) break;
+        if (record->cognacy != NULL && record->cognacy[0] != '\0') cog_count++;
+    }
+    free((void *)lect_list);
+    free((void *)concept_list);
+    *lects = (uint64_t)lect_count;
+    *concepts = (uint64_t)concept_count;
+    *cognacy = cog_count;
 }
 
 static int scan_preset(int argc, char **argv, cg_options *options) {
@@ -329,6 +466,130 @@ static int parse_detect_args(int argc, char **argv, detect_args *args) {
     return 1;
 }
 
+static int apply_common_run_option(const char *command, int argc, char **argv, int *i, const char *arg, cg_options *options, int *matched) {
+    const char *value = NULL;
+    const char *(*value_fn)(int, char **, int *, const char *, const char *) = strcmp(command, "bench") == 0 ? bench_arg_value : sweep_arg_value;
+    *matched = 1;
+    if ((value = value_fn(argc, argv, i, arg, "--preset")) != NULL) {
+        cg_status status = cg_options_apply_preset(options, value);
+        if (status != CG_OK) {
+            fprintf(stderr, "%s: unknown preset: %s\n", command, value);
+            return 0;
+        }
+    } else if ((value = value_fn(argc, argv, i, arg, "--model")) != NULL || (value = value_fn(argc, argv, i, arg, "--merkmal-system")) != NULL) {
+        options->merkmal_system = value;
+    } else if ((value = value_fn(argc, argv, i, arg, "--iterations")) != NULL) {
+        if (!set_nonnegative_int_option("--iterations", value, &options->iterations)) return 0;
+    } else if ((value = value_fn(argc, argv, i, arg, "--threshold")) != NULL) {
+        if (!set_double_option("--threshold", value, &options->threshold)) return 0;
+    } else if ((value = value_fn(argc, argv, i, arg, "--bootstrap")) != NULL) {
+        if (!set_nonnegative_int_option("--bootstrap", value, &options->bootstrap)) return 0;
+    } else if ((value = value_fn(argc, argv, i, arg, "--bootstrap-sigma")) != NULL) {
+        if (!set_double_option("--bootstrap-sigma", value, &options->bootstrap_sigma)) return 0;
+    } else if ((value = value_fn(argc, argv, i, arg, "--seed")) != NULL) {
+        if (!parse_uint64_value(value, &options->seed)) {
+            fprintf(stderr, "%s: invalid unsigned integer for --seed: %s\n", command, value);
+            return 0;
+        }
+    } else if ((value = value_fn(argc, argv, i, arg, "--scorer")) != NULL || (value = value_fn(argc, argv, i, arg, "--scorer-mode")) != NULL) {
+        options->scorer_mode = value;
+    } else if ((value = value_fn(argc, argv, i, arg, "--min-pairs")) != NULL) {
+        if (!set_nonnegative_int_option("--min-pairs", value, &options->min_pairs)) return 0;
+    } else if ((value = value_fn(argc, argv, i, arg, "--graph-mode")) != NULL) {
+        options->graph_mode = value;
+    } else if ((value = value_fn(argc, argv, i, arg, "--graph-expansion-mode")) != NULL) {
+        options->graph_expansion_mode = value;
+    } else if ((value = value_fn(argc, argv, i, arg, "--graph-top-k")) != NULL) {
+        if (!set_nonnegative_int_option("--graph-top-k", value, &options->graph_top_k)) return 0;
+    } else if ((value = value_fn(argc, argv, i, arg, "--refine-mode")) != NULL) {
+        options->refine_mode = value;
+    } else {
+        *matched = 0;
+    }
+    return 1;
+}
+
+static int parse_sweep_args(int argc, char **argv, sweep_args *args) {
+    int i;
+    cg_options_init_defaults(&args->options);
+    args->in = NULL;
+    args->out_tsv = NULL;
+    args->thresholds = "auto,0.30,0.40,0.50,0.60,0.70,0.80";
+    for (i = 0; i < argc; i++) {
+        const char *arg = argv[i];
+        const char *value = NULL;
+        int matched = 0;
+        if (strcmp(arg, "help") == 0 || strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
+            sweep_usage(stdout);
+            exit(0);
+        }
+        if ((value = sweep_arg_value(argc, argv, &i, arg, "--in")) != NULL) {
+            args->in = value;
+        } else if ((value = sweep_arg_value(argc, argv, &i, arg, "--out-tsv")) != NULL) {
+            args->out_tsv = value;
+        } else if ((value = sweep_arg_value(argc, argv, &i, arg, "--thresholds")) != NULL) {
+            args->thresholds = value;
+        } else {
+            if (!apply_common_run_option("sweep", argc, argv, &i, arg, &args->options, &matched)) return 0;
+            if (!matched) {
+                fprintf(stderr, "sweep: unknown option: %s\n", arg);
+                return 0;
+            }
+        }
+    }
+    if (args->in == NULL || args->in[0] == '\0') {
+        fprintf(stderr, "sweep: --in is required\n");
+        sweep_usage(stderr);
+        return 0;
+    }
+    return 1;
+}
+
+static int parse_bench_args(int argc, char **argv, bench_args *args) {
+    int i;
+    cg_options_init_defaults(&args->options);
+    args->in = NULL;
+    args->out_tsv = NULL;
+    args->families = NULL;
+    args->max_forms = 15000;
+    args->max_lects = 250;
+    args->min_cognacy = 1;
+    for (i = 0; i < argc; i++) {
+        const char *arg = argv[i];
+        const char *value = NULL;
+        int matched = 0;
+        if (strcmp(arg, "help") == 0 || strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
+            bench_usage(stdout);
+            exit(0);
+        }
+        if ((value = bench_arg_value(argc, argv, &i, arg, "--in")) != NULL) {
+            args->in = value;
+        } else if ((value = bench_arg_value(argc, argv, &i, arg, "--out-tsv")) != NULL) {
+            args->out_tsv = value;
+        } else if ((value = bench_arg_value(argc, argv, &i, arg, "--families")) != NULL || (value = bench_arg_value(argc, argv, &i, arg, "--datasets")) != NULL) {
+            args->families = value;
+        } else if ((value = bench_arg_value(argc, argv, &i, arg, "--max-forms")) != NULL) {
+            if (!set_nonnegative_int_option("--max-forms", value, &args->max_forms)) return 0;
+        } else if ((value = bench_arg_value(argc, argv, &i, arg, "--max-lects")) != NULL) {
+            if (!set_nonnegative_int_option("--max-lects", value, &args->max_lects)) return 0;
+        } else if ((value = bench_arg_value(argc, argv, &i, arg, "--min-cognacy")) != NULL) {
+            if (!set_nonnegative_int_option("--min-cognacy", value, &args->min_cognacy)) return 0;
+        } else {
+            if (!apply_common_run_option("bench", argc, argv, &i, arg, &args->options, &matched)) return 0;
+            if (!matched) {
+                fprintf(stderr, "bench: unknown option: %s\n", arg);
+                return 0;
+            }
+        }
+    }
+    if (args->in == NULL || args->out_tsv == NULL || args->in[0] == '\0' || args->out_tsv[0] == '\0') {
+        fprintf(stderr, "bench: --in and --out-tsv are required\n");
+        bench_usage(stderr);
+        return 0;
+    }
+    return 1;
+}
+
 static int detect_cmd(int argc, char **argv) {
     detect_args args;
     cg_context *ctx = NULL;
@@ -434,6 +695,202 @@ static int eval_cmd(int argc, char **argv) {
     return 0;
 }
 
+static int sweep_cmd(int argc, char **argv) {
+    sweep_args args;
+    cg_context *ctx = NULL;
+    cg_records *records = NULL;
+    FILE *out = NULL;
+    char *thresholds = NULL;
+    char *tok;
+    cg_status status;
+    int exit_code = 1;
+
+    if (!parse_sweep_args(argc, argv, &args)) return 2;
+    status = cg_context_new_builtin(&ctx);
+    if (status != CG_OK) {
+        fprintf(stderr, "sweep: initialize context: %s\n", cg_status_string(status));
+        goto done;
+    }
+    status = cg_read_table(args.in, &records);
+    if (status != CG_OK) {
+        fprintf(stderr, "sweep: read %s: %s\n", args.in, cg_status_string(status));
+        goto done;
+    }
+    out = args.out_tsv == NULL ? stdout : fopen(args.out_tsv, "wb");
+    if (out == NULL) {
+        fprintf(stderr, "sweep: write %s: I/O error\n", args.out_tsv);
+        goto done;
+    }
+    thresholds = copy_string(args.thresholds);
+    if (thresholds == NULL) {
+        fprintf(stderr, "sweep: out of memory\n");
+        goto done;
+    }
+    fprintf(out, "threshold_label\tforms\tcognacy\tresolved_threshold\tclusters\tprecision\trecall\tf1\telapsed_ms\n");
+    tok = strtok(thresholds, ",");
+    while (tok != NULL) {
+        cg_options options = args.options;
+        cg_result *result = NULL;
+        cg_eval_result eval = {0};
+        uint64_t lects = 0, concepts = 0, cognacy = 0;
+        clock_t start;
+        clock_t end;
+        char *label = tok;
+        while (*label == ' ' || *label == '\t') label++;
+        if (strcmp(label, "auto") == 0) {
+            options.threshold = 0.0;
+        } else {
+            double threshold;
+            if (!parse_double_value(label, &threshold)) {
+                fprintf(stderr, "sweep: skip invalid threshold: %s\n", label);
+                tok = strtok(NULL, ",");
+                continue;
+            }
+            options.threshold = threshold;
+        }
+        summarize_records(records, &lects, &concepts, &cognacy);
+        (void)lects;
+        (void)concepts;
+        start = clock();
+        status = cg_detect(ctx, records, &options, &result);
+        end = clock();
+        if (status == CG_OK) status = cg_eval_b_cubed_result(result, records, "Cognacy", 1, &eval);
+        if (status != CG_OK) {
+            fprintf(stderr, "sweep: pipeline: %s\n", cg_status_string(status));
+            cg_result_free(result);
+            goto done;
+        }
+        fprintf(out, "%s\t%llu\t%llu\t%.6f\t%llu\t%.6f\t%.6f\t%.6f\t%.0f\n",
+                label,
+                (unsigned long long)cg_records_count(records),
+                (unsigned long long)cognacy,
+                cg_result_threshold(result),
+                (unsigned long long)count_unique_clusters(result),
+                eval.precision,
+                eval.recall,
+                eval.f1,
+                elapsed_seconds(start, end) * 1000.0);
+        cg_result_free(result);
+        tok = strtok(NULL, ",");
+    }
+    exit_code = 0;
+
+done:
+    free(thresholds);
+    if (out != NULL && out != stdout) {
+        if (fclose(out) != 0 && exit_code == 0) exit_code = 1;
+    }
+    cg_records_free(records);
+    cg_context_free(ctx);
+    return exit_code;
+}
+
+static int bench_cmd(int argc, char **argv) {
+    bench_args args;
+    cg_context *ctx = NULL;
+    cg_records *records = NULL;
+    FILE *out = NULL;
+    const char **families = NULL;
+    size_t family_count = 0;
+    uint64_t i;
+    size_t f;
+    cg_status status;
+    int exit_code = 1;
+
+    if (!parse_bench_args(argc, argv, &args)) return 2;
+    status = cg_context_new_builtin(&ctx);
+    if (status != CG_OK) {
+        fprintf(stderr, "bench: initialize context: %s\n", cg_status_string(status));
+        goto done;
+    }
+    status = cg_read_table(args.in, &records);
+    if (status != CG_OK) {
+        fprintf(stderr, "bench: read %s: %s\n", args.in, cg_status_string(status));
+        goto done;
+    }
+    for (i = 0; i < cg_records_count(records); i++) {
+        const cg_record *record = cg_records_get(records, i);
+        if (record == NULL) continue;
+        if (!string_in_csv(args.families, record->family)) continue;
+        if (!unique_push_const(&families, &family_count, record->family)) {
+            fprintf(stderr, "bench: out of memory\n");
+            goto done;
+        }
+    }
+    out = fopen(args.out_tsv, "wb");
+    if (out == NULL) {
+        fprintf(stderr, "bench: write %s: I/O error\n", args.out_tsv);
+        goto done;
+    }
+    fprintf(out, "family\tlects\tconcepts\tforms\tcognacy\toov\tthreshold\tclusters\tprecision\trecall\tf1\telapsed_ms\tskipped\n");
+    for (f = 0; f < family_count; f++) {
+        cg_records *family_records = NULL;
+        cg_result *result = NULL;
+        cg_eval_result eval = {0};
+        uint64_t lects = 0, concepts = 0, cognacy = 0;
+        clock_t start;
+        clock_t end;
+        const char *skip = "";
+        status = cg_records_filter_family(records, families[f], &family_records);
+        if (status != CG_OK) {
+            fprintf(stderr, "bench: filter %s: %s\n", families[f], cg_status_string(status));
+            goto done;
+        }
+        summarize_records(family_records, &lects, &concepts, &cognacy);
+        if (args.min_cognacy > 0 && cognacy < (uint64_t)args.min_cognacy) {
+            skip = "too_few_cognacy";
+        } else if (args.max_forms > 0 && cg_records_count(family_records) > (uint64_t)args.max_forms) {
+            skip = "too_many_forms";
+        } else if (args.max_lects > 0 && lects > (uint64_t)args.max_lects) {
+            skip = "too_many_lects";
+        }
+        if (skip[0] != '\0') {
+            fprintf(out, "%s\t%llu\t%llu\t%llu\t%llu\t0\t0.000000\t0\t0.000000\t0.000000\t0.000000\t0\t%s\n",
+                    families[f],
+                    (unsigned long long)lects,
+                    (unsigned long long)concepts,
+                    (unsigned long long)cg_records_count(family_records),
+                    (unsigned long long)cognacy,
+                    skip);
+            cg_records_free(family_records);
+            continue;
+        }
+        start = clock();
+        status = cg_detect(ctx, family_records, &args.options, &result);
+        end = clock();
+        if (status == CG_OK) status = cg_eval_b_cubed_result(result, family_records, "Cognacy", 1, &eval);
+        if (status != CG_OK) {
+            fprintf(stderr, "bench: pipeline %s: %s\n", families[f], cg_status_string(status));
+            cg_result_free(result);
+            cg_records_free(family_records);
+            goto done;
+        }
+        fprintf(out, "%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.6f\t%llu\t%.6f\t%.6f\t%.6f\t%.0f\t\n",
+                families[f],
+                (unsigned long long)lects,
+                (unsigned long long)concepts,
+                (unsigned long long)cg_records_count(family_records),
+                (unsigned long long)cognacy,
+                (unsigned long long)cg_result_oov_count(result),
+                cg_result_threshold(result),
+                (unsigned long long)count_unique_clusters(result),
+                eval.precision,
+                eval.recall,
+                eval.f1,
+                elapsed_seconds(start, end) * 1000.0);
+        cg_result_free(result);
+        cg_records_free(family_records);
+    }
+    exit_code = 0;
+
+done:
+    free((void *)families);
+    if (out != NULL && fclose(out) != 0 && exit_code == 0) exit_code = 1;
+    cg_records_free(records);
+    cg_context_free(ctx);
+    return exit_code;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2 || strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
         usage(argc >= 2 ? stdout : stderr);
@@ -452,6 +909,12 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[1], "eval") == 0) {
         return eval_cmd(argc - 2, argv + 2);
+    }
+    if (strcmp(argv[1], "sweep") == 0) {
+        return sweep_cmd(argc - 2, argv + 2);
+    }
+    if (strcmp(argv[1], "bench") == 0) {
+        return bench_cmd(argc - 2, argv + 2);
     }
     fprintf(stderr, "cognator: unknown command: %s\n", argv[1]);
     usage(stderr);

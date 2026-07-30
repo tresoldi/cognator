@@ -219,6 +219,23 @@ static cg_status records_push(cg_records *records, cg_record record) {
     return CG_OK;
 }
 
+static cg_status record_clone(const cg_record *src, cg_record *out) {
+    cg_record record = {0};
+    record.id = cg_strdup(src->id);
+    record.language_id = cg_strdup(src->language_id);
+    record.concept = cg_strdup(src->concept);
+    record.segments = cg_strdup(src->segments);
+    record.family = cg_strdup(src->family);
+    record.cognacy = cg_strdup(src->cognacy);
+    if (record.id == NULL || record.language_id == NULL || record.concept == NULL ||
+        record.segments == NULL || record.family == NULL || record.cognacy == NULL) {
+        cg_free_record(&record);
+        return CG_ERR_OOM;
+    }
+    *out = record;
+    return CG_OK;
+}
+
 static cg_status extract_record(const cg_fields *fields, const cg_columns *cols, unsigned long line, cg_record *out) {
     const char *language = field_get(fields, cols->language);
     const char *id = field_get(fields, cols->id);
@@ -354,6 +371,42 @@ const cg_record *cg_records_get(const cg_records *records, uint64_t index) {
         return NULL;
     }
     return &records->items[index];
+}
+
+cg_status cg_records_filter_family(
+    const cg_records *records,
+    const char *family,
+    cg_records **out
+) {
+    cg_records *filtered;
+    size_t i;
+    cg_status status;
+
+    if (records == NULL || family == NULL || out == NULL) {
+        return CG_ERR_INVALID_ARGUMENT;
+    }
+    *out = NULL;
+    filtered = (cg_records *)calloc(1, sizeof(*filtered));
+    if (filtered == NULL) {
+        return CG_ERR_OOM;
+    }
+    for (i = 0; i < records->count; i++) {
+        cg_record record = {0};
+        if (strcmp(records->items[i].family == NULL ? "" : records->items[i].family, family) != 0) {
+            continue;
+        }
+        status = record_clone(&records->items[i], &record);
+        if (status == CG_OK) {
+            status = records_push(filtered, record);
+        }
+        if (status != CG_OK) {
+            cg_free_record(&record);
+            cg_records_free(filtered);
+            return status;
+        }
+    }
+    *out = filtered;
+    return CG_OK;
 }
 
 cg_status cg_write_sidecar_rows(

@@ -232,6 +232,45 @@ static cg_status read_truth_records(const char *path, const char *truth_col, int
     return CG_OK;
 }
 
+static cg_status read_truth_assignments(const cg_records *records, const char *truth_col, int per_concept, cg_assignments *out) {
+    uint64_t i;
+    cg_status status = CG_OK;
+    if (records == NULL) return CG_ERR_INVALID_ARGUMENT;
+    if (truth_col == NULL) truth_col = "Cognacy";
+    if (strcmp(truth_col, "Cognacy") != 0) return CG_ERR_UNSUPPORTED_OPTION;
+    *out = (cg_assignments){0};
+    for (i = 0; i < cg_records_count(records); i++) {
+        const cg_record *record = cg_records_get(records, i);
+        char *cluster = NULL;
+        if (record == NULL || record->cognacy == NULL || record->cognacy[0] == '\0') continue;
+        status = make_truth_cluster(record, per_concept, &cluster);
+        if (status == CG_OK) status = assignments_set(out, record->id, cluster);
+        free(cluster);
+        if (status != CG_OK) {
+            assignments_free(out);
+            return status;
+        }
+    }
+    return CG_OK;
+}
+
+static cg_status read_result_pred(const cg_result *result, cg_assignments *out) {
+    uint64_t i;
+    cg_status status = CG_OK;
+    if (result == NULL) return CG_ERR_INVALID_ARGUMENT;
+    *out = (cg_assignments){0};
+    for (i = 0; i < cg_result_row_count(result); i++) {
+        const cg_sidecar_row *row = cg_result_row_at(result, i);
+        if (row == NULL) continue;
+        status = assignments_set(out, row->id, row->cognator_id);
+        if (status != CG_OK) {
+            assignments_free(out);
+            return status;
+        }
+    }
+    return CG_OK;
+}
+
 static size_t pred_cluster_size_for_truth(const cg_assignments *pred, const cg_assignments *truth, const char *pred_cluster) {
     size_t i;
     size_t count = 0;
@@ -309,6 +348,26 @@ cg_status cg_eval_b_cubed(
     memset(out, 0, sizeof(*out));
     status = read_sidecar_pred(pred_path, &pred);
     if (status == CG_OK) status = read_truth_records(truth_path, truth_col, per_concept, &truth);
+    if (status == CG_OK) compute_b_cubed(&pred, &truth, out);
+    assignments_free(&pred);
+    assignments_free(&truth);
+    return status;
+}
+
+cg_status cg_eval_b_cubed_result(
+    const cg_result *pred_result,
+    const cg_records *truth_records,
+    const char *truth_col,
+    int per_concept,
+    cg_eval_result *out
+) {
+    cg_assignments pred = {0};
+    cg_assignments truth = {0};
+    cg_status status;
+    if (pred_result == NULL || truth_records == NULL || out == NULL) return CG_ERR_INVALID_ARGUMENT;
+    memset(out, 0, sizeof(*out));
+    status = read_result_pred(pred_result, &pred);
+    if (status == CG_OK) status = read_truth_assignments(truth_records, truth_col, per_concept, &truth);
     if (status == CG_OK) compute_b_cubed(&pred, &truth, out);
     assignments_free(&pred);
     assignments_free(&truth);
