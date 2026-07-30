@@ -6,7 +6,8 @@ repository is the model: C99 core, opaque public handles, explicit status
 codes, CMake build, native C tests, Python `abi3` wrapper, and a WebAssembly
 path with no required runtime filesystem access for built-in assets.
 
-No implementation work has started in this repository as part of this plan.
+The C core and C CLI are now implemented. The Go implementation is frozen as
+archival reference code while the Python wrapper is still future work.
 
 ## Target Outcome
 
@@ -25,11 +26,22 @@ No implementation work has started in this repository as part of this plan.
 
 ## Current Go Surface To Preserve
 
-The current stable user workflow is:
+The frozen Go reference workflow was:
 
 ```sh
 go run ./cmd/cognator detect --in forms.csv --out sidecar.tsv
 go run ./cmd/cognator eval --pred sidecar.tsv --truth forms.csv
+```
+
+The active C workflow is:
+
+```sh
+./build/cognator detect --in forms.csv --out sidecar.tsv
+./build/cognator eval --pred sidecar.tsv --truth forms.csv
+./build/cognator sweep --in forms.csv
+./build/cognator bench --in forms.csv --out-tsv benchmark.tsv
+./build/cognator diag --in forms.csv
+./build/cognator oovscan --in forms.csv
 ```
 
 Input columns:
@@ -448,7 +460,7 @@ module plus a small JS worker wrapper.
 - Implement `cognator eval`.
 - Preserve presets and option names where possible.
 - Add CLI smoke tests.
-- Keep old Go CLI available until the C CLI passes regression and quality gates.
+- Keep old Go CLI available only as archival reference for parity checks.
 
 ### Milestone 7: Python Wrapper
 

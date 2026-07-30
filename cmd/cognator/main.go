@@ -18,6 +18,7 @@ subcommands:
 `
 
 const version = "0.0.0-dev"
+const goArchiveWarning = "warning: the Go implementation is frozen for archival parity only; use the C CLI for active work\n"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -30,8 +31,10 @@ func main() {
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	case "detect":
+		fmt.Fprint(os.Stderr, goArchiveWarning)
 		detectCmd(os.Args[2:])
 	case "eval":
+		fmt.Fprint(os.Stderr, goArchiveWarning)
 		evalCmd(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown subcommand: %s\n\n%s", os.Args[1], usage)

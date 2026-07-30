@@ -5,8 +5,9 @@ The main supported mode is **per-concept clustering within the same language
 family**. Cross-concept/global clustering exists as an experimental path, but it
 is not the core target.
 
-The project is written in Go, with Python scripts for benchmark orchestration,
-LingPy comparison, and diagnostic reports.
+The active implementation is the C library and C CLI. The older Go
+implementation is frozen as archival reference code while the project moves
+toward a Python wrapper that is easy to install and use.
 
 ## Current Status
 
@@ -36,19 +37,22 @@ Interpretation:
 
 Requirements:
 
-- Go compatible with `go.mod` (`go 1.25.0` in this workspace)
+- CMake 3.20+
+- A C99 compiler
+- The neighboring `merkmal` C rework checkout or an installed `merkmal` C package
 - Python 3 for scripts
 - LingPy only if you want to reproduce LingPy baselines
 
 Build and test:
 
 ```sh
-go build ./...
-go test ./...
+cmake -S . -B build -DCOGNATOR_BUILD_TESTS=ON -DCOGNATOR_BUILD_CLI=ON
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
 ```
 
-During development, `go run ./cmd/...` is convenient; `go build` works too on
-this box (local disk — no SMB execute-bit caveat).
+The Go implementation remains in the tree only for archival parity checks; see
+`docs/go_freeze.md`.
 
 ## Input Format
 
@@ -79,7 +83,7 @@ written as `+`.
 Run detection:
 
 ```sh
-go run ./cmd/cognator detect \
+./build/cognator detect \
   --in forms.csv \
   --out cognator_sidecar.tsv
 ```
@@ -101,7 +105,7 @@ The output sidecar contains:
 Score a sidecar against gold cognacy:
 
 ```sh
-go run ./cmd/cognator eval \
+./build/cognator eval \
   --pred cognator_sidecar.tsv \
   --truth forms.csv
 ```
@@ -115,7 +119,7 @@ The Go defaults are conservative and preserve the original threshold graph.
 For current experiments, use the frozen support/adaptive/bridge-cut baseline:
 
 ```sh
-go run ./cmd/cognator detect \
+./build/cognator detect \
   --in forms.csv \
   --out cognator_sidecar.tsv \
   --threshold 0.68 \
@@ -141,7 +145,7 @@ go run ./cmd/cognator detect \
 Bootstrap intervals are optional and more expensive:
 
 ```sh
-go run ./cmd/cognator detect \
+./build/cognator detect \
   --in forms.csv \
   --out cognator_sidecar.tsv \
   --bootstrap 50 \
