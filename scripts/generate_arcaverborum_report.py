@@ -29,7 +29,8 @@ from statistics import mean, median
 
 
 CURRENT_COGNATOR_ARGS = (
-    "--threshold 0.68 "
+    "--preset support-adaptive-bridge "
+    "--threshold 0 "
     "--graph-mode support "
     "--graph-expansion-mode adaptive "
     "--graph-top-k 3 "
