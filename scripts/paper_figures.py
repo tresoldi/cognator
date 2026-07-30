@@ -6,7 +6,7 @@ of canonical inputs. Designed to be re-run end-to-end whenever the
 benchmark is re-executed (e.g. when a new arcaverborum snapshot lands).
 
 Inputs (all optional; figures only drawn if required inputs are present):
-  --predictions-devcore: Dev-Core predictions TSV (cmd/bench --pred-out)
+  --predictions-devcore: Dev-Core predictions TSV (scripts/run_cognator_eval_table.py --pred-out)
   --predictions-devfull: Dev-Full predictions TSV
   --predictions-holdout: Holdout predictions TSV
   --calibration:         Calibration JSON (scripts/calibrate_confidence.py fit)

@@ -300,6 +300,8 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
             str(cognator_results),
             "--out-md",
             str(cognator_md),
+            "--pred-out",
+            str(cognator_preds),
             "--run-label",
             run_label,
             "--parallel-families",
@@ -353,8 +355,7 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
         )
 
         if not args.skip_error_reports:
-            if cognator_preds.exists():
-                write_error_reports(cognator_preds, run_dir, "cognator")
+            write_error_reports(cognator_preds, run_dir, "cognator")
             write_error_reports(lingpy_preds, run_dir, "lingpy")
 
         meta = {

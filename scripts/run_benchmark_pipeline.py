@@ -168,6 +168,8 @@ def main() -> None:
         str(cognator_results),
         "--out-md",
         str(cognator_md),
+        "--pred-out",
+        str(cognator_preds),
         "--run-label",
         run_label,
         "--parallel-families",
@@ -226,24 +228,21 @@ def main() -> None:
     cognator_errors = run_dir / "cognator_errors.tsv"
     cognator_error_summary = run_dir / "cognator_error_summary.tsv"
     cognator_error_md = run_dir / "cognator_error_summary.md"
-    if cognator_preds.exists():
-        cognator_error_cmd = [
-            "python",
-            "scripts/error_report.py",
-            "--predictions",
-            str(cognator_preds),
-            "--out-tsv",
-            str(cognator_errors),
-            "--out-dataset-tsv",
-            str(cognator_error_summary),
-            "--out-md",
-            str(cognator_error_md),
-            "--label",
-            "cognator",
-        ]
-        run(cognator_error_cmd)
-    else:
-        cognator_errors = cognator_error_summary = cognator_error_md = None
+    cognator_error_cmd = [
+        "python",
+        "scripts/error_report.py",
+        "--predictions",
+        str(cognator_preds),
+        "--out-tsv",
+        str(cognator_errors),
+        "--out-dataset-tsv",
+        str(cognator_error_summary),
+        "--out-md",
+        str(cognator_error_md),
+        "--label",
+        "cognator",
+    ]
+    run(cognator_error_cmd)
 
     lingpy_errors = run_dir / "lingpy_errors.tsv"
     lingpy_error_summary = run_dir / "lingpy_error_summary.tsv"
@@ -282,9 +281,9 @@ def main() -> None:
             "lingpy_predictions_tsv": str(lingpy_preds),
             "comparison_tsv": str(comparison_tsv),
             "comparison_md": str(comparison_md),
-            "cognator_errors_tsv": str(cognator_errors) if cognator_errors else "",
-            "cognator_error_summary_tsv": str(cognator_error_summary) if cognator_error_summary else "",
-            "cognator_error_summary_md": str(cognator_error_md) if cognator_error_md else "",
+            "cognator_errors_tsv": str(cognator_errors),
+            "cognator_error_summary_tsv": str(cognator_error_summary),
+            "cognator_error_summary_md": str(cognator_error_md),
             "lingpy_errors_tsv": str(lingpy_errors),
             "lingpy_error_summary_tsv": str(lingpy_error_summary),
             "lingpy_error_summary_md": str(lingpy_error_md),

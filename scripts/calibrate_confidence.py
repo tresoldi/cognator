@@ -59,7 +59,7 @@ def parse_args() -> argparse.Namespace:
     sub = parser.add_subparsers(dest="mode", required=True)
 
     fit = sub.add_parser("fit", help="Fit a calibration from a predictions TSV.")
-    fit.add_argument("--predictions", required=True, help="Prediction TSV from cmd/bench --pred-out")
+    fit.add_argument("--predictions", required=True, help="Prediction TSV from scripts/run_cognator_eval_table.py --pred-out")
     fit.add_argument("--out-json", required=True, help="Calibration JSON output path")
     fit.add_argument("--out-md", default="", help="Optional reliability-report markdown path")
     fit.add_argument("--bins", type=int, default=20, help="Number of equal-count bins per stratum (default 20)")

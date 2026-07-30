@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Summarize confidence diagnostics against pairwise error involvement.
 
-The input is the prediction TSV emitted by `cmd/bench --pred-out`. The report
+The input is the prediction TSV emitted by `scripts/run_cognator_eval_table.py --pred-out`. The report
 marks a form as error-involved when at least one same-concept pair containing
 that form is a false merge or false split. It then summarizes confidence and
 support diagnostics for error-involved versus clean forms and can emit simple
@@ -28,7 +28,7 @@ METRICS = [
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--predictions", required=True, help="Prediction TSV from cmd/bench --pred-out")
+    parser.add_argument("--predictions", required=True, help="Prediction TSV from scripts/run_cognator_eval_table.py --pred-out")
     parser.add_argument("--out-tsv", required=True, help="Output TSV summary")
     parser.add_argument("--out-md", default="", help="Optional markdown summary")
     parser.add_argument("--out-curves-tsv", default="", help="Optional threshold-curve TSV")

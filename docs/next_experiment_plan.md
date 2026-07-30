@@ -268,7 +268,7 @@ Promotion guardrails:
 ## Confidence Review Artifact
 
 Added `scripts/flag_low_confidence.py` as a diagnostic-only review queue for
-prediction TSVs emitted by `cmd/bench --pred-out`.
+prediction TSVs emitted by `scripts/run_cognator_eval_table.py --pred-out`.
 
 Default flags:
 - `confidence <= 0.77`

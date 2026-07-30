@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rank low-confidence prediction rows for manual review.
 
-The input is the prediction TSV emitted by `cmd/bench --pred-out`. The script
+The input is the prediction TSV emitted by `scripts/run_cognator_eval_table.py --pred-out`. The script
 does not change clustering decisions; it produces a review queue from existing
 confidence diagnostics. When gold labels are present, rows are annotated with
 pairwise false-merge / false-split involvement for evaluating review quality.
@@ -31,7 +31,7 @@ REQUIRED_COLUMNS = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--predictions", required=True, help="Prediction TSV from cmd/bench --pred-out")
+    parser.add_argument("--predictions", required=True, help="Prediction TSV from scripts/run_cognator_eval_table.py --pred-out")
     parser.add_argument("--out-tsv", required=True, help="Ranked output TSV")
     parser.add_argument("--out-md", default="", help="Optional markdown summary")
     parser.add_argument("--top", type=int, default=200, help="Rows to include in markdown top-list")

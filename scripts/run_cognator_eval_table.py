@@ -35,6 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--datasets", default="")
     parser.add_argument("--out-tsv", default="benchmark/cognator_results.tsv")
     parser.add_argument("--out-md", default="")
+    parser.add_argument("--pred-out", default="")
     parser.add_argument("--run-label", default="")
     parser.add_argument("--preset", default="support-adaptive-bridge")
     parser.add_argument("--threshold", type=float, default=0.68)
@@ -120,22 +121,23 @@ def skipped_row(dataset: str, rows: list[EvalRow], threshold: float, reason: str
     }
 
 
-def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> dict[str, object]:
+def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> tuple[dict[str, object], list[dict[str, object]]]:
     lects = len({row.language_id for row in rows})
     concepts = len({row.concept for row in rows})
     cognacy_forms = sum(1 for row in rows if row.gold_cognacy)
     if not rows:
-        return skipped_row(dataset, rows, args.threshold, "no data")
+        return skipped_row(dataset, rows, args.threshold, "no data"), []
     if cognacy_forms < args.min_cognacy:
-        return skipped_row(dataset, rows, args.threshold, f"only {cognacy_forms} Cognacy-annotated forms (<{args.min_cognacy})")
+        return skipped_row(dataset, rows, args.threshold, f"only {cognacy_forms} Cognacy-annotated forms (<{args.min_cognacy})"), []
     if lects < 2:
-        return skipped_row(dataset, rows, args.threshold, "fewer than 2 lects")
+        return skipped_row(dataset, rows, args.threshold, "fewer than 2 lects"), []
     if args.max_lects > 0 and lects > args.max_lects:
-        return skipped_row(dataset, rows, args.threshold, f"{lects} lects exceeds max-lects={args.max_lects}")
+        return skipped_row(dataset, rows, args.threshold, f"{lects} lects exceeds max-lects={args.max_lects}"), []
     if args.max_forms > 0 and len(rows) > args.max_forms:
-        return skipped_row(dataset, rows, args.threshold, f"{len(rows)} forms exceeds max-forms={args.max_forms}")
+        return skipped_row(dataset, rows, args.threshold, f"{len(rows)} forms exceeds max-forms={args.max_forms}"), []
 
     records = cognator_records(rows)
+    by_id = {row.eval_id: row for row in rows}
     start = time.perf_counter()
     result = cognator.detect(
         records,
@@ -148,21 +150,42 @@ def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> 
     )
     elapsed_ms = int((time.perf_counter() - start) * 1000)
     metrics = result.evaluate(records)
-    return {
-        "dataset": dataset,
-        "lects": lects,
-        "concepts": concepts,
-        "forms": len(rows),
-        "cognacy_forms": cognacy_forms,
-        "oov_types": 0,
-        "threshold": args.threshold,
-        "clusters": len(result.clusters()),
-        "precision": metrics.precision,
-        "recall": metrics.recall,
-        "f1": metrics.f1,
-        "elapsed_ms": elapsed_ms,
-        "skipped": "",
-    }
+    predictions = []
+    for pred_row in result:
+        source = by_id[pred_row["ID"]]
+        predictions.append(
+            {
+                "eval_id": pred_row["ID"],
+                "dataset": dataset,
+                "concept": source.concept,
+                "gold": f"{source.concept}:{source.gold_cognacy}",
+                "pred": f"{source.concept}:{pred_row['Cognator_ID']}",
+                "confidence": pred_row.get("Cognator_Confidence", ""),
+                "assigned_support": pred_row.get("Cognator_Assigned_Support", ""),
+                "alternative_support": pred_row.get("Cognator_Alternative_Support", ""),
+                "support_margin": pred_row.get("Cognator_Support_Margin", ""),
+                "bootstrap": pred_row.get("Cognator_Bootstrap", ""),
+                "run_label": args.run_label,
+            }
+        )
+    return (
+        {
+            "dataset": dataset,
+            "lects": lects,
+            "concepts": concepts,
+            "forms": len(rows),
+            "cognacy_forms": cognacy_forms,
+            "oov_types": 0,
+            "threshold": args.threshold,
+            "clusters": len(result.clusters()),
+            "precision": metrics.precision,
+            "recall": metrics.recall,
+            "f1": metrics.f1,
+            "elapsed_ms": elapsed_ms,
+            "skipped": "",
+        },
+        predictions,
+    )
 
 
 def write_results(path: str, rows: list[dict[str, object]]) -> None:
@@ -192,6 +215,18 @@ def write_markdown(path: str, rows: list[dict[str, object]]) -> None:
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def write_predictions(path: str, rows: list[dict[str, object]]) -> None:
+    if not path:
+        return
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    fields = ["eval_id", "dataset", "concept", "gold", "pred", "confidence", "assigned_support", "alternative_support", "support_margin", "bootstrap", "run_label"]
+    with Path(path).open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+
 def main() -> None:
     args = parse_args()
     allowed = set(item.strip() for item in args.datasets.split(",") if item.strip())
@@ -202,9 +237,15 @@ def main() -> None:
     grouped: dict[str, list[EvalRow]] = defaultdict(list)
     for row in rows:
         grouped[row.dataset].append(row)
-    results = [run_dataset(dataset, grouped[dataset], args) for dataset in sorted(grouped)]
+    results = []
+    predictions = []
+    for dataset in sorted(grouped):
+        result, pred = run_dataset(dataset, grouped[dataset], args)
+        results.append(result)
+        predictions.extend(pred)
     write_results(args.out_tsv, results)
     write_markdown(args.out_md, results)
+    write_predictions(args.pred_out, predictions)
 
 
 if __name__ == "__main__":
