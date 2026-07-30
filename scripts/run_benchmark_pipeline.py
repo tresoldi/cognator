@@ -1,22 +1,17 @@
 #!/usr/bin/env python3
 """Run the full Track-A benchmark pipeline for Cognator vs LingPy.
 
-This archival helper orchestrates:
+This orchestrates:
 - arcaverborum export -> Track A / Track B tables
-- frozen Go Cognator benchmark on Track A
+- Cognator C/Python benchmark on Track A
 - LingPy baseline on Track A
-- joined comparison via frozen Go cmd/benchcompare
-
-The normal development path is the C CLI and Python wrapper. This script is
-kept only to inspect historical arcaverborum benchmark artifacts until the C
-benchmark path grows equivalent eval-table and prediction-output support.
+- joined comparison via scripts/compare_benchmark_results.py
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import shlex
 import subprocess
 from datetime import datetime, timezone
@@ -105,7 +100,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cognator-extra-args",
         default="",
-        help="Extra raw args appended to frozen `go run ./cmd/bench`",
+        help="Extra raw args appended to scripts/run_cognator_eval_table.py",
     )
     parser.add_argument(
         "--lingpy-extra-args",
@@ -117,16 +112,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Reuse existing export dir instead of re-running the exporter",
     )
-    parser.add_argument(
-        "--gocache",
-        default=".gocache",
-        help="Workspace-local GOCACHE path for archival Go commands",
-    )
-    parser.add_argument(
-        "--allow-archival-go",
-        action="store_true",
-        help="Required opt-in because this helper still shells out to frozen Go benchmark commands",
-    )
     return parser.parse_args()
 
 
@@ -137,11 +122,6 @@ def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
 
 def main() -> None:
     args = parse_args()
-    if not args.allow_archival_go:
-        raise SystemExit(
-            "scripts/run_benchmark_pipeline.py uses frozen Go benchmark commands; "
-            "rerun with --allow-archival-go only for archival comparison work"
-        )
     split_path = Path(args.split_file)
     split_stem = split_path.stem or "split"
     run_label = args.run_label or f"{args.track.lower()}-{split_stem}"
@@ -170,16 +150,12 @@ def main() -> None:
     elif not eval_table.exists():
         raise SystemExit(f"--skip-export was set, but {eval_table} does not exist")
 
-    env = os.environ.copy()
-    env["GOCACHE"] = str(Path(args.gocache))
-
     cognator_results = run_dir / "cognator_results.tsv"
     cognator_md = run_dir / "cognator_results.md"
     cognator_preds = run_dir / "cognator_predictions.tsv"
     bench_cmd = [
-        "go",
-        "run",
-        "./cmd/bench",
+        "python",
+        "scripts/run_cognator_eval_table.py",
         "--eval-table",
         str(eval_table),
         "--split-file",
@@ -192,8 +168,6 @@ def main() -> None:
         str(cognator_results),
         "--out-md",
         str(cognator_md),
-        "--pred-out",
-        str(cognator_preds),
         "--run-label",
         run_label,
         "--parallel-families",
@@ -203,7 +177,7 @@ def main() -> None:
         bench_cmd.extend(["--jobs", str(args.cognator_jobs)])
     if args.cognator_extra_args:
         bench_cmd.extend(shlex.split(args.cognator_extra_args))
-    run(bench_cmd, env=env)
+    run(bench_cmd)
 
     lingpy_results = run_dir / "lingpy_results.tsv"
     lingpy_preds = run_dir / "lingpy_predictions.tsv"
@@ -236,9 +210,8 @@ def main() -> None:
     comparison_tsv = run_dir / "comparison.tsv"
     comparison_md = run_dir / "comparison.md"
     compare_cmd = [
-        "go",
-        "run",
-        "./cmd/benchcompare",
+        "python",
+        "scripts/compare_benchmark_results.py",
         "--cognator",
         str(cognator_results),
         "--lingpy",
@@ -248,26 +221,29 @@ def main() -> None:
         "--out-md",
         str(comparison_md),
     ]
-    run(compare_cmd, env=env)
+    run(compare_cmd)
 
     cognator_errors = run_dir / "cognator_errors.tsv"
     cognator_error_summary = run_dir / "cognator_error_summary.tsv"
     cognator_error_md = run_dir / "cognator_error_summary.md"
-    cognator_error_cmd = [
-        "python",
-        "scripts/error_report.py",
-        "--predictions",
-        str(cognator_preds),
-        "--out-tsv",
-        str(cognator_errors),
-        "--out-dataset-tsv",
-        str(cognator_error_summary),
-        "--out-md",
-        str(cognator_error_md),
-        "--label",
-        "cognator",
-    ]
-    run(cognator_error_cmd)
+    if cognator_preds.exists():
+        cognator_error_cmd = [
+            "python",
+            "scripts/error_report.py",
+            "--predictions",
+            str(cognator_preds),
+            "--out-tsv",
+            str(cognator_errors),
+            "--out-dataset-tsv",
+            str(cognator_error_summary),
+            "--out-md",
+            str(cognator_error_md),
+            "--label",
+            "cognator",
+        ]
+        run(cognator_error_cmd)
+    else:
+        cognator_errors = cognator_error_summary = cognator_error_md = None
 
     lingpy_errors = run_dir / "lingpy_errors.tsv"
     lingpy_error_summary = run_dir / "lingpy_error_summary.tsv"
@@ -306,9 +282,9 @@ def main() -> None:
             "lingpy_predictions_tsv": str(lingpy_preds),
             "comparison_tsv": str(comparison_tsv),
             "comparison_md": str(comparison_md),
-            "cognator_errors_tsv": str(cognator_errors),
-            "cognator_error_summary_tsv": str(cognator_error_summary),
-            "cognator_error_summary_md": str(cognator_error_md),
+            "cognator_errors_tsv": str(cognator_errors) if cognator_errors else "",
+            "cognator_error_summary_tsv": str(cognator_error_summary) if cognator_error_summary else "",
+            "cognator_error_summary_md": str(cognator_error_md) if cognator_error_md else "",
             "lingpy_errors_tsv": str(lingpy_errors),
             "lingpy_error_summary_tsv": str(lingpy_error_summary),
             "lingpy_error_summary_md": str(lingpy_error_md),

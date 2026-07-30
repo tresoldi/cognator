@@ -5,15 +5,14 @@ The script has two workflows:
 
 1. Existing mode, the default: read existing benchmark run directories and
    regenerate a detailed markdown/TSV report.
-2. Fresh mode: export arcaverborum data, run the frozen Go benchmark harness
-   and LingPy for selected splits, generate comparisons and diagnostics, then
-   write the same report.
+2. Fresh mode: export arcaverborum data, run the C/Python benchmark harness and
+   LingPy for selected splits, generate comparisons and diagnostics, then write
+   the same report.
 
 The report intentionally works from benchmark artifacts rather than hard-coded
 numbers, so it can be rerun after future experiments.
 
-Fresh mode is archival-only until the C/Python benchmark harness reaches feature
-parity with the old eval-table pipeline.
+Fresh mode uses C/Python Cognator scripts and no longer depends on Go.
 """
 
 from __future__ import annotations
@@ -21,7 +20,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import os
 import shlex
 import subprocess
 from dataclasses import dataclass
@@ -178,7 +176,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cognator-extra-args",
         default=CURRENT_COGNATOR_ARGS,
-        help="Fresh-mode extra args passed to frozen Go cmd/bench",
+        help="Fresh-mode extra args passed to scripts/run_cognator_eval_table.py",
     )
     parser.add_argument(
         "--lingpy-method",
@@ -215,16 +213,6 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=0,
         help="Cognator per-family jobs in fresh mode",
-    )
-    parser.add_argument(
-        "--gocache",
-        default=".gocache",
-        help="Workspace-local Go cache for archival fresh mode",
-    )
-    parser.add_argument(
-        "--allow-archival-go",
-        action="store_true",
-        help="Required with --mode=fresh because fresh mode still shells out to frozen Go benchmark commands",
     )
     parser.add_argument(
         "--skip-error-reports",
@@ -287,8 +275,6 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
     if not eval_table.exists():
         raise SystemExit(f"expected exported eval table at {eval_table}")
 
-    env = os.environ.copy()
-    env["GOCACHE"] = str(Path(args.gocache))
     runs: list[tuple[str, Path]] = []
 
     for label, split_path in parse_label_path(args.split, DEFAULT_SPLITS):
@@ -300,9 +286,8 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
         cognator_md = run_dir / "cognator_results.md"
         cognator_preds = run_dir / "cognator_predictions.tsv"
         bench_cmd = [
-            "go",
-            "run",
-            "./cmd/bench",
+            "python",
+            "scripts/run_cognator_eval_table.py",
             "--eval-table",
             str(eval_table),
             "--split-file",
@@ -315,8 +300,6 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
             str(cognator_results),
             "--out-md",
             str(cognator_md),
-            "--pred-out",
-            str(cognator_preds),
             "--run-label",
             run_label,
             "--parallel-families",
@@ -326,7 +309,7 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
             bench_cmd.extend(["--jobs", str(args.cognator_jobs)])
         if args.cognator_extra_args:
             bench_cmd.extend(shlex.split(args.cognator_extra_args))
-        run(bench_cmd, env=env)
+        run(bench_cmd)
 
         lingpy_results = run_dir / "lingpy_results.tsv"
         lingpy_preds = run_dir / "lingpy_predictions.tsv"
@@ -356,9 +339,8 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
 
         run(
             [
-                "go",
-                "run",
-                "./cmd/benchcompare",
+                "python",
+                "scripts/compare_benchmark_results.py",
                 "--cognator",
                 str(cognator_results),
                 "--lingpy",
@@ -367,12 +349,12 @@ def fresh_runs(args: argparse.Namespace) -> list[tuple[str, Path]]:
                 str(run_dir / "comparison.tsv"),
                 "--out-md",
                 str(run_dir / "comparison.md"),
-            ],
-            env=env,
+            ]
         )
 
         if not args.skip_error_reports:
-            write_error_reports(cognator_preds, run_dir, "cognator")
+            if cognator_preds.exists():
+                write_error_reports(cognator_preds, run_dir, "cognator")
             write_error_reports(lingpy_preds, run_dir, "lingpy")
 
         meta = {
@@ -740,11 +722,6 @@ def write_delta_list(handle, rows: list[ComparisonRow]) -> None:
 
 def main() -> None:
     args = parse_args()
-    if args.mode == "fresh" and not args.allow_archival_go:
-        raise SystemExit(
-            "fresh mode uses frozen Go benchmark commands; rerun with "
-            "--allow-archival-go only for archival comparison work"
-        )
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     report_md = Path(args.report_md) if args.report_md else out_dir / "arcaverborum_performance_report.md"
