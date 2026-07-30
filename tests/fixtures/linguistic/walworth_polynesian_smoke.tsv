@@ -1,0 +1,17 @@
+ID	Language_ID	Concept	Segments	Family	Cognacy
+wp_haw_eye	walworthpolynesian_Hawaiian	EYE	m a k a	walworthpolynesian	eye_1
+wp_sam_eye	walworthpolynesian_Samoan	EYE	m a t a	walworthpolynesian	eye_1
+wp_ton_eye	walworthpolynesian_Tongan	EYE	m a t a	walworthpolynesian	eye_1
+wp_mao_eye	walworthpolynesian_Maori	EYE	m a t a	walworthpolynesian	eye_1
+wp_haw_eat	walworthpolynesian_Hawaiian	EAT	a i	walworthpolynesian	eat_1
+wp_sam_eat	walworthpolynesian_Samoan	EAT	a i	walworthpolynesian	eat_1
+wp_ton_eat	walworthpolynesian_Tongan	EAT	k a i	walworthpolynesian	eat_1
+wp_mao_eat	walworthpolynesian_Maori	EAT	k a i	walworthpolynesian	eat_1
+wp_haw_fish	walworthpolynesian_Hawaiian	FISH	i a	walworthpolynesian	fish_1
+wp_sam_fish	walworthpolynesian_Samoan	FISH	i a	walworthpolynesian	fish_1
+wp_ton_fish	walworthpolynesian_Tongan	FISH	i k a	walworthpolynesian	fish_1
+wp_mao_fish	walworthpolynesian_Maori	FISH	i k a	walworthpolynesian	fish_1
+wp_haw_sun	walworthpolynesian_Hawaiian	SUN	l a	walworthpolynesian	sun_1
+wp_sam_sun	walworthpolynesian_Samoan	SUN	l a	walworthpolynesian	sun_1
+wp_ton_sun	walworthpolynesian_Tongan	SUN	l a	walworthpolynesian	sun_1
+wp_mao_sun	walworthpolynesian_Maori	SUN	r a	walworthpolynesian	sun_1

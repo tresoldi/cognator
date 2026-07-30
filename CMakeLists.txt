@@ -13,12 +13,40 @@ if(COGNATOR_ENABLE_SANITIZER AND NOT COGNATOR_ENABLE_SANITIZER MATCHES "^(addres
     message(FATAL_ERROR "COGNATOR_ENABLE_SANITIZER must be address or undefined")
 endif()
 
-add_library(cognator src/options.c)
+find_package(merkmal CONFIG QUIET)
+if(NOT TARGET merkmal::merkmal)
+    set(COGNATOR_MERKMAL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../merkmal" CACHE PATH "Merkmal C source checkout")
+    if(EXISTS "${COGNATOR_MERKMAL_SOURCE_DIR}/CMakeLists.txt")
+        set(MERKMAL_BUILD_TESTS OFF CACHE BOOL "Build merkmal tests" FORCE)
+        add_subdirectory("${COGNATOR_MERKMAL_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/merkmal")
+    else()
+        message(FATAL_ERROR "merkmal::merkmal not found; install merkmal or set COGNATOR_MERKMAL_SOURCE_DIR")
+    endif()
+endif()
+
+add_library(cognator
+    src/context.c
+    src/data.c
+    src/detect.c
+    src/eval.c
+    src/align.c
+    src/graph.c
+    src/oov.c
+    src/options.c
+    src/posterior.c
+    src/segment.c
+    src/wordlist.c
+)
 add_library(cognator::cognator ALIAS cognator)
 target_compile_features(cognator PUBLIC c_std_99)
 target_include_directories(cognator PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+    $<INSTALL_INTERFACE:include>
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(cognator PUBLIC merkmal::merkmal)
+if(UNIX AND NOT APPLE)
+    target_link_libraries(cognator PRIVATE m)
+endif()
 set_target_properties(cognator PROPERTIES C_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES)
 target_compile_definitions(cognator PRIVATE COGNATOR_BUILDING_LIBRARY)
 if(BUILD_SHARED_LIBS)
@@ -68,8 +96,48 @@ if(COGNATOR_BUILD_TESTS)
     add_executable(test_options tests/c/test_options.c)
     target_link_libraries(test_options PRIVATE cognator::cognator)
     add_test(NAME options COMMAND test_options)
+    add_executable(test_context tests/c/test_context.c)
+    target_link_libraries(test_context PRIVATE cognator::cognator)
+    add_test(NAME context COMMAND test_context)
+    add_executable(test_wordlist tests/c/test_wordlist.c)
+    target_link_libraries(test_wordlist PRIVATE cognator::cognator)
+    add_test(NAME wordlist COMMAND test_wordlist)
+    add_executable(test_segment tests/c/test_segment.c)
+    target_link_libraries(test_segment PRIVATE cognator::cognator)
+    add_test(NAME segment COMMAND test_segment)
+    add_executable(test_align tests/c/test_align.c)
+    target_link_libraries(test_align PRIVATE cognator::cognator)
+    add_test(NAME align COMMAND test_align)
+    add_executable(test_posterior tests/c/test_posterior.c)
+    target_link_libraries(test_posterior PRIVATE cognator::cognator)
+    add_test(NAME posterior COMMAND test_posterior)
+    add_executable(test_graph tests/c/test_graph.c)
+    target_link_libraries(test_graph PRIVATE cognator::cognator)
+    add_test(NAME graph COMMAND test_graph)
+    add_executable(test_detect tests/c/test_detect.c)
+    target_link_libraries(test_detect PRIVATE cognator::cognator)
+    add_test(NAME detect COMMAND test_detect)
+    add_executable(test_eval tests/c/test_eval.c)
+    target_link_libraries(test_eval PRIVATE cognator::cognator)
+    add_test(NAME eval COMMAND test_eval)
     if(COGNATOR_BUILD_CLI)
         add_test(NAME cli_version COMMAND cognator_cli version)
         set_tests_properties(cli_version PROPERTIES PASS_REGULAR_EXPRESSION "cognator 0.1.0")
+        add_test(NAME cli_detect
+            COMMAND ${CMAKE_COMMAND}
+                -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
+                -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_cli_detect
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_cli_detect.cmake)
+        add_test(NAME cli_eval
+            COMMAND ${CMAKE_COMMAND}
+                -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
+                -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_cli_eval
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_cli_eval.cmake)
+        add_test(NAME linguistic_smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
+                -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_linguistic_smoke
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/linguistic
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_linguistic_smoke.cmake)
     endif()
 endif()

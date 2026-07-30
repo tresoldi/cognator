@@ -1,0 +1,13 @@
+ID	Language_ID	Concept	Segments	Family	Cognacy
+rom_lat_night	Latin	NIGHT	n o k t e	romance	night_1
+rom_ita_night	Italian	NIGHT	n o t t e	romance	night_1
+rom_spa_night	Spanish	NIGHT	n o t e	romance	night_1
+rom_lat_eight	Latin	EIGHT	o k t o	romance	eight_1
+rom_ita_eight	Italian	EIGHT	o t t o	romance	eight_1
+rom_spa_eight	Spanish	EIGHT	o t o	romance	eight_1
+rom_lat_fact	Latin	MADE	f a k t a	romance	made_1
+rom_ita_fact	Italian	MADE	f a t t a	romance	made_1
+rom_spa_fact	Spanish	MADE	e tʃ a	romance	made_1
+rom_lat_fire	Latin	FIRE	i g n e	romance	fire_1
+rom_ita_fire	Italian	FIRE	f u o k o	romance	fire_2
+rom_spa_fire	Spanish	FIRE	f w e g o	romance	fire_2
