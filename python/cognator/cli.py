@@ -10,7 +10,11 @@ def main(argv=None):
     detect.add_argument("--in", dest="input", required=True)
     detect.add_argument("--out", required=True)
     detect.add_argument("--preset", default="support-adaptive-bridge")
-    detect.add_argument("--threshold", type=float, default=0.70)
+    detect.add_argument("--threshold", type=float, default=0.0)
+    detect.add_argument("--threshold-mode", default=None)
+    detect.add_argument("--threshold-min", type=float, default=None)
+    detect.add_argument("--threshold-max", type=float, default=None)
+    detect.add_argument("--threshold-shrink", type=float, default=None)
     detect.add_argument("--bootstrap", type=int, default=0)
     detect.add_argument("--seed", type=int, default=1)
     detect.add_argument("--min-pairs", type=int, default=1)
@@ -20,6 +24,10 @@ def main(argv=None):
         result = load(args.input).detect(
             preset=args.preset,
             threshold=args.threshold,
+            threshold_mode=args.threshold_mode,
+            threshold_min=args.threshold_min,
+            threshold_max=args.threshold_max,
+            threshold_shrink=args.threshold_shrink,
             bootstrap=args.bootstrap,
             seed=args.seed,
             min_pairs=args.min_pairs,

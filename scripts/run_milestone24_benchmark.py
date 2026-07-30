@@ -626,7 +626,7 @@ def parameter_findings(rows: list[dict[str, object]]) -> list[str]:
         "## Parameter Findings",
         "",
         f"- Cognator best thresholds by dataset: {format_counts(cognator_thresholds)}.",
-        "- Cognator's stronger settings are concentrated at lower thresholds, so the next tuning work should prefer adaptive thresholding over raising the global cutoff.",
+        "- Cognator's stronger settings are concentrated at lower thresholds, so the C/Python default keeps thresholding family-adaptive and clamps it to the lower-threshold band instead of raising the global cutoff.",
         f"- Cognator `min_pairs` best counts: {format_counts(cognator_min_pairs)}; `min_pairs=5` did not produce a best-of-dataset quality win in this sample.",
         f"- LingPy best methods by dataset: {format_counts(lingpy_methods)}.",
         f"- LingPy best cluster methods by dataset: {format_counts(lingpy_clusters)}.",

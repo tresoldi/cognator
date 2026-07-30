@@ -14,7 +14,7 @@ For Python code:
 import cognator
 
 wordlist = cognator.load("forms.tsv")
-result = wordlist.detect(preset="support-adaptive-bridge", threshold=0.70)
+result = wordlist.detect(preset="support-adaptive-bridge")
 
 print(result.clusters())
 result.write_sidecar("sidecar.tsv")
@@ -52,7 +52,7 @@ Evaluation uses the same within-concept B-cubed target as the C CLI:
 
 ```python
 wordlist = cognator.load("forms.tsv")
-result = wordlist.detect(threshold=0.68)
+result = wordlist.detect(preset="support-adaptive-bridge")
 metrics = result.evaluate(wordlist)
 
 print(metrics.precision, metrics.recall, metrics.f1)

@@ -38,7 +38,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pred-out", default="")
     parser.add_argument("--run-label", default="")
     parser.add_argument("--preset", default="support-adaptive-bridge")
-    parser.add_argument("--threshold", type=float, default=0.68)
+    parser.add_argument("--threshold", type=float, default=0.0, help="Positive values force a fixed graph threshold; 0 uses the preset adaptive policy.")
+    parser.add_argument("--threshold-mode", default="", help="family or concept-shrink; blank leaves the preset default.")
+    parser.add_argument("--threshold-min", type=float, default=None)
+    parser.add_argument("--threshold-max", type=float, default=None)
+    parser.add_argument("--threshold-shrink", type=float, default=None)
     parser.add_argument("--bootstrap", type=int, default=0)
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--scorer", default="posterior")
@@ -143,6 +147,10 @@ def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> 
         records,
         preset=args.preset,
         threshold=args.threshold,
+        threshold_mode=args.threshold_mode or None,
+        threshold_min=args.threshold_min,
+        threshold_max=args.threshold_max,
+        threshold_shrink=args.threshold_shrink,
         bootstrap=args.bootstrap,
         scorer=args.scorer,
         min_pairs=args.min_pairs,

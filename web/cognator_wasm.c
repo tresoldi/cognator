@@ -105,6 +105,14 @@ static int json_int(const char *json, const char *key, int *out) {
     return 1;
 }
 
+static int json_string_is(const char *json, const char *key, const char *value) {
+    const char *p = json_find_value(json, key);
+    size_t len = strlen(value);
+    if (p == NULL || *p != '"') return 0;
+    p++;
+    return strncmp(p, value, len) == 0 && p[len] == '"';
+}
+
 static void apply_options(const char *json, cg_options *options) {
     double number;
     int integer;
@@ -113,6 +121,11 @@ static void apply_options(const char *json, cg_options *options) {
         cg_options_apply_preset(options, "support-adaptive-bridge");
     }
     if (json_number(json, "threshold", &number)) options->threshold = number;
+    if (json_string_is(json, "threshold_mode", "family")) options->threshold_mode = "family";
+    if (json_string_is(json, "threshold_mode", "concept-shrink")) options->threshold_mode = "concept-shrink";
+    if (json_number(json, "threshold_min", &number)) options->threshold_min = number;
+    if (json_number(json, "threshold_max", &number)) options->threshold_max = number;
+    if (json_number(json, "threshold_shrink", &number)) options->threshold_shrink = number;
     if (json_number(json, "lambda", &number)) options->lambda = number;
     if (json_int(json, "iterations", &integer)) options->iterations = integer;
     if (json_int(json, "bootstrap", &integer)) options->bootstrap = integer;

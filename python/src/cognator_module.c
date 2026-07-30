@@ -45,6 +45,23 @@ static int apply_options(PyObject *kwargs, cg_options *options) {
         options->threshold = PyFloat_AsDouble(value);
         if (PyErr_Occurred()) return -1;
     }
+    value = PyDict_GetItemString(kwargs, "threshold_mode");
+    if (apply_string_option(value, &options->threshold_mode) < 0) return -1;
+    value = PyDict_GetItemString(kwargs, "threshold_min");
+    if (value != NULL && value != Py_None) {
+        options->threshold_min = PyFloat_AsDouble(value);
+        if (PyErr_Occurred()) return -1;
+    }
+    value = PyDict_GetItemString(kwargs, "threshold_max");
+    if (value != NULL && value != Py_None) {
+        options->threshold_max = PyFloat_AsDouble(value);
+        if (PyErr_Occurred()) return -1;
+    }
+    value = PyDict_GetItemString(kwargs, "threshold_shrink");
+    if (value != NULL && value != Py_None) {
+        options->threshold_shrink = PyFloat_AsDouble(value);
+        if (PyErr_Occurred()) return -1;
+    }
     value = PyDict_GetItemString(kwargs, "bootstrap");
     if (value != NULL && value != Py_None) {
         long parsed = PyLong_AsLong(value);

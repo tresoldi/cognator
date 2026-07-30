@@ -131,6 +131,22 @@ int main(void) {
     options.threshold_max = 0.8;
     assert(cg_detect(ctx, records, &options, &result) == CG_OK);
     assert(cg_result_threshold(result) >= 0.2 && cg_result_threshold(result) <= 0.8);
+    cg_result_free(result);
+    result = NULL;
+
+    assert(cg_options_apply_preset(&options, "support-adaptive-bridge") == CG_OK);
+    options.min_pairs = 1;
+    assert(cg_detect(ctx, records, &options, &result) == CG_OK);
+    assert(cg_result_threshold(result) >= 0.64 && cg_result_threshold(result) <= 0.74);
+    cg_result_free(result);
+    result = NULL;
+
+    assert(cg_options_apply_preset(&options, "support-adaptive-bridge") == CG_OK);
+    options.threshold = 0.70;
+    options.threshold_mode = "concept-shrink";
+    options.min_pairs = 1;
+    assert(cg_detect(ctx, records, &options, &result) == CG_OK);
+    assert(cg_result_threshold(result) == 0.70);
 
     assert(cg_detect(NULL, records, &options, &result) == CG_ERR_INVALID_ARGUMENT);
     assert(cg_detect(ctx, NULL, &options, &result) == CG_ERR_INVALID_ARGUMENT);

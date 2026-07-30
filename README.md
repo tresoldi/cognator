@@ -143,14 +143,17 @@ cognacy within concept, which is the supported target.
 
 ## Recommended Research Configuration
 
-The Go defaults are conservative and preserve the original threshold graph.
-For current experiments, use the frozen support/adaptive/bridge-cut baseline:
+The recommended C preset uses support-aware graph expansion, bridge-cut
+refinement, and a family-adaptive threshold clamped to the lower-threshold band
+that performed best in the wider LingPy comparison; pass a positive
+`--threshold` only when running a fixed-threshold sweep:
 
 ```sh
 ./build/cognator detect \
   --in forms.csv \
   --out cognator_sidecar.tsv \
-  --threshold 0.68 \
+  --preset support-adaptive-bridge \
+  --threshold 0 \
   --graph-mode support \
   --graph-expansion-mode adaptive \
   --graph-top-k 3 \
@@ -192,7 +195,7 @@ Run the C benchmark summary on a Cognator-shaped table:
   --in forms.csv \
   --out-tsv benchmark/results.tsv \
   --preset support-adaptive-bridge \
-  --threshold 0.68 \
+  --threshold 0 \
   --bootstrap 0 \
   --min-pairs 1
 ```

@@ -66,6 +66,11 @@ Conclusion:
 - let concept-specific behavior come from graph structure, not isolated local
   histogram cuts
 
+Implementation note: the C/Python `support-adaptive-bridge` preset now leaves
+`threshold=0` so detection resolves a family-level Otsu threshold clamped to
+`0.64..0.74`, while `threshold_mode=concept-shrink` remains an explicit
+experiment knob rather than the default behavior.
+
 ### Support Graphs Are The Right Direction
 
 Support-aware graph construction gave the first substantial quality jump. The

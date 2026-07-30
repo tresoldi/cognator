@@ -119,6 +119,10 @@ static void sweep_usage(FILE *stream) {
             "  --out-tsv PATH\n"
             "  --thresholds LIST  comma list; auto means Otsu\n"
             "  --preset NAME\n"
+            "  --threshold-mode NAME\n"
+            "  --threshold-min X\n"
+            "  --threshold-max X\n"
+            "  --threshold-shrink X\n"
             "  --iterations N\n"
             "  --bootstrap N\n"
             "  --seed N\n"
@@ -133,6 +137,10 @@ static void bench_usage(FILE *stream) {
             "  --families LIST    comma list of Family values\n"
             "  --preset NAME\n"
             "  --threshold X\n"
+            "  --threshold-mode NAME\n"
+            "  --threshold-min X\n"
+            "  --threshold-max X\n"
+            "  --threshold-shrink X\n"
             "  --iterations N\n"
             "  --bootstrap N\n"
             "  --seed N\n"
@@ -564,6 +572,14 @@ static int apply_common_run_option(const char *command, int argc, char **argv, i
         if (!set_nonnegative_int_option("--iterations", value, &options->iterations)) return 0;
     } else if ((value = value_fn(argc, argv, i, arg, "--threshold")) != NULL) {
         if (!set_double_option("--threshold", value, &options->threshold)) return 0;
+    } else if ((value = value_fn(argc, argv, i, arg, "--threshold-mode")) != NULL) {
+        options->threshold_mode = value;
+    } else if ((value = value_fn(argc, argv, i, arg, "--threshold-min")) != NULL) {
+        if (!set_double_option("--threshold-min", value, &options->threshold_min)) return 0;
+    } else if ((value = value_fn(argc, argv, i, arg, "--threshold-max")) != NULL) {
+        if (!set_double_option("--threshold-max", value, &options->threshold_max)) return 0;
+    } else if ((value = value_fn(argc, argv, i, arg, "--threshold-shrink")) != NULL) {
+        if (!set_double_option("--threshold-shrink", value, &options->threshold_shrink)) return 0;
     } else if ((value = value_fn(argc, argv, i, arg, "--bootstrap")) != NULL) {
         if (!set_nonnegative_int_option("--bootstrap", value, &options->bootstrap)) return 0;
     } else if ((value = value_fn(argc, argv, i, arg, "--bootstrap-sigma")) != NULL) {

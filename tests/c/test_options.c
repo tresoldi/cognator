@@ -13,7 +13,11 @@ int main(void) {
     assert(strcmp(options.scorer_mode, "posterior") == 0);
     assert(strcmp(options.merkmal_system, "descriptive") == 0);
     assert(cg_options_apply_preset(&options, "support-adaptive-bridge") == CG_OK);
-    assert(options.threshold == 0.68);
+    assert(options.threshold == 0.0);
+    assert(strcmp(options.threshold_mode, "family") == 0);
+    assert(options.threshold_min == 0.64);
+    assert(options.threshold_max == 0.74);
+    assert(options.threshold_shrink == 0.75);
     assert(options.graph_top_k == 3);
     assert(options.graph_contrastive_penalty == 0.20);
     assert(strcmp(options.refine_mode, "bridge-cut") == 0);

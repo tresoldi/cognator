@@ -95,7 +95,11 @@ cg_status cg_options_apply_preset(cg_options *options, const char *preset) {
     }
     if (strcmp(preset, "support-adaptive-bridge") == 0) {
         cg_options_init_defaults(options);
-        options->threshold = 0.68;
+        options->threshold = 0.0;
+        options->threshold_mode = "family";
+        options->threshold_min = 0.64;
+        options->threshold_max = 0.74;
+        options->threshold_shrink = 0.75;
         options->graph_mode = "support";
         options->graph_expansion_mode = "adaptive";
         options->graph_top_k = 3;

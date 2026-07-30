@@ -62,6 +62,23 @@ class PythonApiTests(unittest.TestCase):
         self.assertEqual(len(result), 12)
         self.assertIn("romance:NIGHT:0", result.clusters())
 
+    def test_detect_accepts_adaptive_threshold_options(self):
+        result = cognator.detect(
+            LATIN,
+            preset="support-adaptive-bridge",
+            threshold=0.0,
+            threshold_mode="concept-shrink",
+            threshold_min=0.64,
+            threshold_max=0.74,
+            threshold_shrink=0.75,
+            bootstrap=0,
+            scorer="posterior",
+            min_pairs=1,
+            seed=17,
+        )
+        self.assertEqual(len(result), 12)
+        self.assertGreater(len(result.clusters()), 0)
+
     def test_detect_from_records_and_dataframe_like(self):
         records = [
             {"ID": "a1", "Language_ID": "A", "Concept": "HAND", "Segments": "p a", "Family": "fam", "Cognacy": "1"},
