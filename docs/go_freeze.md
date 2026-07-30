@@ -58,7 +58,7 @@ Remaining blockers before physical deletion:
 
 - Port or replace the old eval-table benchmark harness (`cmd/bench`,
   `cmd/benchcompare`, and fresh-mode arcaverborum report scripts) in C/Python.
-- Decide whether `cmd/cognatorwasm` has any remaining value after the C/Python
-  package path is the supported user surface.
+- Build and publish generated C/WASM browser artifacts from `web/build-wasm.sh`
+  in an Emscripten environment.
 - Remove archival Go parity tests once no open parity question needs executable
   Go reference behavior.

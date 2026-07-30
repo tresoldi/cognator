@@ -391,8 +391,8 @@ Design for a later Emscripten build from the start:
 - Avoid process-global mutable registries. A `cg_context` owns the merkmal
   registry pointer and derived role cache.
 
-First WASM milestone should replace the Go `cmd/cognatorwasm` path with a C
-module plus a small JS worker wrapper.
+The first WASM replacement uses `web/cognator_wasm.c`, Emscripten, and a small
+JS worker wrapper instead of the Go `cmd/cognatorwasm` path.
 
 ## Migration Milestones
 
@@ -487,7 +487,7 @@ module plus a small JS worker wrapper.
 
 - Add Emscripten CMake build.
 - Add minimal JS worker facade.
-- Replace Go `wasm_exec.js` dependency.
+- Replace Go `wasm_exec.js` dependency with Emscripten-generated `cognator.js`.
 - Port browser smoke test and canvas/UI integration as needed.
 
 ## Validation Policy

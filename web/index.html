@@ -181,7 +181,7 @@ processing.</p>
 <div class="feature"><strong>Framework-native scoring</strong>merkmal phonological features, asymmetric lect-pair scorers, prosody-aware alignment</div>
 <div class="feature"><strong>Calibrated risk bands</strong>Every prediction labelled low / medium / high risk against a transferable Dev-Core fit</div>
 <div class="feature"><strong>Fast</strong>29–54× faster than LingPy on CoreCog; 18 MB WASM, 3 MB gzipped</div>
-<div class="feature"><strong>Open</strong>Stdlib-only Go; MIT-ish license; same pipeline as the CLI</div>
+<div class="feature"><strong>Open</strong>C core with a Python package and C/WASM browser build; same pipeline as the CLI</div>
 </div>
 
 <h2>Run a detection</h2>
@@ -390,8 +390,8 @@ function clearResults(){
   if(simulation){simulation.stop();simulation=null}
 }
 
-/* Advanced config hydration. Each field ID matches a detectOptions
-   JSON key in the Go side, so the mapping is 1:1. */
+/* Advanced config hydration. Each field ID matches a C/WASM detect option key,
+   so the mapping is 1:1. */
 const KNOB_IDS=[
  'scorer_mode','iterations','lambda','dirichlet_concentration','dirichlet_sharpness','dirichlet_scale',
  'alignment_mode','class_reduce','null_mode','null_max_runs','min_pairs',
