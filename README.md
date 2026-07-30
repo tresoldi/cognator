@@ -47,6 +47,10 @@ python -m pip install .
 cognator --help
 ```
 
+The packaging smoke test installs the project into a fresh virtual environment
+with `pip install --no-deps --no-build-isolation .` and imports `cognator`, so
+local source installs exercise the same C extension path users get.
+
 Build a wheel:
 
 ```sh

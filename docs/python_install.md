@@ -18,6 +18,15 @@ python -c "import cognator; print(cognator.version())"
 cognator --help
 ```
 
+The repository test suite includes an isolated virtualenv install check using:
+
+```sh
+python -m pip install --no-deps --no-build-isolation .
+```
+
+That path verifies the normal local install without requiring Go, CMake, LingPy,
+or a separate merkmal checkout.
+
 ## Command Line
 
 The package installs the natural `cognator` command and keeps `cognator-py` as a

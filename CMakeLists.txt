@@ -173,6 +173,12 @@ if(COGNATOR_BUILD_TESTS)
                     -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/python/test_python_api.cmake)
             set_tests_properties(python_api PROPERTIES ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python;COGNATOR_CLI=$<TARGET_FILE:cognator_cli>")
+            add_test(NAME python_install
+                COMMAND ${CMAKE_COMMAND}
+                    -DPython3_EXECUTABLE=${COGNATOR_PYTHON_EXECUTABLE}
+                    -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+                    -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_python_install
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/python/test_python_install.cmake)
         endif()
     endif()
 endif()
