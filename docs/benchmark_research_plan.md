@@ -128,12 +128,13 @@ Rules:
 ## Repo Changes
 
 The current repo already has:
-- `cmd/bench`
-- `cmd/benchcompare`
-- `cmd/benchmd`
-- `cmd/diag`
+- `scripts/run_cognator_eval_table.py`
+- `scripts/compare_benchmark_results.py`
+- `scripts/run_lingpy_baseline.py`
+- `scripts/run_benchmark_pipeline.py`
+- `scripts/generate_arcaverborum_report.py`
 
-The next phase should add a benchmark pipeline around those tools, not replace them.
+The Go benchmark tools were replaced by the C/Python pipeline.
 
 ### New Files
 
@@ -147,7 +148,7 @@ Add these scripts and data files:
 
 2. `scripts/run_lingpy_baseline.py`
 - runs LingPy `LexStat + Infomap` on the exported evaluation tables
-- writes one TSV with the same dataset-level metrics schema expected by `cmd/benchcompare`
+- writes one TSV with the same dataset-level metrics schema expected by `scripts/compare_benchmark_results.py`
 - writes optional per-form predictions for diagnostics
 
 3. `scripts/run_benchmark_matrix.py`
@@ -227,18 +228,17 @@ Suggested approach:
 
 Do not force the core detector to absorb benchmark-specific complexity.
 
-### 2. `cmd/bench`
+### 2. `scripts/run_cognator_eval_table.py`
 
 Current behavior:
 - reads a flat arcaverborum-shaped table
 - uses `Family` as the dataset key
 - evaluates directly against `rec.ID -> rec.Cognacy`
 
-Required changes:
-- accept a pre-exported benchmark table keyed by `Eval_ID`
-- optionally evaluate only a named track
-- optionally evaluate only datasets listed in a split file
-- support output of per-form predictions, not just dataset-level summaries
+Implemented behavior:
+- accepts a pre-exported benchmark table keyed by `Eval_ID`
+- optionally evaluates only datasets listed in a split file
+- supports output of per-form predictions, not just dataset-level summaries
 
 Suggested flags:
 - `--eval-table`
@@ -250,7 +250,7 @@ Suggested flags:
 Important:
 - the benchmark must evaluate against `Eval_ID`, not the raw `ID`, so repeated source IDs remain valid
 
-### 3. `cmd/benchcompare`
+### 3. `scripts/compare_benchmark_results.py`
 
 Current behavior:
 - joins Cognator and LingPy TSVs
@@ -462,7 +462,7 @@ Contents:
 
 1. Implement `scripts/export_arcaverborum_eval.py`
 2. Freeze `benchmark/splits/dev_core.txt` and `benchmark/splits/holdout.txt`
-3. Extend `cmd/bench` to consume exported evaluation tables keyed by `Eval_ID`
+3. Use `scripts/run_cognator_eval_table.py` on exported evaluation tables keyed by `Eval_ID`
 4. Implement `scripts/run_lingpy_baseline.py`
 5. Run the baseline comparison on `Dev-Core`
 6. Add error decomposition outputs

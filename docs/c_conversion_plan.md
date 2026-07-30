@@ -1,5 +1,9 @@
 # Cognator C Conversion Plan
 
+Status: historical plan. The C core, Python wrapper, C/Python benchmark path,
+and C/WASM source path are implemented, and the Go source/module files have
+been removed.
+
 This document plans the conversion of `cognator` from a Go implementation to a
 C core library, a small C CLI, and a Python wrapper. The neighboring `merkmal`
 repository is the model: C99 core, opaque public handles, explicit status

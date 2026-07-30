@@ -5,9 +5,8 @@ The main supported mode is **per-concept clustering within the same language
 family**. Cross-concept/global clustering exists as an experimental path, but it
 is not the core target.
 
-The active implementation is the C library and C CLI. The older Go
-implementation is frozen as archival reference code while the project moves
-toward a Python wrapper that is easy to install and use.
+The active implementation is the C library, C CLI, and Python wrapper; the old
+Go implementation has been removed.
 
 ## Current Status
 
@@ -69,9 +68,6 @@ cmake -S . -B build -DCOGNATOR_BUILD_TESTS=ON -DCOGNATOR_BUILD_CLI=ON
 cmake --build build -j2
 ctest --test-dir build --output-on-failure
 ```
-
-The Go implementation remains in the tree only for archival parity checks; see
-`docs/go_freeze.md`.
 
 The public C API ownership and ABI rules are documented in `docs/c_api.md`.
 
@@ -208,9 +204,8 @@ PYTHONPATH=python python scripts/run_milestone24_benchmark.py \
   --out-dir benchmark/milestone24
 ```
 
-Historical arcaverborum comparison scripts still exist for old eval-table
-artifacts, but fresh runs require `--allow-archival-go` because they shell out
-to the frozen Go benchmark harness.
+Arcaverborum comparison scripts now use the C/Python benchmark runner and no
+longer require Go.
 
 Export evaluation tables from a built arcaverborum repository:
 
@@ -331,15 +326,14 @@ Important packages:
 
 | Package | Role |
 |---|---|
-| `internal/wordlist` | input/output tables |
-| `internal/segment` | grapheme parsing and class reduction |
-| `internal/merkmal` | bundled distance/prosody/class features |
-| `internal/align` | alignment distances |
-| `internal/score` | per-lect-pair correspondence learning |
-| `internal/evidence` | distance-to-graph construction |
-| `internal/cluster` | Otsu thresholding and Infomap clustering |
-| `internal/pipeline` | orchestration, refinement, confidence |
-| `internal/eval` | B-cubed evaluation |
+| `src/wordlist.c` | input/output tables |
+| `src/segment.c` | grapheme parsing and class reduction |
+| `python/vendor/merkmal` or linked `merkmal::merkmal` | distance/prosody/class features |
+| `src/align.c` | alignment distances |
+| `src/posterior.c` | correspondence and posterior scoring |
+| `src/graph.c` | distance-to-graph construction and clustering |
+| `src/detect.c` | orchestration, refinement, confidence |
+| `src/eval.c` | B-cubed evaluation |
 
 For deeper engineering direction, see [docs/roadmap.md](docs/roadmap.md).
 
@@ -348,7 +342,7 @@ For deeper engineering direction, see [docs/roadmap.md](docs/roadmap.md).
 - The code defaults are not the best research settings.
 - Large families can still trigger high transient memory use because evidence
   generation is pair-heavy.
-- `internal/pipeline` owns too many responsibilities and should be split into
+- `src/detect.c` owns too many responsibilities and should be split into
   evidence generation, calibration, graph policy, clustering, and confidence.
 - Confidence is useful for ranking review cases, but it is not yet calibrated as
   a probability.
