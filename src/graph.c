@@ -1268,6 +1268,15 @@ const cg_diagnostic *cg_diagnostics_get(const cg_diagnostics *diagnostics, uint6
     return &diagnostics->items[node];
 }
 
+static int bridge_cut_blocks(const cg_graph *graph, const cg_partition *partition, uint64_t node, double weight, const cg_refine_spec *s) {
+    cg_support_profile p = node_profile(graph, partition, node);
+    double conf_mean = cg_confidence_from_support(p.in_mean, p.best_alt_mean);
+    if ((conf_mean >= s->confidence_threshold && p.in_mean >= s->confidence_threshold) || p.in_mean <= 0.0) {
+        return 0;
+    }
+    return weight < p.in_mean * s->bridge_ratio;
+}
+
 cg_status cg_refine_partition(
     const cg_graph *graph,
     const cg_partition *partition,
@@ -1317,7 +1326,6 @@ cg_status cg_refine_partition(
         refined->modules[i] = next;
         while (stack_len > 0) {
             uint64_t v = stack[--stack_len];
-            cg_support_profile p = node_profile(graph, partition, v);
             uint64_t j;
             for (j = 0; j < graph->adj_count[v]; j++) {
                 uint64_t u = graph->adj[v][j].target;
@@ -1327,12 +1335,7 @@ cg_status cg_refine_partition(
                     continue;
                 }
                 if (strcmp(s->mode, "bridge-cut") == 0) {
-                    double conf_mean = cg_confidence_from_support(p.in_mean, p.best_alt_mean);
-                    if (!((conf_mean >= s->confidence_threshold && p.in_mean >= s->confidence_threshold) || p.in_mean <= 0.0)) {
-                        if (weight < p.in_mean * s->bridge_ratio) {
-                            blocked = 1;
-                        }
-                    }
+                    blocked = bridge_cut_blocks(graph, partition, v, weight, s) || bridge_cut_blocks(graph, partition, u, weight, s);
                 }
                 if (!blocked) {
                     refined->modules[u] = next;

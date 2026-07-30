@@ -250,6 +250,28 @@ int main(void) {
         cg_graph_free(graph);
     }
 
+    {
+        cg_edge bridge_edges[] = {
+            {0, 1, 0.40},
+            {1, 2, 0.90},
+            {1, 3, 0.90},
+        };
+        uint64_t modules[4] = {0, 0, 1, 0};
+        assert(cg_graph_new(4, bridge_edges, 3, &graph) == CG_OK);
+        assert(cg_partition_from_modules(modules, 4, &part) == CG_OK);
+        cg_refine_spec_init_defaults(&refine);
+        refine.mode = "bridge-cut";
+        refine.confidence_threshold = 0.6;
+        refine.bridge_ratio = 0.7;
+        assert(cg_refine_partition(graph, part, &refine, &refined) == CG_OK);
+        assert(cg_partition_module_at(refined, 0) != cg_partition_module_at(refined, 1));
+        assert(cg_partition_module_at(refined, 1) == cg_partition_module_at(refined, 3));
+        assert(cg_partition_module_at(refined, 2) != cg_partition_module_at(refined, 1));
+        cg_partition_free(refined);
+        cg_partition_free(part);
+        cg_graph_free(graph);
+    }
+
     assert(cg_confidence_from_support(0.0, 0.0) == 1.0);
     assert(fabs(cg_confidence_from_support(0.0, 0.4) - 0.6) < 1e-9);
     assert(cg_build_graph_edges(0, NULL, 0, 0.5, NULL, NULL, &edge_count) == CG_ERR_INVALID_ARGUMENT);

@@ -71,6 +71,11 @@ Implementation note: the C/Python `support-adaptive-bridge` preset now leaves
 `0.64..0.74`, while `threshold_mode=concept-shrink` remains an explicit
 experiment knob rather than the default behavior.
 
+Boundary-refinement note: `bridge-cut` now evaluates weak bridges from both
+endpoints before preserving an edge, so an ambiguous node with strong competing
+support cannot be pulled across a boundary only because traversal reached it
+from a cleaner neighbor.
+
 ### Support Graphs Are The Right Direction
 
 Support-aware graph construction gave the first substantial quality jump. The
