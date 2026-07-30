@@ -50,6 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-cognacy", type=int, default=50)
     parser.add_argument("--max-lects", type=int, default=250)
     parser.add_argument("--max-forms", type=int, default=15000)
+    parser.add_argument("--max-pairs", type=int, default=3_000_000, help="Skip datasets with more same-concept cross-lect pairs; 0 disables the guard.")
     parser.add_argument("--track", default="A", choices=["A", "B"], help="Accepted for compatibility; metrics are identical for both tracks.")
     parser.add_argument("--merkmal-dir", default="", help="Accepted for compatibility; the C/Python package uses linked merkmal data.")
     parser.add_argument("--parallel-families", default="", help="Accepted for compatibility; this runner is sequential.")
@@ -107,6 +108,16 @@ def cognator_records(rows: list[EvalRow]) -> list[dict[str, str]]:
     ]
 
 
+def estimate_pairs(rows: list[EvalRow]) -> int:
+    by_concept: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    total = 0
+    for row in rows:
+        counts = by_concept[row.concept]
+        total += sum(count for language, count in counts.items() if language != row.language_id)
+        counts[row.language_id] += 1
+    return total
+
+
 def skipped_row(dataset: str, rows: list[EvalRow], threshold: float, reason: str) -> dict[str, object]:
     return {
         "dataset": dataset,
@@ -114,6 +125,7 @@ def skipped_row(dataset: str, rows: list[EvalRow], threshold: float, reason: str
         "concepts": len({row.concept for row in rows}),
         "forms": len(rows),
         "cognacy_forms": sum(1 for row in rows if row.gold_cognacy),
+        "estimated_pairs": estimate_pairs(rows),
         "oov_types": 0,
         "threshold": threshold,
         "clusters": 0,
@@ -129,6 +141,7 @@ def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> 
     lects = len({row.language_id for row in rows})
     concepts = len({row.concept for row in rows})
     cognacy_forms = sum(1 for row in rows if row.gold_cognacy)
+    estimated_pairs = estimate_pairs(rows)
     if not rows:
         return skipped_row(dataset, rows, args.threshold, "no data"), []
     if cognacy_forms < args.min_cognacy:
@@ -139,6 +152,8 @@ def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> 
         return skipped_row(dataset, rows, args.threshold, f"{lects} lects exceeds max-lects={args.max_lects}"), []
     if args.max_forms > 0 and len(rows) > args.max_forms:
         return skipped_row(dataset, rows, args.threshold, f"{len(rows)} forms exceeds max-forms={args.max_forms}"), []
+    if args.max_pairs > 0 and estimated_pairs > args.max_pairs:
+        return skipped_row(dataset, rows, args.threshold, f"{estimated_pairs} pairs exceeds max-pairs={args.max_pairs}"), []
 
     records = cognator_records(rows)
     by_id = {row.eval_id: row for row in rows}
@@ -185,6 +200,7 @@ def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> 
             "concepts": concepts,
             "forms": len(rows),
             "cognacy_forms": cognacy_forms,
+            "estimated_pairs": estimated_pairs,
             "oov_types": 0,
             "threshold": resolved_threshold,
             "clusters": len(result.clusters()),
@@ -200,7 +216,7 @@ def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> 
 
 def write_results(path: str, rows: list[dict[str, object]]) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    fields = ["dataset", "lects", "concepts", "forms", "cognacy_forms", "oov_types", "threshold", "clusters", "precision", "recall", "f1", "elapsed_ms", "skipped"]
+    fields = ["dataset", "lects", "concepts", "forms", "cognacy_forms", "estimated_pairs", "oov_types", "threshold", "clusters", "precision", "recall", "f1", "elapsed_ms", "skipped"]
     with Path(path).open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()

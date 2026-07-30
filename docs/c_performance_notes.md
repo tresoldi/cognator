@@ -14,6 +14,9 @@ Changes made:
   index list for every distance pair.
 - `cognator detect` has explicit `--max-forms` and `--max-lects` guards for
   ad-hoc large inputs. `cognator bench` keeps its per-family guards.
+- Benchmark entry points also have a same-concept cross-lect pair guard:
+  `--max-pairs` defaults to `3000000`, can be set to `0` to disable it, and is
+  emitted as `estimated_pairs` in result TSVs.
 
 Native parallelism is intentionally still deferred. The current C path remains
 serial so that posterior training, bootstrap, and result ordering stay

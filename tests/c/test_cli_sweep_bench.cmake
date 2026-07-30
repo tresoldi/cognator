@@ -61,14 +61,33 @@ if(NOT bench_result EQUAL 0)
     message(FATAL_ERROR "bench returned ${bench_result}: ${bench_error}")
 endif()
 file(READ "${TEST_WORK_DIR}/bench_out.tsv" bench)
-if(NOT bench MATCHES "^family\tlects\tconcepts\tforms\tcognacy\toov\tthreshold\tclusters\tprecision\trecall\tf1\telapsed_ms\tskipped\n")
+if(NOT bench MATCHES "^family\tlects\tconcepts\tforms\tcognacy\testimated_pairs\toov\tthreshold\tclusters\tprecision\trecall\tf1\telapsed_ms\tskipped\n")
     message(FATAL_ERROR "bench header mismatch: ${bench}")
 endif()
-if(NOT bench MATCHES "famA\t3\t2\t6\t6\t0\t0.700000\t")
+if(NOT bench MATCHES "famA\t3\t2\t6\t6\t6\t0\t0.700000\t")
     message(FATAL_ERROR "bench famA row mismatch: ${bench}")
 endif()
-if(NOT bench MATCHES "famB\t2\t1\t2\t2\t0\t0.000000\t0\t0.000000\t0.000000\t0.000000\t0\ttoo_few_cognacy")
+if(NOT bench MATCHES "famB\t2\t1\t2\t2\t1\t0\t0.000000\t0\t0.000000\t0.000000\t0.000000\t0\ttoo_few_cognacy")
     message(FATAL_ERROR "bench skip row mismatch: ${bench}")
+endif()
+
+execute_process(
+    COMMAND "${COGNATOR_CLI}" bench
+        --in "${TEST_WORK_DIR}/bench.tsv"
+        --out-tsv "${TEST_WORK_DIR}/bench_pair_guard.tsv"
+        --families famA
+        --preset support-adaptive-bridge
+        --max-pairs 5
+        --min-cognacy 3
+    RESULT_VARIABLE pair_guard_result
+    ERROR_VARIABLE pair_guard_error
+)
+if(NOT pair_guard_result EQUAL 0)
+    message(FATAL_ERROR "bench pair guard returned ${pair_guard_result}: ${pair_guard_error}")
+endif()
+file(READ "${TEST_WORK_DIR}/bench_pair_guard.tsv" pair_guard)
+if(NOT pair_guard MATCHES "famA\t3\t2\t6\t6\t6\t0\t0.000000\t0\t0.000000\t0.000000\t0.000000\t0\ttoo_many_pairs")
+    message(FATAL_ERROR "bench pair guard row mismatch: ${pair_guard}")
 endif()
 
 execute_process(

@@ -350,8 +350,9 @@ For deeper engineering direction, see [docs/roadmap.md](docs/roadmap.md).
 ## Known Limitations
 
 - The code defaults are not the best research settings.
-- Large families can still trigger high transient memory use because evidence
-  generation is pair-heavy.
+- Large families can still trigger high transient memory use when pair-heavy
+  concepts exceed the current guards; benchmark runs now report
+  `estimated_pairs` and skip families above `--max-pairs`.
 - `src/detect.c` owns too many responsibilities and should be split into
   evidence generation, calibration, graph policy, clustering, and confidence.
 - Confidence is useful for ranking review cases, but it is not yet calibrated as

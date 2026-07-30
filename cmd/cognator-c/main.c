@@ -13,6 +13,7 @@ typedef struct detect_args {
     const char *oov_out;
     int max_forms;
     int max_lects;
+    uint64_t max_pairs;
     cg_options options;
 } detect_args;
 
@@ -29,6 +30,7 @@ typedef struct bench_args {
     const char *families;
     int max_forms;
     int max_lects;
+    uint64_t max_pairs;
     int min_cognacy;
     cg_options options;
 } bench_args;
@@ -107,6 +109,7 @@ static void detect_usage(FILE *stream) {
             "  --min-pairs N\n"
             "  --max-forms N\n"
             "  --max-lects N\n"
+            "  --max-pairs N\n"
             "  --dirichlet-concentration X\n"
             "  --dirichlet-sharpness X\n"
             "  --dirichlet-scale NAME\n");
@@ -141,6 +144,7 @@ static void bench_usage(FILE *stream) {
             "  --threshold-min X\n"
             "  --threshold-max X\n"
             "  --threshold-shrink X\n"
+            "  --max-pairs N\n"
             "  --iterations N\n"
             "  --bootstrap N\n"
             "  --seed N\n"
@@ -384,6 +388,24 @@ static void summarize_records(const cg_records *records, uint64_t *lects, uint64
     *cognacy = cog_count;
 }
 
+static uint64_t estimate_cross_lect_pairs(const cg_records *records) {
+    uint64_t pairs = 0;
+    uint64_t i;
+    for (i = 0; i < cg_records_count(records); i++) {
+        uint64_t j;
+        const cg_record *left = cg_records_get(records, i);
+        if (left == NULL) continue;
+        for (j = i + 1; j < cg_records_count(records); j++) {
+            const cg_record *right = cg_records_get(records, j);
+            if (right == NULL) continue;
+            if (strcmp(left->concept == NULL ? "" : left->concept, right->concept == NULL ? "" : right->concept) != 0) continue;
+            if (strcmp(left->language_id == NULL ? "" : left->language_id, right->language_id == NULL ? "" : right->language_id) == 0) continue;
+            if (pairs != UINT64_MAX) pairs++;
+        }
+    }
+    return pairs;
+}
+
 static cg_status scan_segments(const cg_context *ctx, const cg_records *records, uint64_t *segments, cg_oov_report **oov_out) {
     cg_oov_report *oov = NULL;
     uint64_t total = 0;
@@ -435,6 +457,7 @@ static int parse_detect_args(int argc, char **argv, detect_args *args) {
     args->oov_out = NULL;
     args->max_forms = 0;
     args->max_lects = 0;
+    args->max_pairs = 0;
     if (!scan_preset(argc, argv, &args->options)) {
         return 0;
     }
@@ -533,6 +556,11 @@ static int parse_detect_args(int argc, char **argv, detect_args *args) {
             if (!set_nonnegative_int_option("--max-forms", value, &args->max_forms)) return 0;
         } else if ((value = detect_arg_value(argc, argv, &i, arg, "--max-lects")) != NULL) {
             if (!set_nonnegative_int_option("--max-lects", value, &args->max_lects)) return 0;
+        } else if ((value = detect_arg_value(argc, argv, &i, arg, "--max-pairs")) != NULL) {
+            if (!parse_uint64_value(value, &args->max_pairs)) {
+                fprintf(stderr, "detect: invalid unsigned integer for --max-pairs: %s\n", value);
+                return 0;
+            }
         } else if ((value = detect_arg_value(argc, argv, &i, arg, "--dirichlet-concentration")) != NULL) {
             if (!set_double_option("--dirichlet-concentration", value, &args->options.dirichlet_concentration)) return 0;
         } else if ((value = detect_arg_value(argc, argv, &i, arg, "--dirichlet-sharpness")) != NULL) {
@@ -651,6 +679,7 @@ static int parse_bench_args(int argc, char **argv, bench_args *args) {
     args->families = NULL;
     args->max_forms = 15000;
     args->max_lects = 250;
+    args->max_pairs = 3000000;
     args->min_cognacy = 1;
     for (i = 0; i < argc; i++) {
         const char *arg = argv[i];
@@ -670,6 +699,11 @@ static int parse_bench_args(int argc, char **argv, bench_args *args) {
             if (!set_nonnegative_int_option("--max-forms", value, &args->max_forms)) return 0;
         } else if ((value = bench_arg_value(argc, argv, &i, arg, "--max-lects")) != NULL) {
             if (!set_nonnegative_int_option("--max-lects", value, &args->max_lects)) return 0;
+        } else if ((value = bench_arg_value(argc, argv, &i, arg, "--max-pairs")) != NULL) {
+            if (!parse_uint64_value(value, &args->max_pairs)) {
+                fprintf(stderr, "bench: invalid unsigned integer for --max-pairs: %s\n", value);
+                return 0;
+            }
         } else if ((value = bench_arg_value(argc, argv, &i, arg, "--min-cognacy")) != NULL) {
             if (!set_nonnegative_int_option("--min-cognacy", value, &args->min_cognacy)) return 0;
         } else {
@@ -777,8 +811,9 @@ static int detect_cmd(int argc, char **argv) {
         fprintf(stderr, "detect: read %s: %s\n", args.in, cg_status_string(status));
         goto done;
     }
-    if (args.max_forms > 0 || args.max_lects > 0) {
+    if (args.max_forms > 0 || args.max_lects > 0 || args.max_pairs > 0) {
         uint64_t lects = 0, concepts = 0, cognacy = 0;
+        uint64_t estimated_pairs = 0;
         summarize_records(records, &lects, &concepts, &cognacy);
         (void)concepts;
         (void)cognacy;
@@ -793,6 +828,16 @@ static int detect_cmd(int argc, char **argv) {
                     (unsigned long long)lects, args.max_lects);
             exit_code = 2;
             goto done;
+        }
+        if (args.max_pairs > 0) {
+            estimated_pairs = estimate_cross_lect_pairs(records);
+            if (estimated_pairs > args.max_pairs) {
+                fprintf(stderr, "detect: input has %llu same-concept cross-lect pairs, above --max-pairs=%llu\n",
+                        (unsigned long long)estimated_pairs,
+                        (unsigned long long)args.max_pairs);
+                exit_code = 2;
+                goto done;
+            }
         }
     }
     status = cg_detect(ctx, records, &args.options, &result);
@@ -1142,12 +1187,13 @@ static int bench_cmd(int argc, char **argv) {
         fprintf(stderr, "bench: write %s: I/O error\n", args.out_tsv);
         goto done;
     }
-    fprintf(out, "family\tlects\tconcepts\tforms\tcognacy\toov\tthreshold\tclusters\tprecision\trecall\tf1\telapsed_ms\tskipped\n");
+    fprintf(out, "family\tlects\tconcepts\tforms\tcognacy\testimated_pairs\toov\tthreshold\tclusters\tprecision\trecall\tf1\telapsed_ms\tskipped\n");
     for (f = 0; f < family_count; f++) {
         cg_records *family_records = NULL;
         cg_result *result = NULL;
         cg_eval_result eval = {0};
         uint64_t lects = 0, concepts = 0, cognacy = 0;
+        uint64_t estimated_pairs = 0;
         clock_t start;
         clock_t end;
         const char *skip = "";
@@ -1157,20 +1203,24 @@ static int bench_cmd(int argc, char **argv) {
             goto done;
         }
         summarize_records(family_records, &lects, &concepts, &cognacy);
+        estimated_pairs = estimate_cross_lect_pairs(family_records);
         if (args.min_cognacy > 0 && cognacy < (uint64_t)args.min_cognacy) {
             skip = "too_few_cognacy";
         } else if (args.max_forms > 0 && cg_records_count(family_records) > (uint64_t)args.max_forms) {
             skip = "too_many_forms";
         } else if (args.max_lects > 0 && lects > (uint64_t)args.max_lects) {
             skip = "too_many_lects";
+        } else if (args.max_pairs > 0 && estimated_pairs > args.max_pairs) {
+            skip = "too_many_pairs";
         }
         if (skip[0] != '\0') {
-            fprintf(out, "%s\t%llu\t%llu\t%llu\t%llu\t0\t0.000000\t0\t0.000000\t0.000000\t0.000000\t0\t%s\n",
+            fprintf(out, "%s\t%llu\t%llu\t%llu\t%llu\t%llu\t0\t0.000000\t0\t0.000000\t0.000000\t0.000000\t0\t%s\n",
                     families[f],
                     (unsigned long long)lects,
                     (unsigned long long)concepts,
                     (unsigned long long)cg_records_count(family_records),
                     (unsigned long long)cognacy,
+                    (unsigned long long)estimated_pairs,
                     skip);
             cg_records_free(family_records);
             continue;
@@ -1185,12 +1235,13 @@ static int bench_cmd(int argc, char **argv) {
             cg_records_free(family_records);
             goto done;
         }
-        fprintf(out, "%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.6f\t%llu\t%.6f\t%.6f\t%.6f\t%.0f\t\n",
+        fprintf(out, "%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%.6f\t%llu\t%.6f\t%.6f\t%.6f\t%.0f\t\n",
                 families[f],
                 (unsigned long long)lects,
                 (unsigned long long)concepts,
                 (unsigned long long)cg_records_count(family_records),
                 (unsigned long long)cognacy,
+                (unsigned long long)estimated_pairs,
                 (unsigned long long)cg_result_oov_count(result),
                 cg_result_threshold(result),
                 (unsigned long long)count_unique_clusters(result),
