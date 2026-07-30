@@ -6,7 +6,9 @@ from setuptools import Extension, setup
 
 
 ROOT = Path(__file__).parent.resolve()
-MERKMAL = Path(os.environ.get("COGNATOR_MERKMAL_SOURCE_DIR", ROOT.parent / "merkmal")).resolve()
+MERKMAL = Path(
+    os.environ.get("COGNATOR_MERKMAL_SOURCE_DIR", ROOT / "python" / "vendor" / "merkmal")
+).resolve()
 
 if not (MERKMAL / "include" / "merkmal.h").exists():
     raise SystemExit(
@@ -36,6 +38,13 @@ sources = [
     MERKMAL / "src" / "generated" / "builtin_data.c",
 ]
 
+
+def source_path(path):
+    try:
+        return str(path.resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
 extra_compile_args = []
 if os.name != "nt":
     extra_compile_args.extend(["-std=c99", "-Wall", "-Wextra", "-Wpedantic"])
@@ -48,7 +57,7 @@ setup(
     ext_modules=[
         Extension(
             "cognator._cognator",
-            sources=[str(path) for path in sources],
+            sources=[source_path(path) for path in sources],
             define_macros=[("_POSIX_C_SOURCE", "200809L")],
             include_dirs=[
                 str(ROOT / "include"),

@@ -1,0 +1,13 @@
+include CMakeLists.txt
+include README.md
+include include/cognator.h
+include src/internal/*.h
+include src/*.c
+include python/cognator/py.typed
+include python/src/*.c
+include python/vendor/merkmal/include/*.h
+include python/vendor/merkmal/src/*.c
+include python/vendor/merkmal/src/*.h
+include python/vendor/merkmal/src/generated/*.c
+include python/vendor/merkmal/src/generated/*.h
+recursive-include tests/fixtures/linguistic *.tsv *.md

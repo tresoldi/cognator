@@ -22,8 +22,19 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/tresoldi/cognator"
 
+[project.scripts]
+cognator-py = "cognator.cli:main"
+
 [tool.setuptools]
 package-dir = {"" = "python"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["python"]
+
+[tool.setuptools.package-data]
+cognator = ["py.typed"]
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
+test-command = "python -c \"import cognator; assert cognator.abi_version() == 1\""
