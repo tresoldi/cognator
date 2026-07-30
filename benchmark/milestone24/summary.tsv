@@ -1,0 +1,2 @@
+dataset	best_cognator_config	best_cognator_f1	best_lingpy_config	best_lingpy_f1	delta_f1	winner
+carvalhopurus	support-adaptive-bridge, threshold=0.72, min_pairs=1	0.994001	lexstat, infomap, threshold=0.75	0.987846	0.006154	cognator

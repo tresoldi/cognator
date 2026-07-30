@@ -1,0 +1,41 @@
+dataset	engine	method	cluster_method	threshold	min_pairs	precision	recall	f1	elapsed_ms	rows	lects	concepts	clusters	notes
+carvalhopurus	cognator-python	support-adaptive-bridge		0.640000	1	0.995896	0.990196	0.993038	3481	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.640000	5	0.995896	0.990196	0.993038	3497	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.660000	1	0.995896	0.990196	0.993038	3244	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.660000	5	0.995896	0.990196	0.993038	2162	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.680000	1	0.995896	0.990196	0.993038	2180	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.680000	5	0.995896	0.990196	0.993038	2181	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.700000	1	0.995896	0.990196	0.993038	2182	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.700000	5	0.995896	0.990196	0.993038	2190	731	4	199	208	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.720000	1	0.995759	0.992248	0.994001	2191	731	4	199	207	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.720000	5	0.995759	0.992248	0.994001	2181	731	4	199	207	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.740000	1	0.995759	0.992248	0.994001	2202	731	4	199	207	none
+carvalhopurus	cognator-python	support-adaptive-bridge		0.740000	5	0.995759	0.992248	0.994001	2191	731	4	199	207	none
+carvalhopurus	lingpy	lexstat	infomap	0.450000	0	0.993258	0.786959	0.878155	173	731	4	199	328	runs=1000
+carvalhopurus	lingpy	lexstat	infomap	0.500000	0	0.993258	0.849430	0.915731	175	731	4	199	287	runs=1000
+carvalhopurus	lingpy	lexstat	infomap	0.550000	0	0.993258	0.903967	0.946511	184	731	4	199	255	runs=1000
+carvalhopurus	lingpy	lexstat	infomap	0.600000	0	0.991206	0.925308	0.957124	183	731	4	199	245	runs=1000
+carvalhopurus	lingpy	lexstat	infomap	0.650000	0	0.991206	0.958048	0.974345	173	731	4	199	226	runs=1000
+carvalhopurus	lingpy	lexstat	infomap	0.700000	0	0.991206	0.982672	0.986921	177	731	4	199	213	runs=1000
+carvalhopurus	lingpy	lexstat	infomap	0.750000	0	0.985734	0.989968	0.987846	176	731	4	199	208	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.450000	0	0.994528	0.726311	0.839517	100	731	4	199	360	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.500000	0	0.993844	0.794710	0.883192	98	731	4	199	316	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.550000	0	0.993258	0.839626	0.910003	98	731	4	199	289	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.600000	0	0.993258	0.883630	0.935242	98	731	4	199	266	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.650000	0	0.993258	0.916370	0.953266	98	731	4	199	248	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.700000	0	0.993258	0.933470	0.962436	98	731	4	199	238	runs=1000
+carvalhopurus	lingpy	lexstat	upgma	0.750000	0	0.993258	0.960876	0.976798	99	731	4	199	223	runs=1000
+carvalhopurus	lingpy	sca	infomap	0.450000	0	0.993258	0.828956	0.903700	135	731	4	199	297	none
+carvalhopurus	lingpy	sca	infomap	0.500000	0	0.984138	0.876151	0.927010	151	731	4	199	267	none
+carvalhopurus	lingpy	sca	infomap	0.550000	0	0.982086	0.919927	0.949991	149	731	4	199	244	none
+carvalhopurus	lingpy	sca	infomap	0.600000	0	0.980262	0.947424	0.963563	140	731	4	199	229	none
+carvalhopurus	lingpy	sca	infomap	0.650000	0	0.970860	0.979024	0.974925	120	731	4	199	211	none
+carvalhopurus	lingpy	sca	infomap	0.700000	0	0.973292	0.981897	0.977575	123	731	4	199	208	none
+carvalhopurus	lingpy	sca	infomap	0.750000	0	0.966756	0.990652	0.978558	112	731	4	199	203	none
+carvalhopurus	lingpy	sca	upgma	0.450000	0	0.993258	0.781304	0.874623	60	731	4	199	324	none
+carvalhopurus	lingpy	sca	upgma	0.500000	0	0.993258	0.835112	0.907345	59	731	4	199	290	none
+carvalhopurus	lingpy	sca	upgma	0.550000	0	0.989610	0.871135	0.926601	59	731	4	199	269	none
+carvalhopurus	lingpy	sca	upgma	0.600000	0	0.984138	0.907159	0.944082	59	731	4	199	248	none
+carvalhopurus	lingpy	sca	upgma	0.650000	0	0.984138	0.941131	0.962154	59	731	4	199	230	none
+carvalhopurus	lingpy	sca	upgma	0.700000	0	0.982086	0.964797	0.973365	58	731	4	199	218	none
+carvalhopurus	lingpy	sca	upgma	0.750000	0	0.974964	0.982900	0.978916	59	731	4	199	209	none
