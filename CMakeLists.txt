@@ -3,6 +3,7 @@ project(cognator VERSION 0.1.0 LANGUAGES C)
 
 option(COGNATOR_BUILD_TESTS "Build native C tests" ON)
 option(COGNATOR_BUILD_CLI "Build the cognator CLI" ON)
+option(COGNATOR_ENABLE_GO_C_PARITY "Run Go/C parity tests; requires a Go-compatible ../merkmal/go checkout" OFF)
 set(COGNATOR_ENABLE_SANITIZER "" CACHE STRING "Sanitizer: address or undefined")
 set_property(CACHE COGNATOR_ENABLE_SANITIZER PROPERTY STRINGS "" address undefined)
 
@@ -152,5 +153,15 @@ if(COGNATOR_BUILD_TESTS)
                 -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
                 -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_package_consumer
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_package_consumer.cmake)
+        if(COGNATOR_ENABLE_GO_C_PARITY)
+            find_package(Python3 COMPONENTS Interpreter REQUIRED)
+            add_test(NAME go_c_parity
+                COMMAND ${CMAKE_COMMAND}
+                    -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
+                    -DPython3_EXECUTABLE=${Python3_EXECUTABLE}
+                    -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+                    -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_go_c_parity
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_go_c_parity.cmake)
+        endif()
     endif()
 endif()
