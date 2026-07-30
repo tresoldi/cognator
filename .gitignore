@@ -10,6 +10,8 @@
 *.test
 *.out
 __pycache__/
+*.egg-info/
+*.so
 
 # Go build/test caches from local benchmark sweeps
 .gocache*/
