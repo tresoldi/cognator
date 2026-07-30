@@ -4,6 +4,7 @@ project(cognator VERSION 0.1.0 LANGUAGES C)
 option(COGNATOR_BUILD_TESTS "Build native C tests" ON)
 option(COGNATOR_BUILD_CLI "Build the cognator CLI" ON)
 option(COGNATOR_ENABLE_GO_C_PARITY "Run Go/C parity tests; requires a Go-compatible ../merkmal/go checkout" OFF)
+set(COGNATOR_GO_MERKMAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../merkmal/go" CACHE PATH "Go-compatible merkmal module for Go/C parity tests")
 set(COGNATOR_ENABLE_SANITIZER "" CACHE STRING "Sanitizer: address or undefined")
 set_property(CACHE COGNATOR_ENABLE_SANITIZER PROPERTY STRINGS "" address undefined)
 
@@ -165,6 +166,7 @@ if(COGNATOR_BUILD_TESTS)
                 COMMAND ${CMAKE_COMMAND}
                     -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
                     -DPython3_EXECUTABLE=${Python3_EXECUTABLE}
+                    -DGO_MERKMAL_GO_DIR=${COGNATOR_GO_MERKMAL_DIR}
                     -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
                     -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_go_c_parity
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_go_c_parity.cmake)
