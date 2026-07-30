@@ -143,6 +143,12 @@ if(COGNATOR_BUILD_TESTS)
                 -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_linguistic_smoke
                 -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/linguistic
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_linguistic_smoke.cmake)
+        add_test(NAME linguistic_validation
+            COMMAND ${CMAKE_COMMAND}
+                -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
+                -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_linguistic_validation
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/linguistic
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_linguistic_validation.cmake)
         add_test(NAME cli_sweep_bench
             COMMAND ${CMAKE_COMMAND}
                 -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>

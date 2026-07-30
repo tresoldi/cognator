@@ -8,6 +8,9 @@ They are not replacements for full CoreCog benchmarking.
   Maori labels.
 - `latin_romance_triplets.tsv` checks Latin-Romance reflexes such as
   `nokte`/`notte`/`note`, `okto`/`otto`/`oto`, and a non-cognate fire split.
+- `latin_romance_extended.tsv` widens that check to four lects and six concepts,
+  including stronger Romance reductions and two deliberate Latin/non-Latin
+  lexical splits.
 
 The CTest `linguistic_smoke` test runs the C CLI `detect` command on both
 fixtures, then scores the sidecars with the C CLI `eval` command. These checks

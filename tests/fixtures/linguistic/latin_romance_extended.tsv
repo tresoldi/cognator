@@ -1,0 +1,25 @@
+ID	Language_ID	Concept	Segments	Family	Cognacy
+romx_lat_night	Latin	NIGHT	n o k t e	romance	night_1
+romx_ita_night	Italian	NIGHT	n o t t e	romance	night_1
+romx_spa_night	Spanish	NIGHT	n o tʃ e	romance	night_1
+romx_fra_night	French	NIGHT	n y i	romance	night_1
+romx_lat_eight	Latin	EIGHT	o k t o	romance	eight_1
+romx_ita_eight	Italian	EIGHT	o t t o	romance	eight_1
+romx_spa_eight	Spanish	EIGHT	o tʃ o	romance	eight_1
+romx_fra_eight	French	EIGHT	w i t	romance	eight_1
+romx_lat_made	Latin	MADE	f a k t a	romance	made_1
+romx_ita_made	Italian	MADE	f a t t a	romance	made_1
+romx_spa_made	Spanish	MADE	e tʃ a	romance	made_1
+romx_fra_made	French	MADE	f ɛ t	romance	made_1
+romx_lat_fire	Latin	FIRE	i g n e	romance	fire_1
+romx_ita_fire	Italian	FIRE	f u o k o	romance	fire_2
+romx_spa_fire	Spanish	FIRE	f w e g o	romance	fire_2
+romx_fra_fire	French	FIRE	f ø	romance	fire_2
+romx_lat_cat	Latin	CAT	f e l e s	romance	cat_1
+romx_ita_cat	Italian	CAT	g a t t o	romance	cat_2
+romx_spa_cat	Spanish	CAT	g a t o	romance	cat_2
+romx_fra_cat	French	CAT	ʃ a	romance	cat_2
+romx_lat_water	Latin	WATER	a k w a	romance	water_1
+romx_ita_water	Italian	WATER	a k w a	romance	water_1
+romx_spa_water	Spanish	WATER	a g w a	romance	water_1
+romx_fra_water	French	WATER	o	romance	water_1
