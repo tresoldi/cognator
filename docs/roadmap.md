@@ -12,7 +12,8 @@ and producing interpretable confidence diagnostics.
 Promoted research configuration:
 
 ```sh
---threshold 0.68
+--preset support-adaptive-bridge
+--threshold 0
 --graph-mode support
 --graph-expansion-mode adaptive
 --graph-top-k 3
@@ -32,6 +33,19 @@ Promoted research configuration:
 --refine-bridge-ratio 0.7
 ```
 
+Implementation status:
+
+- The Go implementation has been retired from this repository.
+- The active implementation is the C library, C CLI, C/WASM facade, and Python
+  wrapper.
+- The Python package is the intended user-facing install path and includes a
+  vendored merkmal C runtime subset for normal source installs.
+- `support-adaptive-bridge` now uses family-adaptive thresholding by default,
+  with resolved thresholds exposed through the Python result API and benchmark
+  TSVs.
+- Benchmark entry points now report `estimated_pairs` and can skip pair-heavy
+  families with `--max-pairs`.
+
 Latest available snapshot:
 
 | Split | Datasets | Mean F1 | Mean P | Mean R | LingPy comparison |
@@ -49,6 +63,194 @@ Performance snapshot:
 
 The current system is therefore fast enough to spend more computation on better
 evidence, calibration, or refinement if the quality gain is real.
+
+## Agent Handoff Roadmap
+
+This section is the highest-priority pickup list for future agents. Each item
+should land as a small, separately verified commit unless explicitly grouped.
+
+### 1. Re-run The Wider Benchmark Suite
+
+Run the wider Cognator-vs-LingPy benchmark after the adaptive-default,
+resolved-threshold, symmetric `bridge-cut`, and pair-guard changes.
+
+Deliverables:
+
+- refreshed Cognator result TSVs with `threshold` resolved and
+  `estimated_pairs` populated
+- refreshed LingPy comparison where possible
+- an updated `docs/adaptive_default_validation.md`
+- a short note identifying wins, regressions, runtime shifts, and skipped
+  families
+
+Verification:
+
+- `python3 scripts/adaptive_default_report.py`
+- spot-check that `threshold` is not `0.0000` for adaptive completed datasets
+- compare win/loss/tie counts against the committed baseline
+
+### 2. Add Automatic Error Reports To Benchmark Runs
+
+Wire `scripts/error_report.py` into the benchmark/report pipeline so each
+Cognator and LingPy run produces false-merge and false-split summaries without
+manual follow-up.
+
+Deliverables:
+
+- per-run concept error TSV
+- per-run dataset error TSV
+- markdown summary of largest false-merge and false-split contributors
+- links from generated comparison reports to those artifacts
+
+Verification:
+
+- synthetic prediction fixture with known TP/FP/FN counts
+- pipeline smoke that writes the error TSVs and markdown
+
+### 3. Add Memory Telemetry
+
+Record peak RSS or best-available process memory for C/Python benchmark runs so
+`estimated_pairs`, forms, lects, runtime, and actual memory pressure can be
+analyzed together.
+
+Deliverables:
+
+- `peak_rss_mb` or explicitly named platform-specific memory column in benchmark
+  TSVs
+- documentation of how the value is measured on Linux/macOS and what is
+  unavailable elsewhere
+- report summary correlating `estimated_pairs` and peak memory
+
+Verification:
+
+- unit-level parser/formatter test for telemetry fields
+- benchmark smoke with non-empty memory field on supported platforms or a clear
+  unavailable marker
+
+### 4. Build And Smoke-Test C/WASM
+
+Use Emscripten to build the C/WASM facade and verify the browser worker path,
+not just source-level checks.
+
+Deliverables:
+
+- generated `web/cognator.js` and `web/cognator.wasm` from `web/build-wasm.sh`
+  in the local build flow
+- browser or Playwright smoke test exercising `web/worker.js`
+- documented Emscripten version and build command
+
+Verification:
+
+- `web/build-wasm.sh`
+- `node web/smoke_test.mjs` or browser-equivalent worker smoke
+- one screenshot or log proving a non-empty detection result
+
+### 5. Process Large Families Instead Of Only Skipping
+
+Replace the current skip-only large-family policy with bounded per-concept
+evidence processing where feasible.
+
+Deliverables:
+
+- concept-batch or per-concept streaming path that avoids retaining all
+  pairwise evidence at once
+- preserved deterministic output order
+- benchmark comparison against the guarded path
+
+Verification:
+
+- synthetic large-concept fixture showing bounded memory behavior
+- one formerly skipped family attempted with a controlled memory cap
+- full C test suite and benchmark smoke
+
+### 6. Stabilize Python Release Packaging
+
+Move from local installability to release-quality wheels for the target Python
+versions.
+
+Deliverables:
+
+- wheel builds for supported CPython versions
+- tested install matrix in `docs/python_install.md`
+- release notes describing the C extension, vendored merkmal runtime, and no-Go
+  requirement
+
+Verification:
+
+- `python -m pip wheel . -w dist`
+- install wheel into a fresh venv and run `import cognator`, CLI help, and a tiny
+  detection smoke
+- cibuildwheel configuration check or CI job when available
+
+### 7. Freeze A Reproducible Benchmark Release Bundle
+
+Create a durable benchmark bundle containing input manifests, parameters,
+outputs, and narrative conclusions so future modeling work can be compared
+without reconstructing old runs.
+
+Deliverables:
+
+- manifest of input datasets, versions, and split files
+- Cognator and LingPy parameters
+- result TSVs, prediction TSVs, error reports, and comparison markdown
+- narrative conclusion stating what is promoted, what regressed, and what is
+  still open
+
+Verification:
+
+- a single documented command regenerates the report from the bundle artifacts
+- all linked files exist
+
+### 8. Target The Largest Measured Regressions
+
+Start the next modeling cycle on the worst families from the current wider
+sample, especially `lundgrenomagoa`, `luangthongkumkaren`, and
+`lionnetyotonahua`.
+
+Deliverables:
+
+- family spot-check notes with false-merge/false-split decomposition
+- one narrowly scoped modeling hypothesis per family
+- synthetic regression tests for any promoted rule
+
+Verification:
+
+- Dev-Core and Dev-Full pass before any holdout check
+- no promotion based only on a single-family win
+
+### 9. Evidence Serialization For Fast Sweeps
+
+Add an evidence export/import layer so graph-policy and threshold experiments do
+not rerun posterior training and alignment for every candidate.
+
+Deliverables:
+
+- versioned evidence format
+- export command
+- policy runner consuming frozen evidence
+- compatibility check that frozen evidence reproduces normal detection for a
+  small fixture
+
+Verification:
+
+- fixture round-trip test
+- one sweep that runs from evidence and matches normal-pipeline clusters
+
+### 10. Confidence Calibration And Review Queues
+
+Continue confidence calibration as diagnostics first, not as automatic
+assignment-changing behavior.
+
+Deliverables:
+
+- calibration report split by cluster size and support strata
+- low-confidence review TSV
+- clear language distinguishing confidence ranking from probability
+
+Verification:
+
+- monotonic calibration curves on dev data
+- transfer check on holdout or wider validation sample
 
 ## What The Experiments Say
 
@@ -136,20 +338,20 @@ Conclusion:
 
 ### 1. Split The Pipeline Into Explicit Stages
 
-`internal/pipeline` currently owns orchestration, evidence generation,
-thresholding, graph construction, refinement, bootstrapping, and confidence. It
-works, but it is now too dense for research iteration.
+`src/detect.c` currently owns orchestration, evidence generation, thresholding,
+graph construction, refinement, bootstrapping, and result assembly. It works,
+but it is now too dense for research iteration.
 
-Target package layout:
+Target C module layout:
 
-| Package | Responsibility |
+| Module | Responsibility |
 |---|---|
-| `internal/evidence` | immutable pair evidence tables and feature extraction |
-| `internal/calibrate` | family-level distance/support calibration |
-| `internal/graph` | candidate graph policies and edge reweighting |
-| `internal/refine` | post-cluster refinement policies |
-| `internal/confidence` | membership confidence and calibration |
-| `internal/pipeline` | thin orchestration only |
+| `src/evidence.c` | immutable pair evidence tables and feature extraction |
+| `src/calibrate.c` | family-level distance/support calibration |
+| `src/graph.c` | candidate graph policies and edge reweighting |
+| `src/refine.c` | post-cluster refinement policies |
+| `src/confidence.c` | membership confidence and calibration |
+| `src/detect.c` | thin orchestration only |
 
 Benefits:
 
@@ -179,30 +381,22 @@ Minimum evidence row:
 This table should be generated once and then reused by graph/clustering sweeps.
 That avoids retraining scorers and recomputing alignments for every policy.
 
-### 3. Make The Promoted Baseline A Named Preset
+### 3. Keep The Promoted Baseline As A Named Preset
 
-The current best configuration is a long CLI string. This is fragile.
+The promoted baseline is now `--preset support-adaptive-bridge`; future work
+should keep benchmark scripts using that preset unless an experiment explicitly
+overrides it.
 
-Add a preset mechanism such as:
+Next improvements:
 
-```sh
---preset research-20260421
-```
-
-or:
-
-```sh
---config configs/research-20260421.toml
-```
-
-The preset should expand to the frozen support/adaptive/bridge-cut baseline and
-be written into benchmark metadata. This will reduce accidental benchmark drift.
+- write the effective preset and resolved threshold into all benchmark metadata
+- add a config-file path only if repeated command lines become unmanageable
+- avoid adding new default-changing flags without a promotion-ladder result
 
 ### 4. Separate Experimental Flags From Stable Flags
 
-The CLI currently exposes many experimental graph-risk and refinement knobs.
-That is useful for research but noisy for users, and several of the knobs
-point at modes that already lost their promotion tests.
+The CLI currently exposes many graph and refinement knobs. That is useful for
+research but noisy for users.
 
 Proposed structure:
 
@@ -211,23 +405,14 @@ Proposed structure:
 - `--experimental-*` prefix or config-only access for unstable features
 - benchmark metadata that records all effective values
 
-Concrete deletion targets (modes that ran the promotion ladder and lost):
+Cleanup targets:
 
-- `--refine-mode` values beyond `none` and `bridge-cut`: the `reassign`,
-  `alt-reassign`, `bridge-alt-reassign`, `alt-reassign-bridge`, `alt-bridge-cut`,
-  `local-recluster`, and `core-cc` variants all regressed on Dev-Full. Keep the
-  git history, remove the code (~300 LOC of `refinePartition*` in
-  `internal/pipeline/pipeline.go`).
-- `--graph-risk-triangle-weight`, `--graph-risk-unilateral-weight`,
-  `--graph-risk-density-weight`, `--graph-risk-dispersion-weight`: all four
-  default to 0 and never earned promotion. The rank/gap pair suffices.
-- `--refine-alt-cluster-threshold`, `--refine-cluster-confidence-threshold`,
-  `--refine-local-core-weight`: gate parameters for refinement modes being
-  removed above.
-
-The corresponding `Spec` fields and `Default*` constants go with them. KISS
-and YAGNI: three similar lines beat a premature abstraction, and dead
-experimental knobs beat neither.
+- keep ordinary Python users on `preset`, `threshold`, `bootstrap`, `seed`, and
+  `min_pairs`
+- leave lower-level graph and refinement knobs available for benchmark scripts
+  and C CLI experiments
+- when a knob loses a promotion run, document the result before hiding or
+  deleting it
 
 ## Model Roadmap
 
@@ -297,9 +482,9 @@ Follow-ups:
   default scorer — credible intervals are the natural long-form
   output for the q4 "low" band that would still benefit from
   uncertainty annotation.
-- *(Landed.)* Membership-confidence code lives in
-  `internal/confidence`; pipeline consumes it across the package
-  boundary. Output schema is stable.
+- Membership-confidence code still lives mostly in `src/graph.c` and
+  `src/detect.c`; split it into `src/confidence.c` only after the benchmark
+  and error-report work creates a stable target for the module boundary.
 
 Candidate output (shape is settled; multi-stratum semantics still
 shifting):
@@ -340,13 +525,11 @@ Ideas:
 - add a separate singleton-risk diagnostic
 - avoid mapping all no-internal-support cases into a single confidence behavior
 
-### 5. Bayesian Scoring Layer (Asymmetric By Construction)
+### 5. Posterior Scoring Follow-Ups
 
-The current correspondence scorer has three separate empirical constants —
-`Lambda` (learned/prior blend), `MinPairs` (sparse-pair fallback), and
-`tanhScale` (log-odds squashing) — plus a smoothing `alpha` in `LogOdds`.
-A Dirichlet-prior formulation replaces all four with one principled
-concentration parameter and produces a proper log-posterior-odds score.
+The C implementation already has posterior scoring with a Dirichlet-prior
+formulation and asymmetric lect-pair tables. The next work is not to port the
+idea, but to validate and simplify its public controls.
 
 Model:
 
@@ -363,51 +546,21 @@ score(σ, τ) = log₂ P_posterior(τ | σ) / P_null(τ)
   merkmal-similarity prior; rich-sample regime → posterior ≈ MLE. The blend is
   the math, not a tuned knob.
 - `P_null` comes from the shuffle null when trained, else the target marginal.
-  Both are already available in `internal/score`.
+  The current C implementation keeps this in `src/posterior.c`.
 - Asymmetry is first-class: `α_forward(σ, τ) ≠ α_reverse(τ, σ)` because the
   prior is parameterized per direction. This is the first time the framework's
   "asymmetry is real" principle lands as a first-class modeling choice instead
   of surviving only in the ordered lect-pair bookkeeping.
 
-API direction:
+Follow-up direction:
 
-```go
-// internal/score/posterior.go
-
-type DirichletPrior struct {
-    Bundle        *merkmal.Bundle
-    Concentration float64 // α₀
-    Sharpness     float64 // k (inherits from priorSharpness)
-}
-
-type PosteriorTable struct { /* counts, rowTotal, prior, nullMarginal */ }
-
-func (t *PosteriorTable) PosteriorMean(source, target string) float64
-func (t *PosteriorTable) LogOdds(source, target string) float64
-
-func TrainPosterior(src, tgt string, pairs []FormPair,
-                    prior *DirichletPrior, null *NullDistribution) *PosteriorTable
-```
-
-What vanishes from `Spec` and `defaults.go`:
-
-- `Lambda` (absorbed into `α₀`)
-- `MinPairs` (prior dominates naturally on sparse pairs)
-- `tanhScale` (no squashing needed under a proper posterior-odds)
-
-What stays:
-
-- `priorSharpness` survives as `DirichletPrior.Sharpness` with a cleaner
-  interpretation (softmax temperature over merkmal distances)
-- `DefaultConcentration` is new (α₀), one constant replacing three
-
-Migration:
-
-- land `PosteriorTable` alongside `CorrespondenceTable`; no breaking changes
-- A/B on Dev-Core
-- promote if Dev-Core F ≥ current − 0.005; principle beats marginal F here
-  because the goal is deleting three empirical constants, not chasing the last
-  0.01 on a tuning run
+- keep the default scorer as posterior unless a benchmark rerun contradicts it
+- decide whether `--lambda` still has any user-facing purpose or should become
+  an ignored compatibility field
+- decide whether `--min-pairs` should stay exposed or move to benchmark-only
+  experiments
+- document `dirichlet_concentration`, `dirichlet_sharpness`, and
+  `dirichlet_scale_mode` in the C/Python API docs before release packaging
 
 Follow-up refinements (both implemented as opt-in flags):
 
@@ -503,15 +656,17 @@ Options:
 
 ### 4. Make Parallelism More Predictable
 
-Current concurrency happens at family, lect-pair, and concept stages. It is fast,
-but benchmark reproducibility and resource limits need stronger controls.
+Current benchmark concurrency happens outside the C core through runner-level
+family scheduling. The C detector itself remains serial while the API and
+memory behavior stabilize, so resource limits need stronger controls before
+native parallelism is reintroduced.
 
 Improvements:
 
 - document recommended `--parallel-families` / `--jobs` combinations
 - add a memory-aware scheduler for large families
-- keep deterministic seeds independent of goroutine scheduling
-- record effective `GOMAXPROCS`, jobs, and parallel families in metadata
+- keep deterministic seeds independent of scheduler order
+- record jobs, parallel families, and memory guards in metadata
 
 ## Benchmark And Evaluation Roadmap
 
@@ -549,50 +704,11 @@ Track A until the primary quality target is met.
 
 ## Immediate Next Steps
 
-Prioritized. Earlier items unblock later ones.
+Use the **Agent Handoff Roadmap** near the top of this document as the active
+pickup list. The older Go-era and early-C conversion tasks have either landed or
+been superseded by the C/Python milestones recorded there.
 
-1. **Tidy pass.** *(Landed.)* Deleted the refinement modes and risk weights
-   that lost their promotion tests (see Architecture Roadmap §4). Added a
-   `--preset=support-adaptive-bridge` alias for the frozen baseline and
-   `--meta-out` to capture the effective Spec per bench run.
-
-2. **Bayesian scoring layer.** Implement `PosteriorTable` alongside the
-   existing `CorrespondenceTable` (see Model Roadmap §5). A/B on Dev-Core;
-   promote if F ≥ current − 0.005. The win is deleting `Lambda`, `MinPairs`,
-   and `tanhScale` and making asymmetric scoring first-class — not chasing F.
-
-3. **Evidence serialization.** Add an evidence export/import format (see
-   Performance Roadmap §1). Deferred behind the Bayesian scoring layer because
-   the natural cache level is alignment-column frequencies, not final
-   distances — and the scoring layer decides which layer is the right cache
-   boundary. A distance cache built before the Bayesian scorer lands would
-   be invalidated on first posterior run.
-
-4. **Confidence calibration.** *(Landed.)* Sidecar emits `ClusterSize`
-   and `CandidateNeighbors`. Calibrator stratifies by `cluster_size`
-   and supports both `pairwise` and `form-local` error labels.
-   Form-local + cluster_size on Dev-Core gives monotone PAV fits in
-   both strata; Holdout transfer lands 77% of multi rows in a medium
-   band at 82% empirical accuracy, 89% of singletons at 83% accuracy.
-   Top plateau caps below 0.90 on multi — see Model §2 follow-ups.
-
-5. **`assigned_support` as a second multi-stratum axis.** *(Landed.)*
-   `--stratify-by cluster_size_support` splits the multi stratum into
-   four assigned-support quartiles with cut points stored in the JSON.
-   On Dev-Core → Holdout, `multi_q4` low-risk band covers 33% of the
-   corpus at 3% empirical error; `multi_q3` medium covers another 18%
-   at 6% error. Model §2 now carries the full numbers.
-
-6. **Selective merge control.** One experiment using alternative-support as a
-   split-proposal signal rather than a reassignment rule — the only Family-2
-   direction that hasn't been tried and that respects the "don't change
-   assignments without a principled gain" conclusion.
-
-7. **Spot-check reports** for the holdout families with the largest gaps
-   (`blustaustronesian`, `syrjaenenuralic`, `lundgrenomagoa`). Useful for the
-   paper's error analysis regardless of which of the above lands first.
-
-Out of scope for this cycle: full package split (`internal/refine`,
-`internal/calibrate`, `internal/confidence`), regulae integration (see Model
-Roadmap §6), mid-family memory streaming, Infomap backend swap. Revisit after
-items 2–4 land and the promoted baseline shifts.
+Out of scope for the immediate cycle: regulae integration, a full module split
+inside the C core, and an Infomap backend replacement. Revisit those only after
+the wider benchmark rerun, automatic error reports, memory telemetry, and
+large-family execution work produce new evidence.
