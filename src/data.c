@@ -41,6 +41,10 @@ char *cg_trim_owned(char *s) {
     return s;
 }
 
+void cg_string_free(char *value) {
+    free(value);
+}
+
 void cg_free_record(cg_record *record) {
     if (record == NULL) {
         return;
@@ -78,4 +82,39 @@ void cg_free_sidecar_row(cg_sidecar_row *row) {
     free((char *)row->id);
     free((char *)row->cognator_id);
     *row = (cg_sidecar_row){0};
+}
+
+cg_status cg_sidecar_row_copy(const cg_sidecar_row *row, cg_sidecar_row *out) {
+    if (row == NULL || out == NULL) {
+        return CG_ERR_INVALID_ARGUMENT;
+    }
+    *out = *row;
+    out->id = cg_strdup(row->id);
+    out->cognator_id = cg_strdup(row->cognator_id);
+    if (out->id == NULL || out->cognator_id == NULL) {
+        cg_free_sidecar_row(out);
+        return CG_ERR_OOM;
+    }
+    return CG_OK;
+}
+
+void cg_sidecar_row_clear(cg_sidecar_row *row) {
+    cg_free_sidecar_row(row);
+}
+
+cg_status cg_oov_row_copy(const cg_oov_row *row, cg_oov_row *out) {
+    if (row == NULL || out == NULL) {
+        return CG_ERR_INVALID_ARGUMENT;
+    }
+    *out = *row;
+    out->grapheme = cg_strdup(row->grapheme);
+    if (out->grapheme == NULL) {
+        cg_free_oov_row(out);
+        return CG_ERR_OOM;
+    }
+    return CG_OK;
+}
+
+void cg_oov_row_clear(cg_oov_row *row) {
+    cg_free_oov_row(row);
 }

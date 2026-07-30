@@ -94,22 +94,22 @@ int main(void) {
 
     assert(cg_class_reduce("tʰ", &reduced) == CG_OK);
     assert(strcmp(reduced, "t") == 0);
-    free(reduced);
+    cg_string_free(reduced);
     assert(cg_class_reduce("kʷ", &reduced) == CG_OK);
     assert(strcmp(reduced, "k") == 0);
-    free(reduced);
+    cg_string_free(reduced);
     assert(cg_class_reduce("aː", &reduced) == CG_OK);
     assert(strcmp(reduced, "a") == 0);
-    free(reduced);
+    cg_string_free(reduced);
     assert(cg_class_reduce("ã", &reduced) == CG_OK);
     assert(strcmp(reduced, "a") == 0);
-    free(reduced);
+    cg_string_free(reduced);
     assert(cg_class_reduce("ⁿg", &reduced) == CG_OK);
     assert(strcmp(reduced, "g") == 0);
-    free(reduced);
+    cg_string_free(reduced);
     assert(cg_class_reduce("⁴²", &reduced) == CG_OK);
     assert(strcmp(reduced, "⁴²") == 0);
-    free(reduced);
+    cg_string_free(reduced);
 
     assert(cg_segment_parse(NULL, "p a", &tokens) == CG_ERR_INVALID_ARGUMENT);
     assert(cg_segment_parse(ctx, NULL, &tokens) == CG_ERR_INVALID_ARGUMENT);

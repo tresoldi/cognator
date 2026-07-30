@@ -193,6 +193,8 @@ The final removal pass should delete `go.mod`, `go.sum`, `internal/*.go`,
 Use C99, opaque handles, explicit status codes, and caller-owned output objects.
 The prefix should be `cg_` to avoid collision with `mk_`.
 
+The current ownership and ABI contract is maintained in `docs/c_api.md`.
+
 Initial sketch:
 
 ```c

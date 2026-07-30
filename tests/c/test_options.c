@@ -22,5 +22,9 @@ int main(void) {
     assert(strcmp(cg_status_string(CG_ERR_PARSE), "parse error") == 0);
     assert(strcmp(cg_status_string((cg_status) 999), "unknown error") == 0);
     assert(strcmp(cg_version_string(), CG_VERSION_STRING) == 0);
+    assert(cg_version_major() == CG_VERSION_MAJOR);
+    assert(cg_version_minor() == CG_VERSION_MINOR);
+    assert(cg_version_patch() == CG_VERSION_PATCH);
+    assert(cg_abi_version() == CG_ABI_VERSION);
     return 0;
 }

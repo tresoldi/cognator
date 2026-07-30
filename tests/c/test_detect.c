@@ -49,6 +49,8 @@ int main(void) {
     const cg_sidecar_row *a1;
     const cg_sidecar_row *b1;
     const cg_sidecar_row *c1;
+    cg_sidecar_row copied_row = {0};
+    cg_oov_row copied_oov = {0};
     cg_eval_result eval_result;
     cg_status status;
     char *text;
@@ -88,6 +90,9 @@ int main(void) {
     assert(cg_result_threshold(result) == 0.70);
     assert(cg_result_oov_count(result) == 1);
     assert(strcmp(cg_result_oov_at(result, 0)->grapheme, "zzz_invalid") == 0);
+    assert(cg_oov_row_copy(cg_result_oov_at(result, 0), &copied_oov) == CG_OK);
+    assert(strcmp(copied_oov.grapheme, "zzz_invalid") == 0);
+    cg_oov_row_clear(&copied_oov);
 
     a1 = find_row(result, "a1");
     b1 = find_row(result, "b1");
@@ -99,6 +104,11 @@ int main(void) {
     assert(a1->confidence >= 0.0 && a1->confidence <= 1.0);
     assert(a1->cluster_size == 3);
     assert(a1->bootstrap > 0.0);
+    assert(cg_sidecar_row_copy(a1, &copied_row) == CG_OK);
+    assert(strcmp(copied_row.id, a1->id) == 0);
+    assert(strcmp(copied_row.cognator_id, a1->cognator_id) == 0);
+    assert(copied_row.confidence == a1->confidence);
+    cg_sidecar_row_clear(&copied_row);
     assert(cg_eval_b_cubed_result(result, records, "Cognacy", 1, &eval_result) == CG_OK);
     assert(eval_result.scored_count == cg_records_count(records));
     assert(eval_result.f1 > 0.5);
@@ -127,6 +137,8 @@ int main(void) {
     assert(cg_detect(ctx, records, &options, NULL) == CG_ERR_INVALID_ARGUMENT);
     assert(cg_result_row_at(NULL, 0) == NULL);
     assert(cg_result_oov_at(NULL, 0) == NULL);
+    assert(cg_sidecar_row_copy(NULL, &copied_row) == CG_ERR_INVALID_ARGUMENT);
+    assert(cg_oov_row_copy(NULL, &copied_oov) == CG_ERR_INVALID_ARGUMENT);
     assert(cg_write_sidecar("bad.tsv", NULL) == CG_ERR_INVALID_ARGUMENT);
 
     cg_result_free(result);

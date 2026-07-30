@@ -54,6 +54,8 @@ ctest --test-dir build --output-on-failure
 The Go implementation remains in the tree only for archival parity checks; see
 `docs/go_freeze.md`.
 
+The public C API ownership and ABI rules are documented in `docs/c_api.md`.
+
 ## Input Format
 
 Input is an arcaverborum/CLDF-like CSV or TSV. The delimiter is inferred from

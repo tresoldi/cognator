@@ -6,6 +6,22 @@ const char *cg_version_string(void) {
     return CG_VERSION_STRING;
 }
 
+int cg_version_major(void) {
+    return CG_VERSION_MAJOR;
+}
+
+int cg_version_minor(void) {
+    return CG_VERSION_MINOR;
+}
+
+int cg_version_patch(void) {
+    return CG_VERSION_PATCH;
+}
+
+uint32_t cg_abi_version(void) {
+    return CG_ABI_VERSION;
+}
+
 const char *cg_status_string(cg_status status) {
     static const char *const messages[] = {
         "success",

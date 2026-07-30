@@ -23,6 +23,7 @@ extern "C" {
 #define CG_VERSION_MINOR 1
 #define CG_VERSION_PATCH 0
 #define CG_VERSION_STRING "0.1.0"
+#define CG_ABI_VERSION 1
 
 typedef struct cg_context cg_context;
 typedef struct cg_records cg_records;
@@ -199,7 +200,13 @@ typedef struct cg_eval_result {
 } cg_eval_result;
 
 CG_API const char *cg_version_string(void);
+CG_API int cg_version_major(void);
+CG_API int cg_version_minor(void);
+CG_API int cg_version_patch(void);
+CG_API uint32_t cg_abi_version(void);
 CG_API const char *cg_status_string(cg_status status);
+/* Release strings returned through owned char** outputs, such as cg_class_reduce. */
+CG_API void cg_string_free(char *value);
 CG_API void cg_options_init_defaults(cg_options *options);
 CG_API cg_status cg_options_apply_preset(cg_options *options, const char *preset);
 
@@ -247,10 +254,16 @@ CG_API void cg_result_free(cg_result *result);
 CG_API uint64_t cg_result_row_count(const cg_result *result);
 /* Borrowed; valid until cg_result_free(result). */
 CG_API const cg_sidecar_row *cg_result_row_at(const cg_result *result, uint64_t index);
+/* Deep-copy borrowed row strings into out; release with cg_sidecar_row_clear. */
+CG_API cg_status cg_sidecar_row_copy(const cg_sidecar_row *row, cg_sidecar_row *out);
+CG_API void cg_sidecar_row_clear(cg_sidecar_row *row);
 CG_API double cg_result_threshold(const cg_result *result);
 CG_API uint64_t cg_result_oov_count(const cg_result *result);
 /* Borrowed; valid until cg_result_free(result). */
 CG_API const cg_oov_row *cg_result_oov_at(const cg_result *result, uint64_t index);
+/* Deep-copy borrowed row strings into out; release with cg_oov_row_clear. */
+CG_API cg_status cg_oov_row_copy(const cg_oov_row *row, cg_oov_row *out);
+CG_API void cg_oov_row_clear(cg_oov_row *row);
 CG_API cg_status cg_write_sidecar(const char *path, const cg_result *result);
 CG_API cg_status cg_write_oov_report(const char *path, const cg_result *result);
 CG_API cg_status cg_eval_b_cubed(
