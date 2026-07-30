@@ -33,6 +33,20 @@ typedef struct bench_args {
     cg_options options;
 } bench_args;
 
+typedef struct diag_args {
+    const char *in;
+    const char *family;
+    int top;
+    cg_options options;
+} diag_args;
+
+typedef struct oovscan_args {
+    const char *in;
+    const char *out;
+    int top;
+    cg_options options;
+} oovscan_args;
+
 static void usage(FILE *stream) {
     fprintf(stream,
             "usage: cognator <command> [options]\n\n"
@@ -41,6 +55,8 @@ static void usage(FILE *stream) {
             "  eval      score predicted clusters against Cognacy truth\n"
             "  sweep     run detect/eval across thresholds\n"
             "  bench     run per-family detect/eval summary\n"
+            "  diag      print linguistic sanity statistics for a wordlist\n"
+            "  oovscan   report graphemes absent from the linked merkmal system\n"
             "  version   print version\n"
             "  help      show this help\n");
 }
@@ -139,6 +155,26 @@ static void eval_usage(FILE *stream) {
             "  --global-truth      do not prepend Concept to Cognacy truth labels\n");
 }
 
+static void diag_usage(FILE *stream) {
+    fprintf(stream,
+            "usage: cognator diag --in PATH [options]\n\n"
+            "options:\n"
+            "  --data PATH         alias for --in\n"
+            "  --family NAME\n"
+            "  --model NAME | --merkmal-system NAME\n"
+            "  --top N             OOV rows to print (default 10)\n");
+}
+
+static void oovscan_usage(FILE *stream) {
+    fprintf(stream,
+            "usage: cognator oovscan --in PATH [options]\n\n"
+            "options:\n"
+            "  --data PATH         alias for --in\n"
+            "  --out PATH          write markdown report instead of stdout\n"
+            "  --model NAME | --merkmal-system NAME\n"
+            "  --top N             OOV rows to print (default 40)\n");
+}
+
 static const char *arg_value_for(const char *command, int argc, char **argv, int *index, const char *arg, const char *name) {
     size_t n = strlen(name);
     if (strncmp(arg, name, n) == 0 && arg[n] == '=') {
@@ -169,6 +205,14 @@ static const char *sweep_arg_value(int argc, char **argv, int *index, const char
 
 static const char *bench_arg_value(int argc, char **argv, int *index, const char *arg, const char *name) {
     return arg_value_for("bench", argc, argv, index, arg, name);
+}
+
+static const char *diag_arg_value(int argc, char **argv, int *index, const char *arg, const char *name) {
+    return arg_value_for("diag", argc, argv, index, arg, name);
+}
+
+static const char *oovscan_arg_value(int argc, char **argv, int *index, const char *arg, const char *name) {
+    return arg_value_for("oovscan", argc, argv, index, arg, name);
 }
 
 static int is_flag(const char *arg, const char *name) {
@@ -330,6 +374,34 @@ static void summarize_records(const cg_records *records, uint64_t *lects, uint64
     *lects = (uint64_t)lect_count;
     *concepts = (uint64_t)concept_count;
     *cognacy = cog_count;
+}
+
+static cg_status scan_segments(const cg_context *ctx, const cg_records *records, uint64_t *segments, cg_oov_report **oov_out) {
+    cg_oov_report *oov = NULL;
+    uint64_t total = 0;
+    uint64_t i;
+    cg_status status = cg_oov_report_new(&oov);
+    if (status != CG_OK) return status;
+    for (i = 0; i < cg_records_count(records); i++) {
+        const cg_record *record = cg_records_get(records, i);
+        cg_tokens *tokens = NULL;
+        uint64_t j;
+        if (record == NULL) continue;
+        status = cg_segment_parse_with_oov(ctx, record->segments, oov, &tokens);
+        if (status != CG_OK) {
+            cg_tokens_free(tokens);
+            cg_oov_report_free(oov);
+            return status;
+        }
+        for (j = 0; j < cg_tokens_count(tokens); j++) {
+            const cg_token *token = cg_tokens_get(tokens, j);
+            if (token != NULL && !token->boundary) total++;
+        }
+        cg_tokens_free(tokens);
+    }
+    *segments = total;
+    *oov_out = oov;
+    return CG_OK;
 }
 
 static int scan_preset(int argc, char **argv, cg_options *options) {
@@ -600,6 +672,74 @@ static int parse_bench_args(int argc, char **argv, bench_args *args) {
     return 1;
 }
 
+static int parse_diag_args(int argc, char **argv, diag_args *args) {
+    int i;
+    cg_options_init_defaults(&args->options);
+    args->in = NULL;
+    args->family = NULL;
+    args->top = 10;
+    for (i = 0; i < argc; i++) {
+        const char *arg = argv[i];
+        const char *value = NULL;
+        if (strcmp(arg, "help") == 0 || strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
+            diag_usage(stdout);
+            exit(0);
+        }
+        if ((value = diag_arg_value(argc, argv, &i, arg, "--in")) != NULL || (value = diag_arg_value(argc, argv, &i, arg, "--data")) != NULL) {
+            args->in = value;
+        } else if ((value = diag_arg_value(argc, argv, &i, arg, "--family")) != NULL) {
+            args->family = value;
+        } else if ((value = diag_arg_value(argc, argv, &i, arg, "--model")) != NULL || (value = diag_arg_value(argc, argv, &i, arg, "--merkmal-system")) != NULL) {
+            args->options.merkmal_system = value;
+        } else if ((value = diag_arg_value(argc, argv, &i, arg, "--top")) != NULL) {
+            if (!set_nonnegative_int_option("--top", value, &args->top)) return 0;
+        } else {
+            fprintf(stderr, "diag: unknown option: %s\n", arg);
+            return 0;
+        }
+    }
+    if (args->in == NULL || args->in[0] == '\0') {
+        fprintf(stderr, "diag: --in is required\n");
+        diag_usage(stderr);
+        return 0;
+    }
+    return 1;
+}
+
+static int parse_oovscan_args(int argc, char **argv, oovscan_args *args) {
+    int i;
+    cg_options_init_defaults(&args->options);
+    args->in = NULL;
+    args->out = NULL;
+    args->top = 40;
+    for (i = 0; i < argc; i++) {
+        const char *arg = argv[i];
+        const char *value = NULL;
+        if (strcmp(arg, "help") == 0 || strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
+            oovscan_usage(stdout);
+            exit(0);
+        }
+        if ((value = oovscan_arg_value(argc, argv, &i, arg, "--in")) != NULL || (value = oovscan_arg_value(argc, argv, &i, arg, "--data")) != NULL) {
+            args->in = value;
+        } else if ((value = oovscan_arg_value(argc, argv, &i, arg, "--out")) != NULL) {
+            args->out = value;
+        } else if ((value = oovscan_arg_value(argc, argv, &i, arg, "--model")) != NULL || (value = oovscan_arg_value(argc, argv, &i, arg, "--merkmal-system")) != NULL) {
+            args->options.merkmal_system = value;
+        } else if ((value = oovscan_arg_value(argc, argv, &i, arg, "--top")) != NULL) {
+            if (!set_nonnegative_int_option("--top", value, &args->top)) return 0;
+        } else {
+            fprintf(stderr, "oovscan: unknown option: %s\n", arg);
+            return 0;
+        }
+    }
+    if (args->in == NULL || args->in[0] == '\0') {
+        fprintf(stderr, "oovscan: --in is required\n");
+        oovscan_usage(stderr);
+        return 0;
+    }
+    return 1;
+}
+
 static int detect_cmd(int argc, char **argv) {
     detect_args args;
     cg_context *ctx = NULL;
@@ -664,6 +804,142 @@ static int detect_cmd(int argc, char **argv) {
 
 done:
     cg_result_free(result);
+    cg_records_free(records);
+    cg_context_free(ctx);
+    return exit_code;
+}
+
+static int diag_cmd(int argc, char **argv) {
+    diag_args args;
+    cg_context *ctx = NULL;
+    cg_records *records = NULL;
+    cg_records *filtered = NULL;
+    cg_oov_report *oov = NULL;
+    const char *system_name = NULL;
+    uint64_t lects = 0, concepts = 0, cognacy = 0, segments = 0;
+    uint64_t i;
+    cg_status status;
+    int exit_code = 1;
+
+    if (!parse_diag_args(argc, argv, &args)) return 2;
+    status = cg_context_new_builtin(&ctx);
+    if (status != CG_OK) {
+        fprintf(stderr, "diag: initialize context: %s\n", cg_status_string(status));
+        goto done;
+    }
+    if (args.options.merkmal_system != NULL) {
+        status = cg_context_use_system(ctx, args.options.merkmal_system);
+        if (status != CG_OK) {
+            fprintf(stderr, "diag: model %s: %s\n", args.options.merkmal_system, cg_status_string(status));
+            goto done;
+        }
+    }
+    status = cg_read_table(args.in, &records);
+    if (status != CG_OK) {
+        fprintf(stderr, "diag: read %s: %s\n", args.in, cg_status_string(status));
+        goto done;
+    }
+    if (args.family != NULL && args.family[0] != '\0') {
+        status = cg_records_filter_family(records, args.family, &filtered);
+        if (status != CG_OK) {
+            fprintf(stderr, "diag: filter %s: %s\n", args.family, cg_status_string(status));
+            goto done;
+        }
+    } else {
+        filtered = records;
+    }
+    summarize_records(filtered, &lects, &concepts, &cognacy);
+    status = scan_segments(ctx, filtered, &segments, &oov);
+    if (status != CG_OK) {
+        fprintf(stderr, "diag: scan segments: %s\n", cg_status_string(status));
+        goto done;
+    }
+    (void)cg_context_system_name(ctx, &system_name);
+    printf("rows: %llu  system: %s\n",
+           (unsigned long long)cg_records_count(filtered),
+           system_name == NULL ? "" : system_name);
+    printf("lects: %llu  concepts: %llu  expert-cognate-sets: %llu\n",
+           (unsigned long long)lects,
+           (unsigned long long)concepts,
+           (unsigned long long)cognacy);
+    printf("segments: %llu  oov types: %llu\n",
+           (unsigned long long)segments,
+           (unsigned long long)cg_oov_report_count(oov));
+    printf("top OOV graphemes:\n");
+    for (i = 0; i < cg_oov_report_count(oov) && i < (uint64_t)args.top; i++) {
+        const cg_oov_row *row = cg_oov_report_get(oov, i);
+        if (row != NULL) {
+            printf("  %-8s %llu\n", row->grapheme, (unsigned long long)row->count);
+        }
+    }
+    exit_code = 0;
+
+done:
+    cg_oov_report_free(oov);
+    if (filtered != records) cg_records_free(filtered);
+    cg_records_free(records);
+    cg_context_free(ctx);
+    return exit_code;
+}
+
+static int oovscan_cmd(int argc, char **argv) {
+    oovscan_args args;
+    cg_context *ctx = NULL;
+    cg_records *records = NULL;
+    cg_oov_report *oov = NULL;
+    FILE *out = NULL;
+    const char *system_name = NULL;
+    uint64_t segments = 0;
+    uint64_t i;
+    cg_status status;
+    int exit_code = 1;
+
+    if (!parse_oovscan_args(argc, argv, &args)) return 2;
+    status = cg_context_new_builtin(&ctx);
+    if (status != CG_OK) {
+        fprintf(stderr, "oovscan: initialize context: %s\n", cg_status_string(status));
+        goto done;
+    }
+    if (args.options.merkmal_system != NULL) {
+        status = cg_context_use_system(ctx, args.options.merkmal_system);
+        if (status != CG_OK) {
+            fprintf(stderr, "oovscan: model %s: %s\n", args.options.merkmal_system, cg_status_string(status));
+            goto done;
+        }
+    }
+    status = cg_read_table(args.in, &records);
+    if (status != CG_OK) {
+        fprintf(stderr, "oovscan: read %s: %s\n", args.in, cg_status_string(status));
+        goto done;
+    }
+    status = scan_segments(ctx, records, &segments, &oov);
+    if (status != CG_OK) {
+        fprintf(stderr, "oovscan: scan segments: %s\n", cg_status_string(status));
+        goto done;
+    }
+    out = args.out == NULL ? stdout : fopen(args.out, "wb");
+    if (out == NULL) {
+        fprintf(stderr, "oovscan: write %s: I/O error\n", args.out);
+        goto done;
+    }
+    (void)cg_context_system_name(ctx, &system_name);
+    fprintf(out, "# OOV graphemes (system: %s)\n\n", system_name == NULL ? "" : system_name);
+    fprintf(out, "Segments scanned: %llu  Distinct OOV types: %llu\n\n",
+            (unsigned long long)segments,
+            (unsigned long long)cg_oov_report_count(oov));
+    fprintf(out, "| Grapheme | Count |\n");
+    fprintf(out, "|---|---:|\n");
+    for (i = 0; i < cg_oov_report_count(oov) && i < (uint64_t)args.top; i++) {
+        const cg_oov_row *row = cg_oov_report_get(oov, i);
+        if (row != NULL) {
+            fprintf(out, "| `%s` | %llu |\n", row->grapheme, (unsigned long long)row->count);
+        }
+    }
+    exit_code = 0;
+
+done:
+    if (out != NULL && out != stdout && fclose(out) != 0 && exit_code == 0) exit_code = 1;
+    cg_oov_report_free(oov);
     cg_records_free(records);
     cg_context_free(ctx);
     return exit_code;
@@ -943,6 +1219,12 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[1], "bench") == 0) {
         return bench_cmd(argc - 2, argv + 2);
+    }
+    if (strcmp(argv[1], "diag") == 0) {
+        return diag_cmd(argc - 2, argv + 2);
+    }
+    if (strcmp(argv[1], "oovscan") == 0) {
+        return oovscan_cmd(argc - 2, argv + 2);
     }
     fprintf(stderr, "cognator: unknown command: %s\n", argv[1]);
     usage(stderr);

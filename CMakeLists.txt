@@ -155,6 +155,11 @@ if(COGNATOR_BUILD_TESTS)
                 -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
                 -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_cli_sweep_bench
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_cli_sweep_bench.cmake)
+        add_test(NAME cli_diag_oovscan
+            COMMAND ${CMAKE_COMMAND}
+                -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
+                -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_cli_diag_oovscan
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_cli_diag_oovscan.cmake)
         add_test(NAME package_consumer
             COMMAND ${CMAKE_COMMAND}
                 -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
