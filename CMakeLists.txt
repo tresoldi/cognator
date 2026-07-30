@@ -83,6 +83,9 @@ install(TARGETS cognator EXPORT cognatorTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(COGNATOR_BUILD_CLI)
+    install(TARGETS cognator_cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
 install(FILES include/cognator.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(EXPORT cognatorTargets NAMESPACE cognator:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cognator)
 install(FILES
@@ -144,5 +147,10 @@ if(COGNATOR_BUILD_TESTS)
                 -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
                 -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_cli_sweep_bench
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_cli_sweep_bench.cmake)
+        add_test(NAME package_consumer
+            COMMAND ${CMAKE_COMMAND}
+                -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
+                -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_package_consumer
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_package_consumer.cmake)
     endif()
 endif()

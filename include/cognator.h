@@ -223,7 +223,9 @@ CG_API cg_status cg_context_grapheme_role(
 CG_API cg_status cg_read_table(const char *path, cg_records **out);
 CG_API void cg_records_free(cg_records *records);
 CG_API uint64_t cg_records_count(const cg_records *records);
+/* Borrowed; valid until cg_records_free(records). */
 CG_API const cg_record *cg_records_get(const cg_records *records, uint64_t index);
+/* Returns a new owned record set; release with cg_records_free. */
 CG_API cg_status cg_records_filter_family(
     const cg_records *records,
     const char *family,
@@ -243,9 +245,11 @@ CG_API cg_status cg_detect(
 );
 CG_API void cg_result_free(cg_result *result);
 CG_API uint64_t cg_result_row_count(const cg_result *result);
+/* Borrowed; valid until cg_result_free(result). */
 CG_API const cg_sidecar_row *cg_result_row_at(const cg_result *result, uint64_t index);
 CG_API double cg_result_threshold(const cg_result *result);
 CG_API uint64_t cg_result_oov_count(const cg_result *result);
+/* Borrowed; valid until cg_result_free(result). */
 CG_API const cg_oov_row *cg_result_oov_at(const cg_result *result, uint64_t index);
 CG_API cg_status cg_write_sidecar(const char *path, const cg_result *result);
 CG_API cg_status cg_write_oov_report(const char *path, const cg_result *result);
@@ -278,12 +282,14 @@ CG_API cg_status cg_segment_parse_with_oov(
 CG_API cg_status cg_class_reduce(const char *grapheme, char **out);
 CG_API void cg_tokens_free(cg_tokens *tokens);
 CG_API uint64_t cg_tokens_count(const cg_tokens *tokens);
+/* Borrowed; valid until cg_tokens_free(tokens). */
 CG_API const cg_token *cg_tokens_get(const cg_tokens *tokens, uint64_t index);
 
 CG_API cg_status cg_oov_report_new(cg_oov_report **out);
 CG_API void cg_oov_report_free(cg_oov_report *report);
 CG_API cg_status cg_oov_report_add(cg_oov_report *report, const char *grapheme);
 CG_API uint64_t cg_oov_report_count(const cg_oov_report *report);
+/* Borrowed; valid until cg_oov_report_free(report). */
 CG_API const cg_oov_row *cg_oov_report_get(const cg_oov_report *report, uint64_t index);
 CG_API cg_status cg_write_oov_report_rows(
     const char *path,
@@ -359,6 +365,7 @@ CG_API cg_status cg_dirichlet_prior_new(
 );
 CG_API void cg_dirichlet_prior_free(cg_dirichlet_prior *prior);
 CG_API uint64_t cg_dirichlet_prior_inventory_count(const cg_dirichlet_prior *prior);
+/* Borrowed; valid until cg_dirichlet_prior_free(prior). */
 CG_API const char *cg_dirichlet_prior_inventory_at(const cg_dirichlet_prior *prior, uint64_t index);
 CG_API cg_status cg_dirichlet_prior_alpha(
     const cg_dirichlet_prior *prior,
@@ -463,6 +470,7 @@ CG_API cg_status cg_diagnostics_new(
 );
 CG_API void cg_diagnostics_free(cg_diagnostics *diagnostics);
 CG_API uint64_t cg_diagnostics_count(const cg_diagnostics *diagnostics);
+/* Borrowed; valid until cg_diagnostics_free(diagnostics). */
 CG_API const cg_diagnostic *cg_diagnostics_get(const cg_diagnostics *diagnostics, uint64_t node);
 CG_API double cg_confidence_from_support(double in_mean, double alt_weight);
 CG_API cg_status cg_bootstrap_confidences(
