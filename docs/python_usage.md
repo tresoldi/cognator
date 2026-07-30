@@ -1,7 +1,14 @@
 # Python Usage
 
 The Python package is the intended user-facing surface once the Go code is
-removed. The direct path is:
+removed. The direct path is intentionally small:
+
+```sh
+python -m pip install .
+cognator detect --in forms.tsv --out sidecar.tsv
+```
+
+For Python code:
 
 ```python
 import cognator
@@ -25,3 +32,7 @@ rows = cognator.detect([
 
 The return value is a `CognateResult`, which is iterable, indexable, convertible
 to records, and can be grouped with `clusters()`.
+
+The default package has no runtime Python dependencies; pandas-style inputs are
+accepted by protocol when an object exposes `to_dict("records")`, but pandas is
+not required.

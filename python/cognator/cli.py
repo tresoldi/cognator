@@ -4,7 +4,7 @@ from .api import load
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog="python -m cognator")
+    parser = argparse.ArgumentParser(prog="cognator")
     sub = parser.add_subparsers(dest="command", required=True)
     detect = sub.add_parser("detect")
     detect.add_argument("--in", dest="input", required=True)

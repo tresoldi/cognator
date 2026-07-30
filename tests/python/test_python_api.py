@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 
 import cognator
@@ -108,6 +109,21 @@ class PythonApiTests(unittest.TestCase):
     def test_error_handling(self):
         with self.assertRaises(cognator.Error):
             cognator.detect("/no/such/file.tsv")
+
+    def test_packaging_console_entry_points(self):
+        data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        scripts = data["project"]["scripts"]
+        self.assertEqual(scripts["cognator"], "cognator.cli:main")
+        self.assertEqual(scripts["cognator-py"], "cognator.cli:main")
+
+    def test_module_cli_help_uses_installed_command_name(self):
+        completed = subprocess.run(
+            [sys.executable, "-m", "cognator", "--help"],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+        )
+        self.assertIn("usage: cognator", completed.stdout)
 
     def test_python_cli_matches_c_cli_clusters(self):
         c_cli = os.environ.get("COGNATOR_CLI")

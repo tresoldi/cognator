@@ -23,6 +23,7 @@ classifiers = [
 Homepage = "https://github.com/tresoldi/cognator"
 
 [project.scripts]
+cognator = "cognator.cli:main"
 cognator-py = "cognator.cli:main"
 
 [tool.setuptools]

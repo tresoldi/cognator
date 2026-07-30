@@ -37,6 +37,25 @@ Interpretation:
 
 Requirements:
 
+- Python 3.9+
+- A C99 compiler for source installs
+- No Go, CMake, LingPy, or separate merkmal checkout is required for the Python package
+
+Install the Python package:
+
+```sh
+python -m pip install .
+cognator --help
+```
+
+Build a wheel:
+
+```sh
+python -m pip wheel . -w dist
+```
+
+For C library and C CLI development:
+
 - CMake 3.20+
 - A C99 compiler
 - The neighboring `merkmal` C rework checkout or an installed `merkmal` C package
@@ -82,12 +101,21 @@ written as `+`.
 
 ## Basic Use
 
-Run detection:
+Run detection from the Python-installed CLI:
 
 ```sh
-./build/cognator detect \
+cognator detect \
   --in forms.csv \
   --out cognator_sidecar.tsv
+```
+
+Or from Python:
+
+```python
+import cognator
+
+result = cognator.load("forms.csv").detect()
+result.write_sidecar("cognator_sidecar.tsv")
 ```
 
 The output sidecar contains:
@@ -104,7 +132,7 @@ The output sidecar contains:
 | `Cognator_Bootstrap_Low` | optional 5% bootstrap interval endpoint |
 | `Cognator_Bootstrap_High` | optional 95% bootstrap interval endpoint |
 
-Score a sidecar against gold cognacy:
+Score a sidecar against gold cognacy with the C CLI:
 
 ```sh
 ./build/cognator eval \
