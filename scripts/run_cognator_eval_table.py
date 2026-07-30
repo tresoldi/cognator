@@ -158,6 +158,7 @@ def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> 
     )
     elapsed_ms = int((time.perf_counter() - start) * 1000)
     metrics = result.evaluate(records)
+    resolved_threshold = result.resolved_threshold if result.resolved_threshold is not None else args.threshold
     predictions = []
     for pred_row in result:
         source = by_id[pred_row["ID"]]
@@ -173,6 +174,7 @@ def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> 
                 "alternative_support": pred_row.get("Cognator_Alternative_Support", ""),
                 "support_margin": pred_row.get("Cognator_Support_Margin", ""),
                 "bootstrap": pred_row.get("Cognator_Bootstrap", ""),
+                "resolved_threshold": resolved_threshold,
                 "run_label": args.run_label,
             }
         )
@@ -184,7 +186,7 @@ def run_dataset(dataset: str, rows: list[EvalRow], args: argparse.Namespace) -> 
             "forms": len(rows),
             "cognacy_forms": cognacy_forms,
             "oov_types": 0,
-            "threshold": args.threshold,
+            "threshold": resolved_threshold,
             "clusters": len(result.clusters()),
             "precision": metrics.precision,
             "recall": metrics.recall,
@@ -227,7 +229,7 @@ def write_predictions(path: str, rows: list[dict[str, object]]) -> None:
     if not path:
         return
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    fields = ["eval_id", "dataset", "concept", "gold", "pred", "confidence", "assigned_support", "alternative_support", "support_margin", "bootstrap", "run_label"]
+    fields = ["eval_id", "dataset", "concept", "gold", "pred", "confidence", "assigned_support", "alternative_support", "support_margin", "bootstrap", "resolved_threshold", "run_label"]
     with Path(path).open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()

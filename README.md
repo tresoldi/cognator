@@ -130,6 +130,9 @@ The output sidecar contains:
 | `Cognator_Bootstrap_Low` | optional 5% bootstrap interval endpoint |
 | `Cognator_Bootstrap_High` | optional 95% bootstrap interval endpoint |
 
+Python `CognateResult` objects also expose `resolved_threshold`, which is the
+actual family-level threshold chosen by the adaptive policy.
+
 Score a sidecar against gold cognacy with the C CLI:
 
 ```sh

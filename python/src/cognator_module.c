@@ -148,13 +148,24 @@ static PyObject *py_detect_file(PyObject *self, PyObject *args, PyObject *kwargs
     }
     rows = PyList_New((Py_ssize_t)cg_result_row_count(result));
     if (rows != NULL) {
+        double resolved_threshold = cg_result_threshold(result);
         for (i = 0; i < cg_result_row_count(result); i++) {
             PyObject *row = sidecar_row_to_dict(cg_result_row_at(result, i));
+            PyObject *threshold = NULL;
             if (row == NULL) {
                 Py_DECREF(rows);
                 rows = NULL;
                 break;
             }
+            threshold = PyFloat_FromDouble(resolved_threshold);
+            if (threshold == NULL || PyDict_SetItemString(row, "Cognator_Resolved_Threshold", threshold) < 0) {
+                Py_XDECREF(threshold);
+                Py_DECREF(row);
+                Py_DECREF(rows);
+                rows = NULL;
+                break;
+            }
+            Py_DECREF(threshold);
             PyList_SET_ITEM(rows, (Py_ssize_t)i, row);
         }
     }

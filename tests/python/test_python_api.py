@@ -61,6 +61,8 @@ class PythonApiTests(unittest.TestCase):
         )
         self.assertEqual(len(result), 12)
         self.assertIn("romance:NIGHT:0", result.clusters())
+        self.assertAlmostEqual(result.resolved_threshold, 0.70)
+        self.assertAlmostEqual(result[0]["Cognator_Resolved_Threshold"], 0.70)
 
     def test_detect_accepts_adaptive_threshold_options(self):
         result = cognator.detect(
@@ -77,6 +79,8 @@ class PythonApiTests(unittest.TestCase):
             seed=17,
         )
         self.assertEqual(len(result), 12)
+        self.assertGreaterEqual(result.resolved_threshold, 0.64)
+        self.assertLessEqual(result.resolved_threshold, 0.74)
         self.assertGreater(len(result.clusters()), 0)
 
     def test_detect_from_records_and_dataframe_like(self):

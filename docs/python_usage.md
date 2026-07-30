@@ -17,6 +17,7 @@ wordlist = cognator.load("forms.tsv")
 result = wordlist.detect(preset="support-adaptive-bridge")
 
 print(result.clusters())
+print(result.resolved_threshold)
 result.write_sidecar("sidecar.tsv")
 ```
 

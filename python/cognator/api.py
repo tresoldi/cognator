@@ -159,6 +159,14 @@ def _bcubed(pred, truth):
 class CognateResult:
     def __init__(self, rows):
         self.rows = list(rows)
+        self.resolved_threshold = self._resolved_threshold()
+
+    def _resolved_threshold(self):
+        for row in self.rows:
+            value = row.get("Cognator_Resolved_Threshold")
+            if value not in ("", None):
+                return float(value)
+        return None
 
     def __len__(self):
         return len(self.rows)
