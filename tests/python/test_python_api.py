@@ -45,6 +45,9 @@ class PythonApiTests(unittest.TestCase):
     def test_import_version_and_abi(self):
         self.assertEqual(cognator.version(), "0.1.0")
         self.assertEqual(cognator.abi_version(), 1)
+        self.assertIn("evaluate", cognator.__all__)
+        self.assertNotIn("detect_file", cognator.__all__)
+        self.assertFalse(hasattr(cognator, "detect_file"))
 
     def test_detect_from_path(self):
         result = cognator.detect(
@@ -87,6 +90,44 @@ class PythonApiTests(unittest.TestCase):
             rows = read_sidecar(out)
         self.assertEqual(len(rows), 12)
         self.assertEqual(rows[0]["ID"], result[0]["ID"])
+
+    def test_evaluate_records(self):
+        truth = [
+            {"ID": "a", "Language_ID": "A", "Concept": "HAND", "Segments": "p a", "Cognacy": "1"},
+            {"ID": "b", "Language_ID": "B", "Concept": "HAND", "Segments": "p a", "Cognacy": "1"},
+            {"ID": "c", "Language_ID": "C", "Concept": "HAND", "Segments": "t a", "Cognacy": "2"},
+            {"ID": "d", "Language_ID": "A", "Concept": "FOOT", "Segments": "p a", "Cognacy": "1"},
+        ]
+        pred = [
+            {"ID": "a", "Cognator_ID": "x"},
+            {"ID": "b", "Cognator_ID": "x"},
+            {"ID": "c", "Cognator_ID": "y"},
+            {"ID": "d", "Cognator_ID": "x"},
+        ]
+        result = cognator.evaluate(pred, truth)
+        self.assertEqual(result.scored_count, 4)
+        self.assertEqual(result.pred_count, 4)
+        self.assertEqual(result.truth_count, 4)
+        self.assertAlmostEqual(result.precision, 2 / 3)
+        self.assertAlmostEqual(result.recall, 1.0)
+        self.assertAlmostEqual(result.f1, 0.8)
+        self.assertAlmostEqual(cognator.evaluate(pred, truth, per_concept=False).f1, 1.0)
+
+    def test_evaluate_result_against_wordlist(self):
+        wordlist = cognator.load(LATIN)
+        result = wordlist.detect(
+            preset="support-adaptive-bridge",
+            threshold=0.70,
+            bootstrap=0,
+            scorer="posterior",
+            min_pairs=1,
+            seed=17,
+        )
+        metrics = result.evaluate(wordlist)
+        self.assertIsInstance(metrics, cognator.EvaluationResult)
+        self.assertEqual(metrics.scored_count, 12)
+        self.assertGreater(metrics.f1, 0.8)
+        self.assertEqual(metrics.to_dict()["f1"], metrics.f1)
 
     def test_unicode_fixture_and_repeated_calls(self):
         first = None

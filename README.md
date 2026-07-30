@@ -116,6 +116,8 @@ import cognator
 
 result = cognator.load("forms.csv").detect()
 result.write_sidecar("cognator_sidecar.tsv")
+metrics = result.evaluate(cognator.load("forms.csv"))
+print(metrics.f1)
 ```
 
 The output sidecar contains:
