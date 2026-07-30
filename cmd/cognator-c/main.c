@@ -11,6 +11,8 @@ typedef struct detect_args {
     const char *in;
     const char *out;
     const char *oov_out;
+    int max_forms;
+    int max_lects;
     cg_options options;
 } detect_args;
 
@@ -87,6 +89,8 @@ static void detect_usage(FILE *stream) {
             "  --no-class-reduce\n"
             "  --scorer NAME\n"
             "  --min-pairs N\n"
+            "  --max-forms N\n"
+            "  --max-lects N\n"
             "  --dirichlet-concentration X\n"
             "  --dirichlet-sharpness X\n"
             "  --dirichlet-scale NAME\n");
@@ -349,6 +353,8 @@ static int parse_detect_args(int argc, char **argv, detect_args *args) {
     args->in = NULL;
     args->out = NULL;
     args->oov_out = NULL;
+    args->max_forms = 0;
+    args->max_lects = 0;
     if (!scan_preset(argc, argv, &args->options)) {
         return 0;
     }
@@ -443,6 +449,10 @@ static int parse_detect_args(int argc, char **argv, detect_args *args) {
             args->options.scorer_mode = value;
         } else if ((value = detect_arg_value(argc, argv, &i, arg, "--min-pairs")) != NULL) {
             if (!set_nonnegative_int_option("--min-pairs", value, &args->options.min_pairs)) return 0;
+        } else if ((value = detect_arg_value(argc, argv, &i, arg, "--max-forms")) != NULL) {
+            if (!set_nonnegative_int_option("--max-forms", value, &args->max_forms)) return 0;
+        } else if ((value = detect_arg_value(argc, argv, &i, arg, "--max-lects")) != NULL) {
+            if (!set_nonnegative_int_option("--max-lects", value, &args->max_lects)) return 0;
         } else if ((value = detect_arg_value(argc, argv, &i, arg, "--dirichlet-concentration")) != NULL) {
             if (!set_double_option("--dirichlet-concentration", value, &args->options.dirichlet_concentration)) return 0;
         } else if ((value = detect_arg_value(argc, argv, &i, arg, "--dirichlet-sharpness")) != NULL) {
@@ -610,6 +620,24 @@ static int detect_cmd(int argc, char **argv) {
     if (status != CG_OK) {
         fprintf(stderr, "detect: read %s: %s\n", args.in, cg_status_string(status));
         goto done;
+    }
+    if (args.max_forms > 0 || args.max_lects > 0) {
+        uint64_t lects = 0, concepts = 0, cognacy = 0;
+        summarize_records(records, &lects, &concepts, &cognacy);
+        (void)concepts;
+        (void)cognacy;
+        if (args.max_forms > 0 && cg_records_count(records) > (uint64_t)args.max_forms) {
+            fprintf(stderr, "detect: input has %llu forms, above --max-forms=%d\n",
+                    (unsigned long long)cg_records_count(records), args.max_forms);
+            exit_code = 2;
+            goto done;
+        }
+        if (args.max_lects > 0 && lects > (uint64_t)args.max_lects) {
+            fprintf(stderr, "detect: input has %llu lects, above --max-lects=%d\n",
+                    (unsigned long long)lects, args.max_lects);
+            exit_code = 2;
+            goto done;
+        }
     }
     status = cg_detect(ctx, records, &args.options, &result);
     if (status != CG_OK) {

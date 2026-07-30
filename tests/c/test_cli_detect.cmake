@@ -43,6 +43,21 @@ endif()
 execute_process(
     COMMAND "${COGNATOR_CLI}" detect
         --in "${TEST_WORK_DIR}/fixture.tsv"
+        --out "${TEST_WORK_DIR}/guarded.tsv"
+        --max-forms 3
+    RESULT_VARIABLE guard_result
+    ERROR_VARIABLE guard_error
+)
+if(NOT guard_result EQUAL 2)
+    message(FATAL_ERROR "detect max-forms guard returned ${guard_result}, expected 2")
+endif()
+if(NOT guard_error MATCHES "above --max-forms=3")
+    message(FATAL_ERROR "max-forms guard error mismatch: ${guard_error}")
+endif()
+
+execute_process(
+    COMMAND "${COGNATOR_CLI}" detect
+        --in "${TEST_WORK_DIR}/fixture.tsv"
         --out "${TEST_WORK_DIR}/sidecar.tsv"
         --oov "${TEST_WORK_DIR}/oov.tsv"
         --preset support-adaptive-bridge

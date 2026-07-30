@@ -9,7 +9,21 @@
 typedef struct cg_seq {
     char **items;
     size_t count;
+    size_t cap;
 } cg_seq;
+
+typedef struct cg_form_pair_list {
+    cg_form_pair *items;
+    size_t count;
+    size_t cap;
+} cg_form_pair_list;
+
+typedef struct cg_concept_group {
+    const char *concept;
+    size_t *indices;
+    size_t count;
+    size_t cap;
+} cg_concept_group;
 
 typedef struct cg_lect_pair_table {
     char *a;
@@ -44,11 +58,15 @@ static void seq_free(cg_seq *seq) {
 
 static cg_status seq_push(cg_seq *seq, const char *value) {
     char **next;
-    next = (char **)realloc(seq->items, (seq->count + 1) * sizeof(*next));
-    if (next == NULL) {
-        return CG_ERR_OOM;
+    if (seq->count == seq->cap) {
+        size_t next_cap = seq->cap == 0 ? 8 : seq->cap * 2;
+        next = (char **)realloc(seq->items, next_cap * sizeof(*next));
+        if (next == NULL) {
+            return CG_ERR_OOM;
+        }
+        seq->items = next;
+        seq->cap = next_cap;
     }
-    seq->items = next;
     seq->items[seq->count] = cg_strdup(value);
     if (seq->items[seq->count] == NULL) {
         return CG_ERR_OOM;
@@ -156,13 +174,18 @@ static size_t find_pair_table(cg_lect_pair_table *tables, size_t count, const ch
     return SIZE_MAX;
 }
 
-static cg_status form_pair_push(cg_form_pair **pairs, size_t *count, const cg_seq *source, const cg_seq *target, const cg_record *rs, const cg_record *rt) {
-    cg_form_pair *next = (cg_form_pair *)realloc(*pairs, (*count + 1) * sizeof(*next));
-    if (next == NULL) {
-        return CG_ERR_OOM;
+static cg_status form_pair_push(cg_form_pair_list *pairs, const cg_seq *source, const cg_seq *target, const cg_record *rs, const cg_record *rt) {
+    cg_form_pair *next;
+    if (pairs->count == pairs->cap) {
+        size_t next_cap = pairs->cap == 0 ? 8 : pairs->cap * 2;
+        next = (cg_form_pair *)realloc(pairs->items, next_cap * sizeof(*next));
+        if (next == NULL) {
+            return CG_ERR_OOM;
+        }
+        pairs->items = next;
+        pairs->cap = next_cap;
     }
-    *pairs = next;
-    (*pairs)[*count] = (cg_form_pair){
+    pairs->items[pairs->count] = (cg_form_pair){
         .source = (const char *const *)source->items,
         .source_count = (uint64_t)source->count,
         .target = (const char *const *)target->items,
@@ -171,7 +194,7 @@ static cg_status form_pair_push(cg_form_pair **pairs, size_t *count, const cg_se
         .source_id = rs->id,
         .target_id = rt->id
     };
-    (*count)++;
+    pairs->count++;
     return CG_OK;
 }
 
@@ -194,8 +217,7 @@ static cg_status build_pair_tables(const cg_context *ctx, const cg_records *reco
     for (i = 0; i < lect_count; i++) {
         size_t j;
         for (j = i + 1; j < lect_count; j++) {
-            cg_form_pair *pairs = NULL;
-            size_t pair_count = 0;
+            cg_form_pair_list pairs = {0};
             size_t a;
             cg_dirichlet_prior *prior = NULL;
             cg_posterior_table *table = NULL;
@@ -216,25 +238,25 @@ static cg_status build_pair_tables(const cg_context *ctx, const cg_records *reco
                         continue;
                     }
                     if (str_eq(ra->language_id, lects[i])) {
-                        status = form_pair_push(&pairs, &pair_count, &seqs[a], &seqs[b], ra, rb);
+                        status = form_pair_push(&pairs, &seqs[a], &seqs[b], ra, rb);
                     } else {
-                        status = form_pair_push(&pairs, &pair_count, &seqs[b], &seqs[a], rb, ra);
+                        status = form_pair_push(&pairs, &seqs[b], &seqs[a], rb, ra);
                     }
                     if (status != CG_OK) {
-                        free(pairs);
+                        free(pairs.items);
                         goto done;
                     }
                 }
             }
-            if (options->scorer_mode != NULL && strcmp(options->scorer_mode, "posterior") == 0 && (int)pair_count >= options->min_pairs && pair_count > 0) {
+            if (options->scorer_mode != NULL && strcmp(options->scorer_mode, "posterior") == 0 && (int)pairs.count >= options->min_pairs && pairs.count > 0) {
                 char **inventory = NULL;
                 uint64_t inventory_count = 0;
-                status = cg_inventory_from_pairs(pairs, (uint64_t)pair_count, &inventory, &inventory_count);
+                status = cg_inventory_from_pairs(pairs.items, (uint64_t)pairs.count, &inventory, &inventory_count);
                 if (status == CG_OK) {
                     status = cg_dirichlet_prior_new(ctx, options->dirichlet_concentration, options->dirichlet_sharpness, (const char *const *)inventory, inventory_count, &prior);
                 }
                 if (status == CG_OK) {
-                    status = cg_train_posterior(ctx, lects[i], lects[j], pairs, (uint64_t)pair_count, prior, options->iterations, &table);
+                    status = cg_train_posterior(ctx, lects[i], lects[j], pairs.items, (uint64_t)pairs.count, prior, options->iterations, &table);
                 }
                 if (status == CG_OK && options->dirichlet_scale_mode != NULL && options->dirichlet_scale_mode[0] != '\0') {
                     status = cg_posterior_table_attach_scaling(table, options->dirichlet_scale_mode);
@@ -243,12 +265,12 @@ static cg_status build_pair_tables(const cg_context *ctx, const cg_records *reco
                 if (status != CG_OK) {
                     cg_posterior_table_free(table);
                     cg_dirichlet_prior_free(prior);
-                    free(pairs);
+                    free(pairs.items);
                     goto done;
                 }
                 has_posterior = 1;
             }
-            free(pairs);
+            free(pairs.items);
             {
                 cg_lect_pair_table *next = (cg_lect_pair_table *)realloc(tables, (table_count + 1) * sizeof(*next));
                 if (next == NULL) {
@@ -306,6 +328,75 @@ static void free_pair_tables(cg_lect_pair_table *tables, size_t count) {
     free(tables);
 }
 
+static void concept_groups_free(cg_concept_group *groups, size_t count) {
+    size_t i;
+    for (i = 0; i < count; i++) {
+        free(groups[i].indices);
+    }
+    free(groups);
+}
+
+static size_t find_concept_group(cg_concept_group *groups, size_t count, const char *concept) {
+    size_t i;
+    for (i = 0; i < count; i++) {
+        if (str_eq(groups[i].concept, concept)) {
+            return i;
+        }
+    }
+    return SIZE_MAX;
+}
+
+static cg_status concept_group_push_index(cg_concept_group *group, size_t index) {
+    size_t *next;
+    if (group->count == group->cap) {
+        size_t next_cap = group->cap == 0 ? 8 : group->cap * 2;
+        next = (size_t *)realloc(group->indices, next_cap * sizeof(*next));
+        if (next == NULL) {
+            return CG_ERR_OOM;
+        }
+        group->indices = next;
+        group->cap = next_cap;
+    }
+    group->indices[group->count++] = index;
+    return CG_OK;
+}
+
+static cg_status build_concept_groups(const cg_records *records, cg_concept_group **out, size_t *out_count) {
+    cg_concept_group *groups = NULL;
+    size_t count = 0;
+    size_t i;
+    cg_status status = CG_OK;
+
+    *out = NULL;
+    *out_count = 0;
+    for (i = 0; i < records->count; i++) {
+        const cg_record *record = record_at(records, i);
+        size_t idx = find_concept_group(groups, count, record->concept);
+        if (idx == SIZE_MAX) {
+            cg_concept_group *next = (cg_concept_group *)realloc(groups, (count + 1) * sizeof(*next));
+            if (next == NULL) {
+                status = CG_ERR_OOM;
+                goto done;
+            }
+            groups = next;
+            groups[count] = (cg_concept_group){record->concept, NULL, 0, 0};
+            idx = count++;
+        }
+        status = concept_group_push_index(&groups[idx], i);
+        if (status != CG_OK) {
+            goto done;
+        }
+    }
+done:
+    if (status != CG_OK) {
+        concept_groups_free(groups, count);
+        return status;
+    }
+    *out = groups;
+    *out_count = count;
+    return CG_OK;
+}
+
 static cg_status distance_for_pair(const cg_context *ctx, const cg_seq *a, const cg_seq *b, const cg_record *ra, const cg_record *rb, cg_lect_pair_table *tables, size_t table_count, const cg_options *options, double *out) {
     size_t idx = find_pair_table(tables, table_count, ra->language_id, rb->language_id);
     int reverse = string_less(rb->language_id, ra->language_id);
@@ -322,64 +413,6 @@ static cg_status distance_for_pair(const cg_context *ctx, const cg_seq *a, const
         return cg_align_distance(ctx, (const char *const *)a->items, (uint64_t)a->count, (const char *const *)b->items, (uint64_t)b->count, 1, out);
     }
     return cg_align_distance_combined(ctx, (const char *const *)a->items, (uint64_t)a->count, (const char *const *)b->items, (uint64_t)b->count, 1, out);
-}
-
-static cg_status result_push(cg_result *result, cg_sidecar_row row) {
-    cg_sidecar_row *next;
-    if (result->row_count == result->row_cap) {
-        size_t next_cap = result->row_cap == 0 ? 32 : result->row_cap * 2;
-        next = (cg_sidecar_row *)realloc(result->rows, next_cap * sizeof(*next));
-        if (next == NULL) {
-            return CG_ERR_OOM;
-        }
-        result->rows = next;
-        result->row_cap = next_cap;
-    }
-    result->rows[result->row_count++] = row;
-    return CG_OK;
-}
-
-static size_t result_find_row(const cg_result *result, const char *id, char *used) {
-    size_t i;
-    for (i = 0; i < result->row_count; i++) {
-        if (!used[i] && str_eq(result->rows[i].id, id)) {
-            return i;
-        }
-    }
-    return SIZE_MAX;
-}
-
-static cg_status result_reorder_like_records(cg_result *result, const cg_records *records) {
-    cg_sidecar_row *rows;
-    char *used;
-    size_t i;
-    if (result->row_count != records->count) {
-        return CG_ERR_INVALID_ARGUMENT;
-    }
-    if (result->row_count == 0) {
-        return CG_OK;
-    }
-    rows = (cg_sidecar_row *)calloc(result->row_count, sizeof(*rows));
-    used = (char *)calloc(result->row_count, sizeof(*used));
-    if (rows == NULL || used == NULL) {
-        free(rows);
-        free(used);
-        return CG_ERR_OOM;
-    }
-    for (i = 0; i < records->count; i++) {
-        size_t idx = result_find_row(result, record_at(records, i)->id, used);
-        if (idx == SIZE_MAX) {
-            free(rows);
-            free(used);
-            return CG_ERR_INVALID_ARGUMENT;
-        }
-        rows[i] = result->rows[idx];
-        used[idx] = 1;
-    }
-    free(result->rows);
-    free(used);
-    result->rows = rows;
-    return CG_OK;
 }
 
 static cg_status make_cognator_id(char **out, const char *family, const char *concept, uint64_t mod) {
@@ -471,6 +504,8 @@ cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options
     cg_seq *seqs = NULL;
     cg_lect_pair_table *tables = NULL;
     size_t table_count = 0;
+    cg_concept_group *concept_groups = NULL;
+    size_t concept_group_count = 0;
     cg_distance_pair *all_pairs = NULL;
     double *all_distances = NULL;
     size_t all_pair_count = 0;
@@ -502,6 +537,17 @@ cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options
     }
     status = build_pair_tables(ctx, records, seqs, &options, &tables, &table_count);
     if (status != CG_OK) goto done;
+    status = build_concept_groups(records, &concept_groups, &concept_group_count);
+    if (status != CG_OK) goto done;
+    if (records->count > 0) {
+        result->rows = (cg_sidecar_row *)calloc(records->count, sizeof(*result->rows));
+        if (result->rows == NULL) {
+            status = CG_ERR_OOM;
+            goto done;
+        }
+        result->row_count = records->count;
+        result->row_cap = records->count;
+    }
     for (i = 0; i < records->count; i++) {
         size_t j;
         const cg_record *ri = record_at(records, i);
@@ -537,12 +583,11 @@ cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options
         }
     }
     result->threshold = options.threshold > 0 ? options.threshold : cg_clamp(cg_otsu_threshold(all_distances, (uint64_t)all_pair_count, 0.0, 1.0, 64), options.threshold_min, options.threshold_max);
-    for (i = 0; i < records->count; i++) {
-        const cg_record *ri = record_at(records, i);
-        int concept_seen_before = 0;
+    for (i = 0; i < concept_group_count; i++) {
+        const cg_concept_group *group = &concept_groups[i];
         size_t k;
-        size_t concept_count = 0;
-        size_t *concept_indices = NULL;
+        size_t concept_count = group->count;
+        size_t *index_to_local = NULL;
         cg_distance_pair *concept_pairs = NULL;
         double *concept_distances = NULL;
         size_t concept_pair_count = 0;
@@ -556,30 +601,20 @@ cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options
         cg_graph_spec gs = graph_spec_from_options(&options);
         cg_refine_spec rs = refine_spec_from_options(&options);
         double threshold;
-        for (k = 0; k < i; k++) {
-            if (str_eq(record_at(records, k)->concept, ri->concept)) {
-                concept_seen_before = 1;
-                break;
-            }
-        }
-        if (concept_seen_before) continue;
+        index_to_local = (size_t *)malloc((records->count == 0 ? 1 : records->count) * sizeof(*index_to_local));
+        if (index_to_local == NULL) { status = CG_ERR_OOM; goto concept_done; }
         for (k = 0; k < records->count; k++) {
-            if (str_eq(record_at(records, k)->concept, ri->concept)) {
-                size_t *next = (size_t *)realloc(concept_indices, (concept_count + 1) * sizeof(*next));
-                if (next == NULL) { status = CG_ERR_OOM; goto concept_done; }
-                concept_indices = next;
-                concept_indices[concept_count++] = k;
-            }
+            index_to_local[k] = SIZE_MAX;
+        }
+        for (k = 0; k < concept_count; k++) {
+            index_to_local[group->indices[k]] = k;
         }
         concept_pairs = (cg_distance_pair *)calloc(all_pair_count ? all_pair_count : 1, sizeof(*concept_pairs));
         concept_distances = (double *)calloc(all_pair_count ? all_pair_count : 1, sizeof(*concept_distances));
         if (concept_pairs == NULL || concept_distances == NULL) { status = CG_ERR_OOM; goto concept_done; }
         for (k = 0; k < all_pair_count; k++) {
-            size_t a_local = SIZE_MAX, b_local = SIZE_MAX, m;
-            for (m = 0; m < concept_count; m++) {
-                if (concept_indices[m] == all_pairs[k].a) a_local = m;
-                if (concept_indices[m] == all_pairs[k].b) b_local = m;
-            }
+            size_t a_local = index_to_local[all_pairs[k].a];
+            size_t b_local = index_to_local[all_pairs[k].b];
             if (a_local != SIZE_MAX && b_local != SIZE_MAX) {
                 concept_pairs[concept_pair_count] = (cg_distance_pair){a_local, b_local, all_pairs[k].distance};
                 concept_distances[concept_pair_count] = all_pairs[k].distance;
@@ -597,7 +632,8 @@ cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options
         }
         if (status == CG_OK) {
             for (k = 0; k < concept_count; k++) {
-                const cg_record *r = record_at(records, concept_indices[k]);
+                size_t record_index = group->indices[k];
+                const cg_record *r = record_at(records, record_index);
                 const cg_diagnostic *d = cg_diagnostics_get(diag, (uint64_t)k);
                 cg_sidecar_row row;
                 memset(&row, 0, sizeof(row));
@@ -619,15 +655,11 @@ cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options
                     row.bootstrap_low = cg_bootstrap_low_at(boot, (uint64_t)k);
                     row.bootstrap_high = cg_bootstrap_high_at(boot, (uint64_t)k);
                 }
-                status = result_push(result, row);
-                if (status != CG_OK) {
-                    cg_free_sidecar_row(&row);
-                    break;
-                }
+                result->rows[record_index] = row;
             }
         }
 concept_done:
-        free(concept_indices);
+        free(index_to_local);
         free(concept_pairs);
         free(concept_distances);
         cg_edges_free(edges);
@@ -638,8 +670,6 @@ concept_done:
         cg_bootstrap_summary_free(boot);
         if (status != CG_OK) goto done;
     }
-    status = result_reorder_like_records(result, records);
-    if (status != CG_OK) goto done;
     result->oov_count = cg_oov_report_count(oov);
     if (result->oov_count > 0) {
         result->oov = (cg_oov_row *)calloc(result->oov_count, sizeof(*result->oov));
@@ -659,6 +689,7 @@ done:
     }
     free(seqs);
     free_pair_tables(tables, table_count);
+    concept_groups_free(concept_groups, concept_group_count);
     free(all_pairs);
     free(all_distances);
     cg_oov_report_free(oov);
