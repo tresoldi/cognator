@@ -45,6 +45,18 @@ current="$(sources_hash)"
 
 case "$mode" in
 --write)
+    # A rebuild from unchanged sources produces an equivalent engine, so the
+    # stamp does not move for it. Rewriting git_commit anyway would leave the
+    # file dirty after every commit that touches nothing here, and check.sh's
+    # staleness gate would fail on cosmetic churn -- which trains people to
+    # commit the stamp without reading it, the exact habit the gate exists to
+    # prevent. The commit recorded is therefore the one whose sources produced
+    # this engine, which is the more useful answer anyway.
+    if [ -f "$stamp" ] && \
+       [ "$(awk '$1 == "sources_sha256" { print $2 }' "$stamp")" = "$current" ]; then
+        echo "wasm-provenance: unchanged (${current:0:12})"
+        exit 0
+    fi
     commit="$(git -C "$repo_dir" rev-parse --short HEAD 2>/dev/null || echo unknown)"
     {
         printf 'sources_sha256 %s\n' "$current"
