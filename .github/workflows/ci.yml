@@ -1,0 +1,144 @@
+name: Build and test
+
+# The second gate. `scripts/check.sh` is the first and stays the one that has to
+# pass before a commit; this is what catches the things a single machine cannot
+# -- a compiler the author does not have installed, a dependency the author
+# happens to have installed, a build that only works from a dirty tree.
+#
+# merkmal is not checked out here. It is pinned under third_party/ and compiled
+# in, which is the whole point: see docs/merkmal_pin.md.
+#
+# The WebAssembly build is deliberately absent. It needs the Emscripten SDK,
+# and pages.yml already refuses to deploy an artifact older than the sources it
+# claims to be built from, which is the property that matters. Running it here
+# would buy a slower CI and the same guarantee.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v7
+
+      # Not optional, and not a convenience. merkmal normalizes either through
+      # system utf8proc or through its own fallback, and picks silently: a bare
+      # runner would quietly test the other normalization path from the one the
+      # author runs, and a disagreement would get blamed on the compiler.
+      # REQUIRE_UTF8PROC makes its absence a configure failure instead.
+      - name: Install libutf8proc
+        run: sudo apt-get update && sudo apt-get install -y libutf8proc-dev
+
+      - name: Configure
+        run: >
+          cmake -S . -B build/ci
+          -DCMAKE_C_COMPILER=${{ matrix.compiler }}
+          -DCOGNATOR_WERROR=ON
+          -DCOGNATOR_REQUIRE_UTF8PROC=ON
+
+      - name: Build
+        run: cmake --build build/ci -j"$(nproc)"
+
+      - name: Test
+        run: ctest --test-dir build/ci --output-on-failure -j"$(nproc)"
+
+  fallback-unicode:
+    name: Fallback Unicode profile
+    # Not a degraded mode: this is what `pip install .` compiles and what the
+    # browser build ships, so it is the profile most users actually run. It was
+    # covered by nothing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure without utf8proc
+        run: >
+          cmake -S . -B build/fallback
+          -DCOGNATOR_WERROR=ON
+          -DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=ON
+      - name: Build
+        run: cmake --build build/fallback -j"$(nproc)"
+      - name: Test
+        run: ctest --test-dir build/fallback --output-on-failure -j"$(nproc)"
+
+  sanitizer:
+    name: ${{ matrix.sanitizer }} sanitizer
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install libutf8proc
+        run: sudo apt-get update && sudo apt-get install -y libutf8proc-dev
+      - name: Configure
+        run: >
+          cmake -S . -B build/ci-${{ matrix.sanitizer }}
+          -DCOGNATOR_ENABLE_SANITIZER=${{ matrix.sanitizer }}
+          -DCOGNATOR_WERROR=ON
+          -DCOGNATOR_REQUIRE_UTF8PROC=ON
+      - name: Build
+        run: cmake --build build/ci-${{ matrix.sanitizer }} -j"$(nproc)"
+      # The C suite includes wasm_shim, which is web/cognator_wasm.c compiled
+      # natively -- emcc is the only other thing that builds that file and a
+      # browser the only other thing that runs it, so this is the only place a
+      # sanitizer ever sees the browser engine's C. The Python and packaging
+      # cases are excluded: they shell out to an interpreter that is not
+      # instrumented, where a preloaded runtime buys noise, not coverage.
+      - name: Test
+        run: >
+          ctest --test-dir build/ci-${{ matrix.sanitizer }} --output-on-failure
+          -j"$(nproc)" -E 'python_api|python_install|package_consumer'
+
+  python:
+    name: Python wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+      - name: Test
+        run: python -m pytest tests/python -q
+      - name: Lint
+        run: python -m ruff check python/cognator scripts setup.py
+      - name: Type-check
+        run: python -m mypy python/cognator
+      - name: Build source distribution and wheel
+        run: python -m build --sdist --wheel
+      # The sdist is what a `pip install cognator` from source resolves to, and
+      # it is assembled from MANIFEST.in rather than from the working tree. A
+      # file missing there is invisible until someone installs it.
+      - name: Install and test the source distribution
+        run: |
+          python -m pip install --force-reinstall dist/cognator-*.tar.gz
+          python -c "import cognator; print(cognator.abi_version())"
+          cognator --help > /dev/null
+
+  provenance:
+    name: Pinned dependency and committed artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: The pinned merkmal is unmodified
+        run: ./scripts/merkmal-provenance.sh --check
+      - name: The committed WebAssembly build is current
+        run: ./scripts/wasm-provenance.sh --check

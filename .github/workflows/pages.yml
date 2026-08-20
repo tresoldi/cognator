@@ -1,0 +1,82 @@
+name: Deploy to GitHub Pages
+
+# The page is served straight from web/: the WebAssembly engine is a committed
+# artifact, so there is nothing to compile here. That is deliberate -- building
+# it would need the Emscripten SDK -- but it means the deploy has to check that
+# the artifact is not older than the sources it claims to be built from, which
+# is what the provenance step below does.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'web/**'
+      - 'src/**'
+      - 'include/**'
+      - 'third_party/merkmal/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Fails if src/, include/, third_party/merkmal or the shim moved on
+      # without web/build-wasm.sh being rerun, rather than quietly publishing
+      # the previous engine.
+      - name: Check the WebAssembly build is current
+        run: ./scripts/wasm-provenance.sh --check
+
+      # The page loads these by name; a rename or a missing generated file
+      # would only show up as a blank page in the browser.
+      - name: Check the page's assets are all present
+        run: |
+          missing=0
+          for asset in index.html style.css app.js worker.js \
+                       guide-content.js calibration.json \
+                       vendor/d3.min.js vendor/d3-LICENSE \
+                       cognator.js cognator.wasm BUILD_INFO CNAME; do
+              if [ ! -s "web/$asset" ]; then
+                  echo "::error::web/$asset is missing or empty"
+                  missing=1
+              fi
+          done
+          exit $missing
+
+      # merkmal and regulae make no third-party requests, and neither should
+      # this. The page pulled CodeMirror and d3 off a CDN, which is a privacy
+      # question for a page whose visitors are handing it wordlists, and a
+      # single point of failure for one that is otherwise entirely local.
+      - name: Check the page fetches nothing off-origin
+        run: |
+          if grep -nE '(src|href)="https?://' web/index.html \
+              | grep -vE 'href="https://(github\.com|cognator\.tresoldi\.org)'; then
+              echo "::error::the page loads an off-origin asset"
+              exit 1
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: web/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
