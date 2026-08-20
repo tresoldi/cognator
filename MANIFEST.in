@@ -4,6 +4,7 @@ include include/cognator.h
 include src/internal/*.h
 include src/*.c
 include python/cognator/py.typed
+include python/cognator/*.pyi
 include python/src/*.c
 include third_party/merkmal/include/*.h
 include third_party/merkmal/src/*.c

@@ -1,0 +1,29 @@
+"""Types for the compiled extension in python/src/cognator_module.c.
+
+The package ships py.typed, so a checker follows imports into it and finds a
+shared object it cannot read. Without this file the four names below are Any,
+which quietly removes type checking from every call site in api.py -- the
+opposite of what py.typed promises.
+
+Keep in step with CognatorMethods and the module init in cognator_module.c.
+"""
+
+from typing import Any
+
+class Error(Exception):
+    """Raised for any non-OK cg_status returned by the C library."""
+
+def detect_file(path: str, /, **options: Any) -> list[dict[str, Any]]:
+    """Cluster a TSV/CSV wordlist, one dict of sidecar columns per input row.
+
+    `options` are the cg_options fields; apply_options in the extension
+    rejects an unknown name. They are typed loosely because that struct is
+    where the detector's tunables live and they are documented there and in
+    docs/python_usage.md, not duplicated here.
+    """
+
+def version() -> str:
+    """The linked C library's version string."""
+
+def abi_version() -> int:
+    """The linked C library's ABI version."""

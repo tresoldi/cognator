@@ -35,7 +35,6 @@ import csv
 import json
 import math
 from collections import defaultdict
-from itertools import combinations
 from pathlib import Path
 
 # matplotlib is installed into the project venv; fail loudly if absent.

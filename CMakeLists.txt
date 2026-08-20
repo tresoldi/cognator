@@ -171,6 +171,15 @@ if(COGNATOR_BUILD_TESTS)
     add_executable(test_options tests/c/test_options.c)
     target_link_libraries(test_options PRIVATE cognator::cognator)
     add_test(NAME options COMMAND test_options)
+    # The browser engine's C, built natively so the sanitizers can see it.
+    # emcc is the only other thing that compiles this file and a browser the
+    # only other thing that runs it, which left the shim with no coverage at
+    # all -- see tests/c/test_wasm_shim.c.
+    add_executable(test_wasm_shim tests/c/test_wasm_shim.c web/cognator_wasm.c)
+    target_link_libraries(test_wasm_shim PRIVATE cognator::cognator)
+    target_include_directories(test_wasm_shim PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    add_test(NAME wasm_shim COMMAND test_wasm_shim)
+
     add_executable(test_context tests/c/test_context.c)
     target_link_libraries(test_context PRIVATE cognator::cognator)
     add_test(NAME context COMMAND test_context)

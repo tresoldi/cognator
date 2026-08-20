@@ -9,6 +9,7 @@ description = "Framework-native cognate detection"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
+license-files = ["LICENSE", "third_party/merkmal/LICENSE"]
 authors = [
   {name = "Tiago Tresoldi"}
 ]
@@ -19,8 +20,14 @@ classifiers = [
   "Topic :: Text Processing :: Linguistic",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "ruff", "mypy", "build"]
+
 [project.urls]
-Homepage = "https://github.com/tresoldi/cognator"
+Homepage = "https://cognator.tresoldi.org/"
+Documentation = "https://github.com/tresoldi/cognator#readme"
+Repository = "https://github.com/tresoldi/cognator"
+"Bug Tracker" = "https://github.com/tresoldi/cognator/issues"
 
 [project.scripts]
 cognator = "cognator.cli:main"
@@ -34,8 +41,17 @@ include-package-data = true
 where = ["python"]
 
 [tool.setuptools.package-data]
-cognator = ["py.typed"]
+cognator = ["py.typed", "*.pyi"]
 
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
 test-command = "python -c \"import cognator; assert cognator.abi_version() == 1\""
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

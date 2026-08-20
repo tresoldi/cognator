@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import argparse
+from typing import Optional, Sequence
 
 from .api import load
 
 
-def main(argv=None):
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="cognator")
     sub = parser.add_subparsers(dest="command", required=True)
     detect = sub.add_parser("detect")
