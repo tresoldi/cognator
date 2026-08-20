@@ -3,7 +3,7 @@
 This note summarizes the first full `Dev-Core` graph-policy sweep after adding support-aware graph construction.
 
 Primary artifact:
-- [benchmark/runs/20260419T211954Z-a-dev_core/graph_sweep/summary.tsv](/home/tiagot/nas-dev/new_chl/cognator/benchmark/runs/20260419T211954Z-a-dev_core/graph_sweep/summary.tsv)
+- `benchmark/runs/20260419T211954Z-a-dev_core/graph_sweep/summary.tsv`
 
 Baseline to beat:
 - fixed threshold `0.80`

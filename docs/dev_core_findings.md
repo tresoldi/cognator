@@ -2,12 +2,13 @@
 
 This note summarizes what the current benchmark work says about `cognator` on the `Dev-Core` Track A benchmark and what to do next if the goal is to consistently beat LingPy `LexStat + Infomap`.
 
-Primary evidence lives under:
-- [benchmark/runs/20260419T211954Z-a-dev_core/comparison.tsv](/home/tiagot/nas-dev/new_chl/cognator/benchmark/runs/20260419T211954Z-a-dev_core/comparison.tsv)
-- [benchmark/runs/20260419T211954Z-a-dev_core/threshold_sweep/summary.tsv](/home/tiagot/nas-dev/new_chl/cognator/benchmark/runs/20260419T211954Z-a-dev_core/threshold_sweep/summary.tsv)
-- [benchmark/runs/20260419T211954Z-a-dev_core/concept_shrink_sweep/summary.tsv](/home/tiagot/nas-dev/new_chl/cognator/benchmark/runs/20260419T211954Z-a-dev_core/concept_shrink_sweep/summary.tsv)
-- [benchmark/runs/20260419T211954Z-a-dev_core/cognator_error_summary.tsv](/home/tiagot/nas-dev/new_chl/cognator/benchmark/runs/20260419T211954Z-a-dev_core/cognator_error_summary.tsv)
-- [benchmark/runs/20260419T211954Z-a-dev_core/lingpy_error_summary.tsv](/home/tiagot/nas-dev/new_chl/cognator/benchmark/runs/20260419T211954Z-a-dev_core/lingpy_error_summary.tsv)
+Primary evidence lives under these run artifacts, which the benchmark
+pipeline regenerates and which are not committed:
+- `benchmark/runs/20260419T211954Z-a-dev_core/comparison.tsv`
+- `benchmark/runs/20260419T211954Z-a-dev_core/threshold_sweep/summary.tsv`
+- `benchmark/runs/20260419T211954Z-a-dev_core/concept_shrink_sweep/summary.tsv`
+- `benchmark/runs/20260419T211954Z-a-dev_core/cognator_error_summary.tsv`
+- `benchmark/runs/20260419T211954Z-a-dev_core/lingpy_error_summary.tsv`
 
 ## Bottom Line
 

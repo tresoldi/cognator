@@ -64,10 +64,10 @@ Performance snapshot:
 The current system is therefore fast enough to spend more computation on better
 evidence, calibration, or refinement if the quality gain is real.
 
-## Agent Handoff Roadmap
+## Open Work Items
 
-This section is the highest-priority pickup list for future agents. Each item
-should land as a small, separately verified commit unless explicitly grouped.
+This section is the highest-priority pickup list. Each item should land as a
+small, separately verified change unless explicitly grouped.
 
 ### 1. Re-run The Wider Benchmark Suite
 
@@ -704,9 +704,9 @@ Track A until the primary quality target is met.
 
 ## Immediate Next Steps
 
-Use the **Agent Handoff Roadmap** near the top of this document as the active
-pickup list. The older Go-era and early-C conversion tasks have either landed or
-been superseded by the C/Python milestones recorded there.
+Use **Open Work Items** near the top of this document as the active pickup
+list. The earlier Go-era and C-conversion tasks have either landed or been
+superseded by the C/Python work recorded there.
 
 Out of scope for the immediate cycle: regulae integration, a full module split
 inside the C core, and an Infomap backend replacement. Revisit those only after

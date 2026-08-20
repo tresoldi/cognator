@@ -6,18 +6,25 @@
 /sweep
 /bin/
 /tmp/
-*.prof
-*.test
-*.out
+/build/
+
+# Python
 __pycache__/
+*.pyc
 *.egg-info/
 *.so
-
-# Go build/test caches from local benchmark sweeps
-.gocache*/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+.venv/
+venv/
 
 # generated benchmark outputs (manifest.json is config — keep it tracked)
 benchmark/runs/
 benchmark/reports/
 
-/build/
+# Local editor and tool state
+.claude/
+.codex/
+.cursor/
