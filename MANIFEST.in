@@ -5,9 +5,9 @@ include src/internal/*.h
 include src/*.c
 include python/cognator/py.typed
 include python/src/*.c
-include python/vendor/merkmal/include/*.h
-include python/vendor/merkmal/src/*.c
-include python/vendor/merkmal/src/*.h
-include python/vendor/merkmal/src/generated/*.c
-include python/vendor/merkmal/src/generated/*.h
+include third_party/merkmal/include/*.h
+include third_party/merkmal/src/*.c
+include third_party/merkmal/src/*.h
+include third_party/merkmal/src/generated/*.c
+include third_party/merkmal/src/generated/*.h
 recursive-include tests/fixtures/linguistic *.tsv *.md

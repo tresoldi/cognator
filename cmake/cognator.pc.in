@@ -7,4 +7,5 @@ Name: cognator
 Description: Framework-native cognate detection
 Version: @PROJECT_VERSION@
 Libs: -L${libdir} -lcognator
+Libs.private: @COGNATOR_PC_LIBS_PRIVATE@ -lm
 Cflags: -I${includedir}

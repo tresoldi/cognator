@@ -1,0 +1,4 @@
+upstream https://github.com/tresoldi/merkmal
+commit 3d21e08312410df2eb7d72949ca935f6f9580fe3
+date 2026-07-26
+version 0.7.0

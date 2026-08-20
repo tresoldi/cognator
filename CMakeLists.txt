@@ -15,15 +15,44 @@ if(COGNATOR_ENABLE_SANITIZER AND NOT COGNATOR_ENABLE_SANITIZER MATCHES "^(addres
     message(FATAL_ERROR "COGNATOR_ENABLE_SANITIZER must be address or undefined")
 endif()
 
-find_package(merkmal CONFIG QUIET)
-if(NOT TARGET merkmal::merkmal)
-    set(COGNATOR_MERKMAL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../merkmal" CACHE PATH "Merkmal C source checkout")
-    if(EXISTS "${COGNATOR_MERKMAL_SOURCE_DIR}/CMakeLists.txt")
-        set(MERKMAL_BUILD_TESTS OFF CACHE BOOL "Build merkmal tests" FORCE)
-        add_subdirectory("${COGNATOR_MERKMAL_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/merkmal")
-    else()
-        message(FATAL_ERROR "merkmal::merkmal not found; install merkmal or set COGNATOR_MERKMAL_SOURCE_DIR")
-    endif()
+# merkmal comes from third_party/merkmal, pinned to the commit in its PINNED
+# file. It is not a floating dependency and not a sibling checkout: cognator's
+# clustering thresholds are calibrated against one segment-distance scale, and
+# that scale moves with merkmal's feature inventory. See third_party/merkmal
+# and docs/merkmal_pin.md.
+#
+# COGNATOR_MERKMAL_SOURCE_DIR still points the build at some other merkmal
+# checkout, because a packager with a system merkmal has a legitimate reason to
+# and because the recalibration work needs it. It is an override, not the
+# normal path, and nothing in this repository's committed numbers holds under
+# it.
+option(COGNATOR_REQUIRE_UTF8PROC "Fail configure if libutf8proc is absent" OFF)
+
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(UTF8PROC QUIET IMPORTED_TARGET libutf8proc)
+endif()
+if(COGNATOR_REQUIRE_UTF8PROC AND NOT UTF8PROC_FOUND)
+    message(FATAL_ERROR
+        "libutf8proc was not found and COGNATOR_REQUIRE_UTF8PROC is ON. "
+        "Install it, or turn the option off to build merkmal's fallback "
+        "normalization instead -- but note the two normalize differently.")
+endif()
+
+set(COGNATOR_MERKMAL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/merkmal"
+    CACHE PATH "merkmal C sources; defaults to the pinned copy in third_party/")
+
+if(EXISTS "${COGNATOR_MERKMAL_SOURCE_DIR}/sources.cmake")
+    include("${COGNATOR_MERKMAL_SOURCE_DIR}/sources.cmake")
+elseif(EXISTS "${COGNATOR_MERKMAL_SOURCE_DIR}/CMakeLists.txt")
+    # An external merkmal checkout, which brings its own build. Used by the
+    # recalibration work and by packagers; see docs/merkmal_pin.md.
+    set(MERKMAL_BUILD_TESTS OFF CACHE BOOL "Build merkmal tests" FORCE)
+    add_subdirectory("${COGNATOR_MERKMAL_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/merkmal")
+    set(MERKMAL_PINNED_SOURCES "")
+    set(MERKMAL_PINNED_INCLUDE_DIRS "")
+else()
+    message(FATAL_ERROR "no merkmal sources at ${COGNATOR_MERKMAL_SOURCE_DIR}")
 endif()
 
 add_library(cognator
@@ -45,7 +74,30 @@ target_include_directories(cognator PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(cognator PUBLIC merkmal::merkmal)
+if(MERKMAL_PINNED_SOURCES)
+    set(COGNATOR_CONFIG_MERKMAL_DEPENDENCY "")
+    target_sources(cognator PRIVATE ${MERKMAL_PINNED_SOURCES})
+    target_include_directories(cognator PRIVATE ${MERKMAL_PINNED_INCLUDE_DIRS})
+    set_source_files_properties(${MERKMAL_PINNED_SOURCES} PROPERTIES
+        COMPILE_DEFINITIONS MERKMAL_BUILDING_LIBRARY)
+    if(UTF8PROC_FOUND)
+        set_property(SOURCE ${MERKMAL_PINNED_SOURCES}
+            APPEND PROPERTY COMPILE_DEFINITIONS MK_HAVE_UTF8PROC=1)
+        target_include_directories(cognator PRIVATE ${UTF8PROC_INCLUDE_DIRS})
+        # The bare name, not PkgConfig::UTF8PROC. libcognator is static by
+        # default, so even a PRIVATE dependency is recorded in the exported
+        # link interface, and an imported target there is a name the consumer's
+        # project has never defined -- which is a configure error in their
+        # build, from a find_package of ours. A plain -lutf8proc resolves the
+        # same way anywhere the library is installed.
+        target_link_libraries(cognator PRIVATE ${UTF8PROC_LIBRARIES})
+        set(COGNATOR_PC_LIBS_PRIVATE "-lutf8proc")
+    endif()
+else()
+    set(COGNATOR_CONFIG_MERKMAL_DEPENDENCY
+        "include(CMakeFindDependencyMacro)\nfind_dependency(merkmal CONFIG)")
+    target_link_libraries(cognator PUBLIC merkmal::merkmal)
+endif()
 if(UNIX AND NOT APPLE)
     target_link_libraries(cognator PRIVATE m)
 endif()

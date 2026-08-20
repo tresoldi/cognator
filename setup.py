@@ -6,8 +6,12 @@ from setuptools import Extension, setup
 
 
 ROOT = Path(__file__).parent.resolve()
+# The pinned copy under third_party/, the same one CMakeLists.txt builds. The
+# environment variable is the same override CMake offers, and carries the same
+# warning: cognator's thresholds are calibrated against this merkmal's
+# segment-distance scale. See third_party/merkmal/README.md.
 MERKMAL = Path(
-    os.environ.get("COGNATOR_MERKMAL_SOURCE_DIR", ROOT / "python" / "vendor" / "merkmal")
+    os.environ.get("COGNATOR_MERKMAL_SOURCE_DIR", ROOT / "third_party" / "merkmal")
 ).resolve()
 
 if not (MERKMAL / "include" / "merkmal.h").exists():
