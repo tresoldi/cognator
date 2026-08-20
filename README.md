@@ -5,8 +5,10 @@ The main supported mode is **per-concept clustering within the same language
 family**. Cross-concept/global clustering exists as an experimental path, but it
 is not the core target.
 
-The active implementation is the C library, C CLI, and Python wrapper; the old
-Go implementation has been removed.
+It is a C99 library with a CLI, a Python wrapper around the same C, and a
+browser build of it at [cognator.tresoldi.org](https://cognator.tresoldi.org/).
+All three compile the same sources, including the pinned copy of
+[merkmal](https://github.com/tresoldi/merkmal) that supplies the phonology.
 
 ## Current Status
 
@@ -38,7 +40,10 @@ Requirements:
 
 - Python 3.9+
 - A C99 compiler for source installs
-- No Go, CMake, LingPy, or separate merkmal checkout is required for the Python package
+
+Nothing else. merkmal is pinned under `third_party/merkmal` and compiled in, so
+there is no second checkout, no CMake and no network involved in a source
+install.
 
 Install the Python package:
 
@@ -61,9 +66,9 @@ For C library and C CLI development:
 
 - CMake 3.20+
 - A C99 compiler
-- The neighboring `merkmal` C rework checkout or an installed `merkmal` C package
-- Python 3 for scripts
-- LingPy only if you want to reproduce LingPy baselines
+- `libutf8proc` — optional, but see the note below
+- Python 3 for the scripts under `scripts/`
+- LingPy only to reproduce the LingPy baselines
 
 Build and test:
 
@@ -73,7 +78,48 @@ cmake --build build -j2
 ctest --test-dir build --output-on-failure
 ```
 
+`scripts/check.sh` is what has to pass before a commit: the build under
+`-Werror`, a second compiler, the suite, and both Unicode profiles.
+`scripts/check.sh --full` adds the sanitizers and the WebAssembly build and
+smoke test, and needs the Emscripten SDK.
+
+About that option: merkmal normalizes through `libutf8proc` when it finds one
+and through its own fallback otherwise, and the two do not normalize alike. It
+picks silently, so a build that happens to find the library can cluster
+differently from one that does not with nothing in the output saying which ran.
+`-DCOGNATOR_REQUIRE_UTF8PROC=ON` turns its absence into a configure error. The
+fallback is not a degraded mode — it is what `pip install` and the browser
+build compile — and CI tests both.
+
 The public C API ownership and ABI rules are documented in `docs/c_api.md`.
+
+### merkmal is pinned, on purpose
+
+Every threshold in this repository is a number on merkmal's segment-distance
+scale, and that scale moves when merkmal's feature inventory does. The copy in
+`third_party/merkmal` is therefore a specific upstream commit, named in
+`third_party/merkmal/PINNED` and checked by
+`scripts/merkmal-provenance.sh --check`. Building against a different merkmal
+is supported — `-DCOGNATOR_MERKMAL_SOURCE_DIR=/path/to/merkmal`, or the same
+name as an environment variable for `pip` — but none of the numbers below hold
+under it. `docs/merkmal_pin.md` is what to do when the pin moves; it is a
+recalibration, not an upgrade.
+
+## Browser interface
+
+[cognator.tresoldi.org](https://cognator.tresoldi.org/) runs the same C
+compiled to WebAssembly — the detection happens in the browser, so nothing
+is uploaded anywhere. The page is served from `web/`, which is deployed as it
+stands: the engine is a committed artifact, and `web/BUILD_INFO` records the
+hash of the sources it was built from so a stale one cannot be published
+silently.
+
+Rebuild it with the Emscripten SDK on your path:
+
+```sh
+./web/build-wasm.sh          # writes cognator.js, cognator.wasm, BUILD_INFO
+node web/smoke_test.mjs
+```
 
 ## Input Format
 
@@ -214,8 +260,7 @@ PYTHONPATH=python python scripts/run_milestone24_benchmark.py \
   --out-dir benchmark/milestone24
 ```
 
-Arcaverborum comparison scripts now use the C/Python benchmark runner and no
-longer require Go.
+The comparison scripts drive the C CLI and the Python wrapper.
 
 Export evaluation tables from a built arcaverborum repository:
 
@@ -234,7 +279,6 @@ python scripts/run_benchmark_pipeline.py \
   --datasets-csv ../arcaverborum/datasets.csv \
   --split-file benchmark/splits/dev_core.txt \
   --track A \
-  --allow-archival-go \
   --cognator-extra-args "--threshold 0.68 --graph-mode support --graph-expansion-mode adaptive --graph-top-k 3 --graph-contrastive-penalty 0.20 --graph-contrastive-floor 0.05 --refine-mode bridge-cut --refine-confidence-threshold 0.55 --refine-bridge-ratio 0.7"
 ```
 
@@ -252,8 +296,7 @@ runs, use:
 ```sh
 python scripts/generate_arcaverborum_report.py \
   --mode fresh \
-  --arcaverborum-root ../arcaverborum \
-  --allow-archival-go
+  --arcaverborum-root ../arcaverborum
 ```
 
 ## Diagnostics
@@ -338,7 +381,7 @@ Important packages:
 |---|---|
 | `src/wordlist.c` | input/output tables |
 | `src/segment.c` | grapheme parsing and class reduction |
-| `python/vendor/merkmal` or linked `merkmal::merkmal` | distance/prosody/class features |
+| `third_party/merkmal` (pinned, compiled in) | distance/prosody/class features |
 | `src/align.c` | alignment distances |
 | `src/posterior.c` | correspondence and posterior scoring |
 | `src/graph.c` | distance-to-graph construction and clustering |
@@ -359,3 +402,25 @@ For deeper engineering direction, see [docs/roadmap.md](docs/roadmap.md).
   a probability.
 - Assignment-changing alternative-support refinements improved dev subsets but
   did not generalize, so they remain experimental.
+
+## License
+
+MIT, in `LICENSE`.
+
+`third_party/merkmal` is a copy of [merkmal](https://github.com/tresoldi/merkmal)
+at the commit in its `PINNED` file, under its own MIT license, and `web/vendor`
+holds [d3](https://d3js.org/) v7.9.0 under the ISC license. Both keep the
+upstream license file beside them.
+
+## Citation
+
+If cognator is useful in work you publish:
+
+```bibtex
+@software{tresoldi_cognator,
+  author  = {Tresoldi, Tiago},
+  title   = {cognator: framework-native cognate detection},
+  year    = {2026},
+  url     = {https://github.com/tresoldi/cognator}
+}
+```
