@@ -27,6 +27,10 @@ endif()
 # normal path, and nothing in this repository's committed numbers holds under
 # it.
 option(COGNATOR_REQUIRE_UTF8PROC "Fail configure if libutf8proc is absent" OFF)
+# Off by default: a warning in a consumer's toolchain is not a reason to deny
+# them a build. scripts/check.sh and CI turn it on, which is where the gate
+# belongs.
+option(COGNATOR_WERROR "Treat compiler warnings as errors" OFF)
 
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
@@ -37,6 +41,22 @@ if(COGNATOR_REQUIRE_UTF8PROC AND NOT UTF8PROC_FOUND)
         "libutf8proc was not found and COGNATOR_REQUIRE_UTF8PROC is ON. "
         "Install it, or turn the option off to build merkmal's fallback "
         "normalization instead -- but note the two normalize differently.")
+endif()
+
+# Directory-scoped rather than set on the cognator target. They were on that
+# target alone, which meant the CLI, the C tests and the WebAssembly shim --
+# every line of C in this repository that is not the library -- compiled with
+# no warnings at all.
+if(MSVC)
+    add_compile_options(/W4)
+    if(COGNATOR_WERROR)
+        add_compile_options(/WX)
+    endif()
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+    if(COGNATOR_WERROR)
+        add_compile_options(-Werror)
+    endif()
 endif()
 
 set(COGNATOR_MERKMAL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/merkmal"
@@ -107,9 +127,7 @@ if(BUILD_SHARED_LIBS)
     target_compile_definitions(cognator PUBLIC COGNATOR_SHARED)
 endif()
 
-if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(cognator PRIVATE -Wall -Wextra -Wpedantic -Wconversion)
-endif()
+
 if(COGNATOR_ENABLE_SANITIZER)
     target_compile_options(cognator PUBLIC -fsanitize=${COGNATOR_ENABLE_SANITIZER} -fno-omit-frame-pointer)
     target_link_options(cognator PUBLIC -fsanitize=${COGNATOR_ENABLE_SANITIZER})

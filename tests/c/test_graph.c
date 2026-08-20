@@ -256,9 +256,9 @@ int main(void) {
             {1, 2, 0.90},
             {1, 3, 0.90},
         };
-        uint64_t modules[4] = {0, 0, 1, 0};
+        uint64_t bridge_modules[4] = {0, 0, 1, 0};
         assert(cg_graph_new(4, bridge_edges, 3, &graph) == CG_OK);
-        assert(cg_partition_from_modules(modules, 4, &part) == CG_OK);
+        assert(cg_partition_from_modules(bridge_modules, 4, &part) == CG_OK);
         cg_refine_spec_init_defaults(&refine);
         refine.mode = "bridge-cut";
         refine.confidence_threshold = 0.6;

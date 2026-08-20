@@ -5,13 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void write_text(const char *path, const char *text) {
-    FILE *f = fopen(path, "wb");
-    assert(f != NULL);
-    assert(fputs(text, f) >= 0);
-    assert(fclose(f) == 0);
-}
-
 static char *read_text(const char *path) {
     FILE *f = fopen(path, "rb");
     long size;
