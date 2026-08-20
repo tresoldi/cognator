@@ -5,16 +5,27 @@
  * {type:"status"|"ready"|"done"|"error"}.
  */
 
-importScripts("cognator.js?v=" + Date.now());
-
 var ready = false;
-var modulePromise = createCognatorModule();
 var engine = null;
+var started = false;
 
-(async function init() {
+/*
+ * The engine is loaded on the first message rather than at import time,
+ * because the cache key comes with that message: the page reads BUILD_INFO and
+ * passes the source hash, so worker and engine are versioned by what they were
+ * built from instead of by the clock.
+ */
+function start(v) {
+    if (started) return;
+    started = true;
+    importScripts("cognator.js?v=" + (v || "dev"));
+    boot();
+}
+
+async function boot() {
     self.postMessage({ type: "status", text: "Loading cognator C/WASM engine..." });
     try {
-        engine = await modulePromise;
+        engine = await createCognatorModule();
         ready = true;
         self.postMessage({
             type: "ready",
@@ -24,7 +35,7 @@ var engine = null;
     } catch (err) {
         self.postMessage({ type: "error", message: err.message || String(err) });
     }
-})();
+}
 
 function detect(csv, options) {
     const ptr = engine.ccall(
@@ -42,6 +53,10 @@ function detect(csv, options) {
 }
 
 self.onmessage = function (ev) {
+    if (ev.data.type === "init") {
+        start(ev.data.v);
+        return;
+    }
     if (ev.data.type !== "run") return;
     if (!ready) {
         self.postMessage({ type: "error", message: "engine not ready" });
