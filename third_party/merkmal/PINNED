@@ -2,3 +2,4 @@ upstream https://github.com/tresoldi/merkmal
 commit 3d21e08312410df2eb7d72949ca935f6f9580fe3
 date 2026-07-26
 version 0.7.0
+tree_sha256 abd93debe5ebb8e14eb25871f3f4e83c5fb6450ca7d7effb357330153743e19a
