@@ -45,6 +45,14 @@ jobs:
       - name: Install libutf8proc
         run: sudo apt-get update && sudo apt-get install -y libutf8proc-dev
 
+      # The ctest suite builds the Python extension through setuptools, and
+      # Python 3.12 dropped it from the standard install, so a bare runner has
+      # none. CMake skips those two tests when it is missing rather than
+      # failing on a BackendUnavailable traceback -- but a skip here would be a
+      # silent hole in CI, so install it and let them run.
+      - name: Install the Python build backend
+        run: python3 -m pip install --upgrade setuptools wheel
+
       - name: Configure
         run: >
           cmake -S . -B build/ci
@@ -66,6 +74,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # The ctest suite builds the Python extension through setuptools, and
+      # Python 3.12 dropped it from the standard install, so a bare runner has
+      # none. CMake skips those two tests when it is missing rather than
+      # failing on a BackendUnavailable traceback -- but a skip here would be a
+      # silent hole in CI, so install it and let them run.
+      - name: Install the Python build backend
+        run: python3 -m pip install --upgrade setuptools wheel
       - name: Configure without utf8proc
         run: >
           cmake -S . -B build/fallback

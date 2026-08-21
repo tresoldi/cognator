@@ -27,7 +27,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean, median
 
-
 CURRENT_COGNATOR_ARGS = (
     "--preset support-adaptive-bridge "
     "--threshold 0 "

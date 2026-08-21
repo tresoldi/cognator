@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import argparse
-from typing import Optional, Sequence
+from typing import TYPE_CHECKING
 
 from .api import load
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="cognator")
     sub = parser.add_subparsers(dest="command", required=True)
     detect = sub.add_parser("detect")

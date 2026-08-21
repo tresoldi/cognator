@@ -26,7 +26,6 @@ from datetime import date
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-
 DEFAULT_DATASETS = [
     "carvalhopurus=https://github.com/lexibank/carvalhopurus.git",
     "chaconarawakan=https://github.com/lexibank/chaconarawakan.git",

@@ -1,11 +1,10 @@
-from pathlib import Path
 import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 from setuptools import Extension, setup
-
 
 ROOT = Path(__file__).parent.resolve()
 # The pinned copy under third_party/, the same one CMakeLists.txt builds. The

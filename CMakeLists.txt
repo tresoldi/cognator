@@ -290,6 +290,33 @@ if(COGNATOR_BUILD_TESTS)
                 -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
                 -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_package_consumer
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_package_consumer.cmake)
+        # Both Python cases build the extension through setuptools -- one with
+        # `setup.py build_ext`, one with `pip install --no-build-isolation`,
+        # which by design stops pip fetching the build backend itself. An
+        # interpreter without setuptools therefore fails them both, and does it
+        # with a BackendUnavailable traceback that says nothing about what is
+        # actually missing. Python 3.12 dropped setuptools from the standard
+        # install, so this is the default state of a fresh Ubuntu runner, not a
+        # corner case: it is how these two tests failed on the first CI run.
+        #
+        # Skipping rather than failing, because a C contributor with no
+        # setuptools is not doing anything wrong. CI installs it explicitly so
+        # the tests run there -- a skip that silently drops coverage in CI
+        # would be the worse failure.
+        if(COGNATOR_BUILD_PYTHON_TESTS)
+            execute_process(
+                COMMAND ${COGNATOR_PYTHON_EXECUTABLE} -c "import setuptools"
+                RESULT_VARIABLE _setuptools_missing
+                OUTPUT_QUIET ERROR_QUIET)
+            if(_setuptools_missing)
+                message(WARNING
+                    "${COGNATOR_PYTHON_EXECUTABLE} cannot import setuptools; "
+                    "skipping the python_api and python_install tests. "
+                    "Install it with: ${COGNATOR_PYTHON_EXECUTABLE} -m pip install setuptools wheel")
+                set(COGNATOR_BUILD_PYTHON_TESTS OFF)
+            endif()
+        endif()
+
         if(COGNATOR_BUILD_PYTHON_TESTS)
             add_test(NAME python_api
                 COMMAND ${CMAKE_COMMAND}

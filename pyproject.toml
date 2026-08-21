@@ -47,6 +47,25 @@ cognator = ["py.typed", "*.pyi"]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
 test-command = "python -c \"import cognator; assert cognator.abi_version() == 1\""
 
+[tool.ruff]
+# Pinned deliberately. Without a select list the rule set is whatever the
+# installed ruff happens to default to, so a ruff release breaks the build on a
+# day nobody touched the code -- which is exactly what happened here between
+# 0.15 and 0.16, going from zero findings to eighty-eight. The families are
+# merkmal's and regulae's, minus nothing; target-version is this package's own
+# floor rather than theirs.
+target-version = "py39"
+line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TC"]
+
+[tool.ruff.lint.per-file-ignores]
+# The benchmark and report scripts are held to the same rules as the library
+# except line length: they are full of long literal column names and command
+# lines that read worse wrapped.
+"scripts/*.py" = ["E501"]
+
 [tool.mypy]
 python_version = "3.9"
 strict = true

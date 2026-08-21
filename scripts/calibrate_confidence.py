@@ -42,7 +42,10 @@ import statistics
 from collections import defaultdict
 from itertools import combinations
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 REQUIRED_COLUMNS = {"eval_id", "dataset", "concept", "gold", "pred", "confidence"}

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
 import csv
-from collections import defaultdict
-from dataclasses import dataclass
 import tempfile
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Union
+from collections import defaultdict
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Union
 
 from ._cognator import detect_file
 
@@ -20,6 +21,9 @@ Record = Mapping[str, Any]
 # would name pandas, which is not a dependency and must not become one.
 TableLike = Any
 
+# Union, not `str | bytes | Path`: this is a runtime assignment, not an
+# annotation, so `from __future__ import annotations` does not defer it and
+# PEP 604 syntax raises TypeError on the 3.9 this package still supports.
 PathLike = Union[str, bytes, Path]
 
 
@@ -48,7 +52,7 @@ class EvaluationResult:
     recall: float
     f1: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "scored_count": self.scored_count,
             "pred_count": self.pred_count,
@@ -59,7 +63,7 @@ class EvaluationResult:
         }
 
 
-def _records_from_table_like(data: TableLike) -> List[Record]:
+def _records_from_table_like(data: TableLike) -> list[Record]:
     if hasattr(data, "to_dict"):
         try:
             records = data.to_dict("records")
@@ -70,20 +74,25 @@ def _records_from_table_like(data: TableLike) -> List[Record]:
 
 
 def _record_value(record: Any, name: str) -> str:
-    if hasattr(record, "get"):
+    # The ternary ruff suggests is a 100-character line whose two branches are
+    # the mapping case and the attribute case. They read as two cases here and
+    # as punctuation there.
+    if hasattr(record, "get"):  # noqa: SIM108
         value = record.get(name, "")
     else:
         value = getattr(record, name, "")
     return "" if value is None else str(value)
 
 
-def _records_from_path(path: PathLike) -> List[Record]:
+def _records_from_path(path: PathLike) -> list[Record]:
     delimiter = "\t" if str(path).endswith(".tsv") else ","
     with open(path, newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle, delimiter=delimiter))
 
 
-def _records_from_input(data: Union["Wordlist", "CognateResult", PathLike, TableLike]) -> List[Record]:
+def _records_from_input(
+    data: Wordlist | CognateResult | PathLike | TableLike,
+) -> list[Record]:
     if isinstance(data, Wordlist):
         return data.records
     if isinstance(data, CognateResult):
@@ -93,10 +102,14 @@ def _records_from_input(data: Union["Wordlist", "CognateResult", PathLike, Table
     return _records_from_table_like(data)
 
 
-def _detect_records(records: TableLike, options: Mapping[str, Any]) -> List[Dict[str, Any]]:
+def _detect_records(
+    records: TableLike, options: Mapping[str, Any]
+) -> list[dict[str, Any]]:
     rows = _records_from_table_like(records)
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", newline="", suffix=".tsv") as handle:
-        writer = csv.DictWriter(handle, fieldnames=INPUT_COLUMNS, delimiter="\t", lineterminator="\n")
+        writer = csv.DictWriter(
+            handle, fieldnames=INPUT_COLUMNS, delimiter="\t", lineterminator="\n"
+        )
         writer.writeheader()
         for record in rows:
             writer.writerow({name: _record_value(record, name) for name in INPUT_COLUMNS})
@@ -104,31 +117,31 @@ def _detect_records(records: TableLike, options: Mapping[str, Any]) -> List[Dict
         return detect_file(handle.name, **options)
 
 
-def detect(data: Union[PathLike, TableLike], **options: Any) -> "CognateResult":
+def detect(data: PathLike | TableLike, **options: Any) -> CognateResult:
     if isinstance(data, (str, bytes, Path)):
         return CognateResult(detect_file(str(data), **options))
     return CognateResult(_detect_records(data, options))
 
 
-def detect_records(records: TableLike, **options: Any) -> "CognateResult":
+def detect_records(records: TableLike, **options: Any) -> CognateResult:
     return CognateResult(_detect_records(records, options))
 
 
-def load(path: PathLike) -> "Wordlist":
+def load(path: PathLike) -> Wordlist:
     return Wordlist.from_file(path)
 
 
 def evaluate(
-    pred: Union["Wordlist", "CognateResult", PathLike, TableLike],
-    truth: Union["Wordlist", "CognateResult", PathLike, TableLike],
+    pred: Wordlist | CognateResult | PathLike | TableLike,
+    truth: Wordlist | CognateResult | PathLike | TableLike,
     *,
     truth_column: str = "Cognacy",
     per_concept: bool = True,
 ) -> EvaluationResult:
     pred_rows = _records_from_input(pred)
     truth_rows = _records_from_input(truth)
-    pred_assignments: Dict[str, str] = {}
-    truth_assignments: Dict[str, str] = {}
+    pred_assignments: dict[str, str] = {}
+    truth_assignments: dict[str, str] = {}
 
     for row in pred_rows:
         form_id = _record_value(row, "ID")
@@ -150,8 +163,8 @@ def evaluate(
 
 
 def _bcubed(pred: Mapping[str, str], truth: Mapping[str, str]) -> EvaluationResult:
-    pred_members: Dict[str, List[str]] = defaultdict(list)
-    truth_members: Dict[str, List[str]] = defaultdict(list)
+    pred_members: dict[str, list[str]] = defaultdict(list)
+    truth_members: dict[str, list[str]] = defaultdict(list)
     for form_id, cluster in pred.items():
         pred_members[cluster].append(form_id)
     for form_id, cluster in truth.items():
@@ -180,10 +193,10 @@ def _bcubed(pred: Mapping[str, str], truth: Mapping[str, str]) -> EvaluationResu
 
 class CognateResult:
     def __init__(self, rows: Sequence[Record]) -> None:
-        self.rows: List[Record] = list(rows)
+        self.rows: list[Record] = list(rows)
         self.resolved_threshold = self._resolved_threshold()
 
-    def _resolved_threshold(self) -> Optional[float]:
+    def _resolved_threshold(self) -> float | None:
         for row in self.rows:
             value = row.get("Cognator_Resolved_Threshold")
             if value is None or value == "":
@@ -200,39 +213,43 @@ class CognateResult:
     def __getitem__(self, index: int) -> Record:
         return self.rows[index]
 
-    def clusters(self) -> Dict[str, List[str]]:
-        clusters: Dict[str, List[str]] = {}
+    def clusters(self) -> dict[str, list[str]]:
+        clusters: dict[str, list[str]] = {}
         for row in self.rows:
             clusters.setdefault(row["Cognator_ID"], []).append(row["ID"])
         return clusters
 
-    def by_id(self) -> Dict[str, Record]:
+    def by_id(self) -> dict[str, Record]:
         return {row["ID"]: row for row in self.rows}
 
-    def to_records(self) -> List[Dict[str, Any]]:
+    def to_records(self) -> list[dict[str, Any]]:
         return [dict(row) for row in self.rows]
 
     def write_sidecar(self, path: PathLike) -> None:
         with open(path, "w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=SIDECAR_COLUMNS, delimiter="\t", lineterminator="\n")
+            writer = csv.DictWriter(
+                handle, fieldnames=SIDECAR_COLUMNS, delimiter="\t", lineterminator="\n"
+            )
             writer.writeheader()
             for row in self.rows:
                 writer.writerow({name: row.get(name, "") for name in SIDECAR_COLUMNS})
 
-    def evaluate(self, truth: Union["Wordlist", PathLike, TableLike], **options: Any) -> EvaluationResult:
+    def evaluate(
+        self, truth: Wordlist | PathLike | TableLike, **options: Any
+    ) -> EvaluationResult:
         return evaluate(self, truth, **options)
 
 
 class Wordlist:
     def __init__(self, records: Sequence[Record]) -> None:
-        self.records: List[Record] = list(records)
+        self.records: list[Record] = list(records)
 
     @classmethod
-    def from_file(cls, path: PathLike) -> "Wordlist":
+    def from_file(cls, path: PathLike) -> Wordlist:
         return cls(_records_from_path(path))
 
     @classmethod
-    def from_records(cls, records: TableLike) -> "Wordlist":
+    def from_records(cls, records: TableLike) -> Wordlist:
         return cls(_records_from_table_like(records))
 
     def __len__(self) -> int:
@@ -241,14 +258,16 @@ class Wordlist:
     def __iter__(self) -> Iterator[Record]:
         return iter(self.records)
 
-    def detect(self, **options: Any) -> "CognateResult":
+    def detect(self, **options: Any) -> CognateResult:
         return detect_records(self.records, **options)
 
-    def evaluate(self, pred: Union["CognateResult", PathLike, TableLike], **options: Any) -> EvaluationResult:
+    def evaluate(
+        self, pred: CognateResult | PathLike | TableLike, **options: Any
+    ) -> EvaluationResult:
         return evaluate(pred, self, **options)
 
-    def concepts(self) -> List[str]:
+    def concepts(self) -> list[str]:
         return sorted({record.get("Concept", "") for record in self.records})
 
-    def languages(self) -> List[str]:
+    def languages(self) -> list[str]:
         return sorted({record.get("Language_ID", "") for record in self.records})

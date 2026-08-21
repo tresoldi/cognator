@@ -31,6 +31,7 @@ tight for reproducibility across reviewers' setups.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import json
 import math
@@ -331,10 +332,8 @@ def figure_family_f_comparison(
             # accept f1/f/F_score column variations
             for key in ("f1", "f", "F", "f_score", "F_score"):
                 if key in r and r[key]:
-                    try:
+                    with contextlib.suppress(ValueError):
                         out[dataset] = float(r[key])
-                    except ValueError:
-                        pass
                     break
         return out
 
@@ -404,10 +403,8 @@ def figure_runtime_comparison(
                 continue
             for key in ("elapsed_ms", "elapsed_millis", "time_ms", "time"):
                 if key in r and r[key]:
-                    try:
+                    with contextlib.suppress(ValueError):
                         out[dataset] = float(r[key]) / 1000.0
-                    except ValueError:
-                        pass
                     break
         return out
 

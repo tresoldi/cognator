@@ -18,7 +18,11 @@ import csv
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
 
 
 def parse_args() -> argparse.Namespace:

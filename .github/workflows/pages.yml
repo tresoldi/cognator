@@ -6,15 +6,18 @@ name: Deploy to GitHub Pages
 # the artifact is not older than the sources it claims to be built from, which
 # is what the provenance step below does.
 
+# No paths filter. One was here, listing web/, src/, include/ and the pin, on
+# the reasoning that nothing else can change what the page serves. That is true
+# and it still cost the first deploy: pushing a new branch produces a push
+# event with no previous head to diff against, so the filter matched nothing,
+# the workflow never ran, and the site returned 404 with Pages correctly
+# configured and every other check green. The deploy is cheap -- it compiles
+# nothing, the engine is committed -- so it runs on every push to master and
+# the provenance step below is what decides whether the artifact is fit to
+# publish.
 on:
   push:
     branches: [master]
-    paths:
-      - 'web/**'
-      - 'src/**'
-      - 'include/**'
-      - 'third_party/merkmal/**'
-      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
