@@ -23,8 +23,3 @@ venv/
 # generated benchmark outputs (manifest.json is config — keep it tracked)
 benchmark/runs/
 benchmark/reports/
-
-# Local editor and tool state
-.claude/
-.codex/
-.cursor/
