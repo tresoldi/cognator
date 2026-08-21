@@ -66,6 +66,28 @@ gives the browser engine's C its first sanitizer coverage; the engine and a
 provenance stamp for it are committed, so `web/smoke_test.mjs` has something to
 run against and a stale artifact cannot be deployed quietly.
 
+### The page's advanced controls now do something
+
+Twenty-seven of the thirty-six controls in the configuration panel were parsed
+by nothing. `apply_options` in the WebAssembly shim read eleven keys and
+dropped the rest, so a visitor could set the graph policy, the scorer, the
+refinement mode or any Dirichlet parameter, press Run, and get byte-identical
+output. Both halves were individually correct — the page sent what it said it
+sent, the engine read what it said it read — and nothing compared the two.
+
+Every field with a control is read now, and a value the engine does not
+recognise comes back as an error naming the option instead of falling silently
+back to a default.
+
+The preset was matched by looking for its name anywhere in the request, so a
+wordlist containing a form or concept spelled `support-adaptive-bridge`
+silently reconfigured the run. It is matched as the value of its own key.
+
+`wasm_options` fails if `KNOB_IDS` in app.js grows a control `apply_options`
+does not name, and the shim's own suite now asserts that two runs differing
+only in a formerly-ignored option produce different results — the check that
+would have caught this to begin with.
+
 ### The page no longer fetches anything off-origin
 
 It pulled six CodeMirror stylesheets, CodeMirror and d3 from a CDN. CodeMirror

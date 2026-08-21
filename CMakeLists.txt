@@ -216,6 +216,14 @@ if(COGNATOR_BUILD_TESTS)
     target_include_directories(test_wasm_shim PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
     add_test(NAME wasm_shim COMMAND test_wasm_shim)
 
+    # Text-level, so it needs no build: fails when web/app.js offers a control
+    # that apply_options in the shim does not read.
+    add_test(NAME wasm_options
+        COMMAND ${CMAKE_COMMAND}
+            -DAPP_JS=${CMAKE_CURRENT_SOURCE_DIR}/web/app.js
+            -DSHIM_C=${CMAKE_CURRENT_SOURCE_DIR}/web/cognator_wasm.c
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_wasm_options.cmake)
+
     add_executable(test_context tests/c/test_context.c)
     target_link_libraries(test_context PRIVATE cognator::cognator)
     add_test(NAME context COMMAND test_context)

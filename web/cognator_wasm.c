@@ -113,24 +113,164 @@ static int json_string_is(const char *json, const char *key, const char *value) 
     return strncmp(p, value, len) == 0 && p[len] == '"';
 }
 
-static void apply_options(const char *json, cg_options *options) {
+static int json_bool(const char *json, const char *key, int *out) {
+    const char *p = json_find_value(json, key);
+    if (p == NULL) return 0;
+    if (strncmp(p, "true", 4) == 0) { *out = 1; return 1; }
+    if (strncmp(p, "false", 5) == 0) { *out = 0; return 1; }
+    return 0;
+}
+
+/* Whether the key is present with a string value, empty or not. Distinguishes
+ * "the page did not send this" from "the page sent something we do not know",
+ * which is the difference between a default and a mistake. */
+static int json_has_string(const char *json, const char *key) {
+    const char *p = json_find_value(json, key);
+    return p != NULL && *p == '"';
+}
+
+/* Resolves one enumerated option against the values the library accepts.
+ *
+ * Assigns the matching literal rather than a copy of the caller's bytes: the
+ * cg_options fields are `const char *` that must outlive the call, and a
+ * pointer into the request JSON does not. Matching also validates, which is
+ * the point -- an unrecognized value returns non-zero so the caller can say so
+ * instead of running with a silent default, which is how a page full of
+ * controls came to do nothing at all.
+ */
+static int pick_enum(
+    const char *json,
+    const char *key,
+    const char *const *allowed,
+    size_t count,
+    const char **out
+) {
+    size_t i;
+    if (!json_has_string(json, key)) return 0;
+    /* An empty string is the page's way of saying "leave the default". */
+    if (json_string_is(json, key, "")) return 0;
+    for (i = 0; i < count; i++) {
+        if (json_string_is(json, key, allowed[i])) {
+            *out = allowed[i];
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* Returns NULL on success, or the name of the option that was not understood.
+ *
+ * Every field the browser page exposes a control for is read here. It used to
+ * read eleven of them and drop the rest on the floor, so twenty-seven controls
+ * on the published page changed nothing at all: a visitor could set the graph
+ * policy, the scorer, the refinement or any Dirichlet parameter, press Run and
+ * get byte-identical output. tests/c/test_wasm_options.cmake fails if app.js
+ * grows a knob this function does not name. */
+static const char *apply_options(const char *json, cg_options *options) {
+    static const char *const threshold_modes[] = {"family", "concept-shrink"};
+    static const char *const graph_modes[] = {"support", "threshold"};
+    static const char *const expansion_modes[] = {"adaptive", "mutual", "either"};
+    static const char *const refine_modes[] = {"bridge-cut", "none"};
+    static const char *const cluster_scopes[] = {"concept", "global"};
+    static const char *const alignment_modes[] = {"combined", "global"};
+    static const char *const null_modes[] = {"marginal", "shuffle"};
+    static const char *const scorer_modes[] = {"learned", "posterior"};
+    static const char *const dirichlet_scales[] = {"sparse-boost", "rich-boost"};
+
+    struct number_option {
+        const char *key;
+        double *field;
+    };
+    struct int_option {
+        const char *key;
+        int *field;
+    };
+
     double number;
     int integer;
+    size_t i;
+
     cg_options_init_defaults(options);
-    if (json != NULL && strstr(json, "\"preset\"") != NULL && strstr(json, "support-adaptive-bridge") != NULL) {
-        cg_options_apply_preset(options, "support-adaptive-bridge");
+
+    /* The preset first, so an explicit knob below overrides what it set --
+     * which is what the panel's own reset-on-preset-change behaviour assumes.
+     * Matched properly rather than by looking for the preset's name anywhere
+     * in the request, which is what this did before: a wordlist containing the
+     * string "support-adaptive-bridge" applied the preset. */
+    {
+        static const char *const presets[] = {"support-adaptive-bridge", "default"};
+        const char *preset = NULL;
+        if (pick_enum(json, "preset", presets, sizeof presets / sizeof *presets, &preset)) {
+            return "preset";
+        }
+        if (preset != NULL && cg_options_apply_preset(options, preset) != CG_OK) {
+            return "preset";
+        }
     }
-    if (json_number(json, "threshold", &number)) options->threshold = number;
-    if (json_string_is(json, "threshold_mode", "family")) options->threshold_mode = "family";
-    if (json_string_is(json, "threshold_mode", "concept-shrink")) options->threshold_mode = "concept-shrink";
-    if (json_number(json, "threshold_min", &number)) options->threshold_min = number;
-    if (json_number(json, "threshold_max", &number)) options->threshold_max = number;
-    if (json_number(json, "threshold_shrink", &number)) options->threshold_shrink = number;
-    if (json_number(json, "lambda", &number)) options->lambda = number;
-    if (json_int(json, "iterations", &integer)) options->iterations = integer;
-    if (json_int(json, "bootstrap", &integer)) options->bootstrap = integer;
-    if (json_int(json, "min_pairs", &integer)) options->min_pairs = integer;
+
+    {
+        const struct number_option numbers[] = {
+            {"threshold", &options->threshold},
+            {"threshold_min", &options->threshold_min},
+            {"threshold_max", &options->threshold_max},
+            {"threshold_shrink", &options->threshold_shrink},
+            {"lambda", &options->lambda},
+            {"graph_adaptive_margin", &options->graph_adaptive_margin},
+            {"graph_adaptive_either_max", &options->graph_adaptive_either_max},
+            {"graph_adaptive_ambiguity", &options->graph_adaptive_ambiguity},
+            {"graph_mutual_boost", &options->graph_mutual_boost},
+            {"graph_triangle_boost", &options->graph_triangle_boost},
+            {"graph_contrastive_penalty", &options->graph_contrastive_penalty},
+            {"graph_contrastive_floor", &options->graph_contrastive_floor},
+            {"graph_risk_rank_weight", &options->graph_risk_rank_weight},
+            {"graph_risk_gap_weight", &options->graph_risk_gap_weight},
+            {"graph_unilateral_penalty", &options->graph_unilateral_penalty},
+            {"graph_rival_floor", &options->graph_rival_floor},
+            {"refine_confidence_threshold", &options->refine_confidence_threshold},
+            {"refine_bridge_ratio", &options->refine_bridge_ratio},
+            {"bootstrap_sigma", &options->bootstrap_sigma},
+            {"dirichlet_concentration", &options->dirichlet_concentration},
+            {"dirichlet_sharpness", &options->dirichlet_sharpness},
+        };
+        for (i = 0; i < sizeof numbers / sizeof *numbers; i++) {
+            if (json_number(json, numbers[i].key, &number)) *numbers[i].field = number;
+        }
+    }
+
+    {
+        const struct int_option integers[] = {
+            {"iterations", &options->iterations},
+            {"bootstrap", &options->bootstrap},
+            {"min_pairs", &options->min_pairs},
+            {"graph_top_k", &options->graph_top_k},
+            {"null_max_runs", &options->null_max_runs},
+        };
+        for (i = 0; i < sizeof integers / sizeof *integers; i++) {
+            if (json_int(json, integers[i].key, &integer)) *integers[i].field = integer;
+        }
+    }
+
     if (json_int(json, "seed", &integer)) options->seed = (uint64_t)integer;
+    if (json_bool(json, "class_reduce", &integer)) options->class_reduce = integer;
+
+#define PICK(key, table, field)                                                   \
+    if (pick_enum(json, key, table, sizeof table / sizeof *table, &options->field)) { \
+        return key;                                                               \
+    }
+    PICK("threshold_mode", threshold_modes, threshold_mode)
+    PICK("graph_mode", graph_modes, graph_mode)
+    PICK("graph_expansion_mode", expansion_modes, graph_expansion_mode)
+    PICK("refine_mode", refine_modes, refine_mode)
+    PICK("cluster_scope", cluster_scopes, cluster_scope)
+    PICK("alignment_mode", alignment_modes, alignment_mode)
+    PICK("null_mode", null_modes, null_mode)
+    PICK("scorer_mode", scorer_modes, scorer_mode)
+    /* The page calls this dirichlet_scale; the field is dirichlet_scale_mode,
+     * and so is the CLI's --dirichlet-scale. Named here, once. */
+    PICK("dirichlet_scale", dirichlet_scales, dirichlet_scale_mode)
+#undef PICK
+
+    return NULL;
 }
 
 static char *error_json(const char *where, cg_status status) {
@@ -189,7 +329,17 @@ char *cognator_detect_json(const char *csv_text, const char *options_json) {
     if (!write_input_file(csv_text == NULL ? "" : csv_text, input_path)) {
         return error_json("write input", CG_ERR_IO);
     }
-    apply_options(options_json, &options);
+    {
+        /* An option the shim does not understand is reported, not ignored.
+         * Silently dropping one is how the page's controls came to be
+         * decorative. */
+        const char *bad = apply_options(options_json, &options);
+        if (bad != NULL) {
+            char where[96];
+            snprintf(where, sizeof(where), "option: %s", bad);
+            return error_json(where, CG_ERR_INVALID_ARGUMENT);
+        }
+    }
     status = cg_context_new_builtin(&ctx);
     if (status != CG_OK) return error_json("context", status);
     status = cg_read_table(input_path, &records);

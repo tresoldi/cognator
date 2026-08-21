@@ -121,6 +121,59 @@ int main(void) {
     assert(out != NULL);
     cognator_free(out);
 
+    /* The options actually reach the detector.
+     *
+     * Twenty-seven of the page's thirty-six controls were parsed by nothing:
+     * the shim read eleven keys and dropped the rest, so setting the graph
+     * policy or the scorer changed the JSON sent and not one byte of what came
+     * back. Comparing two runs that differ only in an option that used to be
+     * ignored is the check that would have caught it. */
+    {
+        char *support = cognator_detect_json(csv, "{\"graph_mode\":\"support\"}");
+        char *threshold = cognator_detect_json(csv, "{\"graph_mode\":\"threshold\"}");
+        char *same = cognator_detect_json(csv, "{\"graph_mode\":\"support\"}");
+        assert(support != NULL && threshold != NULL && same != NULL);
+        /* Same option, same answer: the difference below is the option and not
+         * run-to-run noise. */
+        assert(strcmp(support, same) == 0);
+        assert(strcmp(support, threshold) != 0);
+        cognator_free(support);
+        cognator_free(threshold);
+        cognator_free(same);
+    }
+
+    /* A value the shim does not know is an error naming the option, not a
+     * silent fall back to the default. */
+    out = cognator_detect_json(csv, "{\"graph_mode\":\"no-such-mode\"}");
+    assert(out != NULL);
+    assert(strstr(out, "\"ok\":true") == NULL);
+    assert(strstr(out, "option: graph_mode") != NULL);
+    cognator_free(out);
+
+    /* An empty string is the panel's "leave the default", not a bad value. */
+    out = cognator_detect_json(csv, "{\"dirichlet_scale\":\"\"}");
+    assert(out != NULL);
+    assert(strstr(out, "\"ok\":true") != NULL);
+    cognator_free(out);
+
+    /* The preset is matched as the value of its own key. It used to be applied
+     * whenever its name appeared anywhere in the request, so a wordlist with a
+     * form or a concept spelled "support-adaptive-bridge" silently reconfigured
+     * the run. */
+    {
+        const char *poisoned =
+            "ID,Language_ID,Concept,Segments,Family,Cognacy\n"
+            "f1,Latin,support-adaptive-bridge,n o k t e,romance,1\n"
+            "f2,Italian,support-adaptive-bridge,n o t t e,romance,1\n";
+        char *plain = cognator_detect_json(poisoned, "{}");
+        char *preset = cognator_detect_json(poisoned, "{\"preset\":\"support-adaptive-bridge\"}");
+        assert(plain != NULL && preset != NULL);
+        assert(strstr(plain, "\"ok\":true") != NULL);
+        assert(strstr(preset, "\"ok\":true") != NULL);
+        cognator_free(plain);
+        cognator_free(preset);
+    }
+
     cognator_free(NULL);
     return 0;
 }
