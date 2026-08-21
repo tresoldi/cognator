@@ -857,10 +857,17 @@ static int detect_cmd(int argc, char **argv) {
             goto done;
         }
     }
-    fprintf(stderr, "detect: %llu rows, threshold=%.3f, %llu OOV types\n",
+    /* The merkmal build is on this line because it belongs with the resolved
+     * threshold: both are what the clusters below depend on, and the threshold
+     * is a value on the distance scale the merkmal build defines. A log that
+     * records one and not the other cannot be used to reproduce the run. */
+    fprintf(stderr,
+            "detect: %llu rows, threshold=%.3f, %llu OOV types, merkmal %s (%s)\n",
             (unsigned long long)cg_result_row_count(result),
             cg_result_threshold(result),
-            (unsigned long long)cg_result_oov_count(result));
+            (unsigned long long)cg_result_oov_count(result),
+            cg_merkmal_version(),
+            cg_merkmal_commit());
     exit_code = 0;
 
 done:
@@ -1273,6 +1280,9 @@ int main(int argc, char **argv) {
             return 2;
         }
         printf("cognator %s\n", cg_version_string());
+        /* The merkmal build is part of the answer to "what produced this":
+         * cognator's thresholds are values on its distance scale. */
+        printf("merkmal %s (%s)\n", cg_merkmal_version(), cg_merkmal_commit());
         return 0;
     }
     if (strcmp(argv[1], "detect") == 0) {

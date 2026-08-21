@@ -27,3 +27,11 @@ def version() -> str:
 
 def abi_version() -> int:
     """The linked C library's ABI version."""
+
+def merkmal() -> tuple[str, str]:
+    """(version, commit) of the merkmal compiled into the library.
+
+    cognator's thresholds are values on merkmal's segment-distance scale, so
+    two runs against different merkmals are not comparable. Record this beside
+    any result kept longer than a session.
+    """

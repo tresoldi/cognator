@@ -185,10 +185,19 @@ static PyObject *py_abi_version(PyObject *self, PyObject *Py_UNUSED(ignored)) {
     return PyLong_FromUnsignedLong((unsigned long)cg_abi_version());
 }
 
+/* (version, commit) of the merkmal compiled in. A tuple rather than two
+ * functions because callers recording provenance want both or neither, and a
+ * result annotated with one of them is not reproducible. */
+static PyObject *py_merkmal(PyObject *self, PyObject *Py_UNUSED(ignored)) {
+    (void)self;
+    return Py_BuildValue("(ss)", cg_merkmal_version(), cg_merkmal_commit());
+}
+
 static PyMethodDef CognatorMethods[] = {
     {"detect_file", (PyCFunction)(void (*)(void))py_detect_file, METH_VARARGS | METH_KEYWORDS, "Run detection on a TSV/CSV file."},
     {"version", py_version, METH_NOARGS, "Return the linked C library version."},
     {"abi_version", py_abi_version, METH_NOARGS, "Return the linked C ABI version."},
+    {"merkmal", py_merkmal, METH_NOARGS, "Return (version, commit) of the merkmal compiled in."},
     {NULL, NULL, 0, NULL}
 };
 

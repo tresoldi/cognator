@@ -31,6 +31,26 @@ Building against another merkmal is still supported through
 `COGNATOR_MERKMAL_SOURCE_DIR`, for packagers and for that recalibration work.
 Nothing this repository reports holds under it.
 
+### Results say which merkmal produced them
+
+The pin is only half an answer while nothing in the output names it. A run
+against a different merkmal is not comparable to any number here, and until now
+a sidecar, a log line and a page all looked identical whichever one had been
+compiled in.
+
+`cg_merkmal_version()` and `cg_merkmal_commit()` are compiled in from
+`third_party/merkmal/PINNED` and reported by `cognator version`, by the
+`detect` summary beside the resolved threshold, by `cognator.merkmal()` in
+Python, and by the browser page in its footer and in every result document.
+
+`src/context.c` refuses to compile without them rather than accept a default,
+because a wrong provenance is worse than no build and an empty one is
+indistinguishable from a correct one at the point it is read. The check that
+the reported value is the *right* one has to come from outside the library —
+`cli_provenance` compares the binary against `PINNED`, since a test written
+against the C API would assert the compiled-in string against itself and pass
+on any value at all.
+
 ### The WebAssembly build had a stack too small to run in
 
 Emscripten's default stack is 64 KB and the detector's frames do not fit. The

@@ -158,6 +158,17 @@ const char *cognator_system(void) {
     return "builtin";
 }
 
+/* For the page footer, which has no result to read the provenance out of until
+ * someone runs a detection. Static storage: the caller reads it through
+ * UTF8ToString and never frees it. */
+EMSCRIPTEN_KEEPALIVE
+const char *cognator_merkmal(void) {
+    static char text[96];
+    snprintf(text, sizeof(text), "%s (%s)",
+             cg_merkmal_version(), cg_merkmal_commit());
+    return text;
+}
+
 EMSCRIPTEN_KEEPALIVE
 void cognator_free(char *value) {
     free(value);
@@ -200,7 +211,11 @@ char *cognator_detect_json(const char *csv_text, const char *options_json) {
         snprintf(tmp, sizeof(tmp), "%llu", (unsigned long long)cg_result_row_count(result));
         jb_puts(&buf, tmp);
     }
-    jb_puts(&buf, ",\"elapsed_ms\":0},\"eval\":{");
+    jb_puts(&buf, ",\"elapsed_ms\":0,\"merkmal\":{\"version\":");
+    jb_put_json_string(&buf, cg_merkmal_version());
+    jb_puts(&buf, ",\"commit\":");
+    jb_put_json_string(&buf, cg_merkmal_commit());
+    jb_puts(&buf, "}},\"eval\":{");
     jb_puts(&buf, "\"precision\":");
     jb_printf(&buf, "%.8f", eval.precision);
     jb_puts(&buf, ",\"recall\":");

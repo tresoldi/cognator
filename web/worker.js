@@ -30,6 +30,7 @@ async function boot() {
         self.postMessage({
             type: "ready",
             system: engine.ccall("cognator_system", "string", [], []),
+            merkmal: engine.ccall("cognator_merkmal", "string", [], []),
             graphemeCount: 0,
         });
     } catch (err) {

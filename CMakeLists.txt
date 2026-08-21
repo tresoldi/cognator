@@ -64,6 +64,15 @@ set(COGNATOR_MERKMAL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/merkmal
 
 if(EXISTS "${COGNATOR_MERKMAL_SOURCE_DIR}/sources.cmake")
     include("${COGNATOR_MERKMAL_SOURCE_DIR}/sources.cmake")
+    # The pin's own record of what it is. Compiled into the library so a result
+    # can name the phonology that produced it.
+    file(READ "${COGNATOR_MERKMAL_SOURCE_DIR}/PINNED" _pinned)
+    string(REGEX MATCH "version ([^\n]+)" _m "${_pinned}")
+    set(COGNATOR_MERKMAL_VERSION "${CMAKE_MATCH_1}")
+    string(REGEX MATCH "commit ([0-9a-f]+)" _m "${_pinned}")
+    string(SUBSTRING "${CMAKE_MATCH_1}" 0 12 COGNATOR_MERKMAL_COMMIT)
+    unset(_pinned)
+    unset(_m)
 elseif(EXISTS "${COGNATOR_MERKMAL_SOURCE_DIR}/CMakeLists.txt")
     # An external merkmal checkout, which brings its own build. Used by the
     # recalibration work and by packagers; see docs/merkmal_pin.md.
@@ -71,9 +80,33 @@ elseif(EXISTS "${COGNATOR_MERKMAL_SOURCE_DIR}/CMakeLists.txt")
     add_subdirectory("${COGNATOR_MERKMAL_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/merkmal")
     set(MERKMAL_PINNED_SOURCES "")
     set(MERKMAL_PINNED_INCLUDE_DIRS "")
+    # project() sets merkmal_VERSION in the subdirectory's own scope, which
+    # does not write back here, so the parent would see an empty string. Lift
+    # it out explicitly.
+    get_directory_property(COGNATOR_MERKMAL_VERSION
+        DIRECTORY "${COGNATOR_MERKMAL_SOURCE_DIR}"
+        DEFINITION merkmal_VERSION)
+    execute_process(
+        COMMAND git -C "${COGNATOR_MERKMAL_SOURCE_DIR}" rev-parse --short=12 HEAD
+        OUTPUT_VARIABLE COGNATOR_MERKMAL_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+    if(NOT COGNATOR_MERKMAL_COMMIT)
+        set(COGNATOR_MERKMAL_COMMIT "unknown")
+    endif()
 else()
     message(FATAL_ERROR "no merkmal sources at ${COGNATOR_MERKMAL_SOURCE_DIR}")
 endif()
+
+# Guessing would compile an unearned provenance into every result, and an empty
+# string is how regulae's went unnoticed, so neither is allowed to build.
+if(NOT COGNATOR_MERKMAL_VERSION OR NOT COGNATOR_MERKMAL_COMMIT)
+    message(FATAL_ERROR
+        "merkmal provenance unknown (version='${COGNATOR_MERKMAL_VERSION}' "
+        "commit='${COGNATOR_MERKMAL_COMMIT}'); it is compiled into the library "
+        "and reported with every result")
+endif()
+message(STATUS "cognator: merkmal ${COGNATOR_MERKMAL_VERSION} (${COGNATOR_MERKMAL_COMMIT})")
 
 add_library(cognator
     src/context.c
@@ -122,7 +155,10 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(cognator PRIVATE m)
 endif()
 set_target_properties(cognator PROPERTIES C_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES)
-target_compile_definitions(cognator PRIVATE COGNATOR_BUILDING_LIBRARY)
+target_compile_definitions(cognator PRIVATE
+    COGNATOR_BUILDING_LIBRARY
+    COGNATOR_MERKMAL_VERSION="${COGNATOR_MERKMAL_VERSION}"
+    COGNATOR_MERKMAL_COMMIT="${COGNATOR_MERKMAL_COMMIT}")
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(cognator PUBLIC COGNATOR_SHARED)
 endif()
@@ -207,6 +243,16 @@ if(COGNATOR_BUILD_TESTS)
     if(COGNATOR_BUILD_CLI)
         add_test(NAME cli_version COMMAND cognator_cli version)
         set_tests_properties(cli_version PROPERTIES PASS_REGULAR_EXPRESSION "cognator 0.1.0")
+        # Compares what the binary reports against third_party/merkmal/PINNED.
+        # A test inside the library would assert the compiled-in string against
+        # itself and pass on any value, the empty one included.
+        add_test(NAME cli_provenance
+            COMMAND ${CMAKE_COMMAND}
+                -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
+                -DPINNED_FILE=${CMAKE_CURRENT_SOURCE_DIR}/third_party/merkmal/PINNED
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/linguistic/latin_romance_triplets.tsv
+                -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_cli_provenance
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_cli_provenance.cmake)
         add_test(NAME cli_detect
             COMMAND ${CMAKE_COMMAND}
                 -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>

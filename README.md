@@ -105,6 +105,23 @@ name as an environment variable for `pip` — but none of the numbers below hold
 under it. `docs/merkmal_pin.md` is what to do when the pin moves; it is a
 recalibration, not an upgrade.
 
+Which merkmal a build actually used is reported, not assumed:
+
+```sh
+cognator version                 # cognator 0.1.0 / merkmal 0.7.0 (3d21e0831241)
+```
+
+```python
+import cognator
+cognator.merkmal()               # ('0.7.0', '3d21e0831241')
+```
+
+`detect` prints it beside the resolved threshold, the browser page carries it
+in its footer and in every result, and `cg_merkmal_version()` /
+`cg_merkmal_commit()` return it from C. Record it beside any result you keep:
+two runs of the same cognator against different merkmals are not comparable,
+and nothing else in the output would tell you which one ran.
+
 ## Browser interface
 
 [cognator.tresoldi.org](https://cognator.tresoldi.org/) runs the same C

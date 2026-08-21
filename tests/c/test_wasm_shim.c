@@ -17,6 +17,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cognator.h"
+
 char *cognator_detect_json(const char *csv, const char *options_json);
 void cognator_free(char *ptr);
 const char *cognator_system(void);
@@ -72,6 +74,12 @@ int main(void) {
      * came back empty when the stack was too small, and an empty one makes the
      * whole document unparseable in the browser. */
     assert_field_nonempty(out, "rows");
+    /* The provenance the page shows a visitor. It travels in the result rather
+     * than only in a separate call so that a saved result carries it. */
+    assert_field_nonempty(out, "version");
+    assert_field_nonempty(out, "commit");
+    assert(strstr(out, cg_merkmal_version()) != NULL);
+    assert(strstr(out, cg_merkmal_commit()) != NULL);
     assert_field_nonempty(out, "precision");
     assert_field_nonempty(out, "recall");
     assert_field_nonempty(out, "f1");

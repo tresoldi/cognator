@@ -126,6 +126,11 @@ async function initWorker(){
       document.getElementById('runBtn').disabled=false;
       document.getElementById('sysBadge').textContent=m.system;
       document.getElementById('grCountBadge').textContent=m.graphemeCount;
+      // Which merkmal produced the clusters. cognator's thresholds are values
+      // on merkmal's segment-distance scale, so a run against a different one
+      // is not comparable to the numbers in the repository, and the page is
+      // the only place a visitor could find out which one it is.
+      if(m.merkmal)document.getElementById('merkmalBadge').textContent=m.merkmal;
     }
     else if(m.type==='status'){document.getElementById('status').textContent=m.text;if(!wasmReady)document.getElementById('loadText').textContent=m.text}
     else if(m.type==='error'){

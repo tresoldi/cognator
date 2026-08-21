@@ -85,6 +85,25 @@ static cg_role role_from_features(const mk_feature_set *features) {
     return CG_ROLE_UNKNOWN;
 }
 
+/* Compiled in by the build, which reads them from third_party/merkmal/PINNED
+ * or from an external checkout. An #error rather than a default: regulae
+ * shipped an empty provenance string for months because the build quietly
+ * substituted one, and a wrong answer here is worse than no build. */
+#ifndef COGNATOR_MERKMAL_VERSION
+#error "COGNATOR_MERKMAL_VERSION must be defined by the build"
+#endif
+#ifndef COGNATOR_MERKMAL_COMMIT
+#error "COGNATOR_MERKMAL_COMMIT must be defined by the build"
+#endif
+
+const char *cg_merkmal_version(void) {
+    return COGNATOR_MERKMAL_VERSION;
+}
+
+const char *cg_merkmal_commit(void) {
+    return COGNATOR_MERKMAL_COMMIT;
+}
+
 cg_status cg_from_mk_status(mk_status status) {
     switch (status) {
     case MK_OK:

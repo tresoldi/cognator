@@ -32,9 +32,22 @@ fi
 cd "$REPO_DIR"
 
 echo "Building C/WASM cognator..."
+# src/context.c refuses to compile without these, on purpose: they are the
+# provenance the page reports, and a default would make an unearned one
+# indistinguishable from a real one. Read from the pin, the same file CMake and
+# setup.py read.
+MERKMAL_VERSION="$(awk '$1 == "version" { print $2 }' "$MERKMAL_DIR/PINNED" 2>/dev/null || true)"
+MERKMAL_COMMIT="$(awk '$1 == "commit" { print substr($2, 1, 12) }' "$MERKMAL_DIR/PINNED" 2>/dev/null || true)"
+if [[ -z "$MERKMAL_VERSION" || -z "$MERKMAL_COMMIT" ]]; then
+    echo "error: no merkmal version/commit in $MERKMAL_DIR/PINNED" >&2
+    exit 1
+fi
+
 emcc \
     -std=c99 -O3 \
     -D_POSIX_C_SOURCE=200809L \
+    -DCOGNATOR_MERKMAL_VERSION="\"$MERKMAL_VERSION\"" \
+    -DCOGNATOR_MERKMAL_COMMIT="\"$MERKMAL_COMMIT\"" \
     -Iinclude -Isrc -I"$MERKMAL_DIR/include" -I"$MERKMAL_DIR/src" \
     web/cognator_wasm.c \
     src/context.c src/data.c src/detect.c src/eval.c src/align.c src/graph.c \
@@ -53,7 +66,7 @@ emcc \
     -sALLOW_MEMORY_GROWTH=1 \
     -sSTACK_SIZE=8MB \
     -sSTACK_OVERFLOW_CHECK=1 \
-    -sEXPORTED_FUNCTIONS='["_cognator_detect_json","_cognator_free","_cognator_system"]' \
+    -sEXPORTED_FUNCTIONS='["_cognator_detect_json","_cognator_free","_cognator_system","_cognator_merkmal"]' \
     -sEXPORTED_RUNTIME_METHODS='["ccall","UTF8ToString"]' \
     -o "$SCRIPT_DIR/cognator.js"
 

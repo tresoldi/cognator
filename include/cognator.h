@@ -204,6 +204,24 @@ CG_API int cg_version_major(void);
 CG_API int cg_version_minor(void);
 CG_API int cg_version_patch(void);
 CG_API uint32_t cg_abi_version(void);
+
+/* The merkmal build these clusters came from.
+ *
+ * Not decoration. Every threshold cognator applies is a value on merkmal's
+ * segment-distance scale, and that scale moves when merkmal's descriptive
+ * feature inventory does, so two runs of the same cognator version against
+ * different merkmals are not comparable and nothing in the output said which
+ * one ran. Record these beside any result kept for longer than a session.
+ *
+ * The version is merkmal's own (`0.7.0`). The commit is the twelve-character
+ * upstream revision the vendored copy was taken from, and is the identifier
+ * that actually pins the behaviour -- a version string covers many commits.
+ * A build against an external merkmal checkout reports that checkout's version
+ * and its git revision, or "unknown" where neither can be determined.
+ *
+ * Both are compiled in and never NULL. See third_party/merkmal/PINNED. */
+CG_API const char *cg_merkmal_version(void);
+CG_API const char *cg_merkmal_commit(void);
 CG_API const char *cg_status_string(cg_status status);
 /* Release strings returned through owned char** outputs, such as cg_class_reduce. */
 CG_API void cg_string_free(char *value);

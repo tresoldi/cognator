@@ -235,5 +235,31 @@ class PythonApiTests(unittest.TestCase):
             self.assertEqual(cluster_pairs(read_sidecar(py_out)), cluster_pairs(read_sidecar(c_out)))
 
 
+class MerkmalProvenance(unittest.TestCase):
+    """The wrapper reports the merkmal it was actually built against.
+
+    setup.py compiles the macros in independently of CMake, so this is the only
+    check that the pip path got them right -- and getting them wrong is silent:
+    the same code that reads the provenance is the code that would report a
+    wrong one. regulae shipped an empty string here for months.
+    """
+
+    def test_matches_the_pin(self):
+        version, commit = cognator.merkmal()
+        pinned = {}
+        for line in (ROOT / "third_party" / "merkmal" / "PINNED").read_text().splitlines():
+            key, _, value = line.partition(" ")
+            pinned[key] = value.strip()
+
+        self.assertEqual(version, pinned["version"])
+        self.assertEqual(commit, pinned["commit"][:12])
+        self.assertTrue(version and commit)
+
+    def test_has_the_shape_a_consumer_records(self):
+        version, commit = cognator.merkmal()
+        self.assertRegex(version, r"^\d+\.\d+\.\d+$")
+        self.assertRegex(commit, r"^[0-9a-f]{12}$")
+
+
 if __name__ == "__main__":
     unittest.main()
