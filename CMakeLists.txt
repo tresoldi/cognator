@@ -261,6 +261,16 @@ if(COGNATOR_BUILD_TESTS)
                 -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/linguistic/latin_romance_triplets.tsv
                 -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_cli_provenance
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_cli_provenance.cmake)
+        # The page's curated examples, run through the CLI. Nothing else reads
+        # them, so a mistyped grapheme sits in web/guide-content.js until a
+        # visitor picks it from the dropdown.
+        add_test(NAME web_examples
+            COMMAND ${CMAKE_COMMAND}
+                -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
+                -DGUIDE_JS=${CMAKE_CURRENT_SOURCE_DIR}/web/guide-content.js
+                -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_web_examples
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_web_examples.cmake)
+
         add_test(NAME cli_detect
             COMMAND ${CMAKE_COMMAND}
                 -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
