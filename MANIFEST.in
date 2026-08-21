@@ -6,6 +6,13 @@ include src/*.c
 include python/cognator/py.typed
 include python/cognator/*.pyi
 include python/src/*.c
+# PINNED is not documentation: setup.py reads the merkmal version and commit
+# out of it and compiles them in, and src/context.c refuses to build without
+# them. Leaving it out of the sdist made `pip install` from a release fail
+# where an install from a checkout succeeded.
+include third_party/merkmal/PINNED
+include third_party/merkmal/README.md
+include third_party/merkmal/sources.cmake
 include third_party/merkmal/include/*.h
 include third_party/merkmal/src/*.c
 include third_party/merkmal/src/*.h

@@ -30,6 +30,23 @@ else()
     set(venv_cognator "${venv_dir}/bin/cognator")
 endif()
 
+# --no-build-isolation below is what makes this test worth running: it compiles
+# the extension against the toolchain that is actually here rather than one pip
+# assembles. It also means pip installs none of the build-system requires, so
+# the backend has to already be in the venv. Seeding it here rather than
+# relying on the outer interpreter: Python 3.12 dropped setuptools from the
+# standard install, and where a runner does have it, it is often in the user
+# site, which a venv does not see.
+execute_process(
+    COMMAND "${venv_python}" -m pip install --quiet --upgrade setuptools wheel
+    RESULT_VARIABLE backend_result
+    OUTPUT_VARIABLE backend_output
+    ERROR_VARIABLE backend_error
+)
+if(NOT backend_result EQUAL 0)
+    message(FATAL_ERROR "could not install the build backend: ${backend_output}\n${backend_error}")
+endif()
+
 execute_process(
     COMMAND "${venv_python}" -m pip install --no-deps --no-build-isolation "${SOURCE_DIR}"
     RESULT_VARIABLE install_result

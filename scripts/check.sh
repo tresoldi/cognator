@@ -126,6 +126,27 @@ else
     printf '  mypy not installed, skipped (CI runs it)\n'
 fi
 
+# The sdist is assembled from MANIFEST.in, not from the working tree, so a file
+# the build needs but MANIFEST.in does not list is invisible to every other
+# check here: the ctest packaging case installs from the source directory,
+# where the file is present either way. That gap shipped an sdist that could
+# not build, because setup.py reads third_party/merkmal/PINNED and MANIFEST.in
+# did not carry it. Caught in CI, one round trip later than it should have been.
+step "source distribution"
+if python3 -c "import build" >/dev/null 2>&1; then
+    rm -rf build/sdist-check
+    python3 -m build --sdist --outdir build/sdist-check . >/dev/null || fail "python -m build --sdist"
+    rm -rf build/sdist-venv
+    python3 -m venv build/sdist-venv || fail "venv for the sdist check"
+    build/sdist-venv/bin/pip install --quiet build/sdist-check/*.tar.gz \
+        || fail "the sdist does not install; a file MANIFEST.in omits?"
+    build/sdist-venv/bin/python -c "import cognator; assert cognator.merkmal()[0]" \
+        || fail "the installed sdist does not import"
+    build/sdist-venv/bin/cognator --help >/dev/null || fail "the sdist console script"
+else
+    printf '  python -m build not installed, skipped (CI runs it)\n'
+fi
+
 # Regenerating must not have changed anything: if it did, what is committed is
 # stale. Untracked files are the author's business; modifications are not.
 step "generated artifacts were already current"
