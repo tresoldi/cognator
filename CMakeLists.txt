@@ -341,6 +341,18 @@ if(COGNATOR_BUILD_TESTS)
                     -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
                     -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_python_install
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/python/test_python_install.cmake)
+
+            # Both of these use the source tree as scratch space: python_api
+            # runs `setup.py build_ext --inplace`, which writes the extension
+            # into python/cognator, and python_install pip-installs from that
+            # same directory. Run concurrently -- and ctest is run with -j
+            # here and in CI -- one imports the .so the other is halfway
+            # through writing, which surfaces as an ImportError with no
+            # message. It failed under gcc while clang and the fallback
+            # profile passed the same commit, which is what a race looks like
+            # from the outside.
+            set_tests_properties(python_api python_install PROPERTIES
+                RESOURCE_LOCK cognator_source_tree)
         endif()
     endif()
 endif()
