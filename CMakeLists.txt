@@ -305,14 +305,16 @@ if(COGNATOR_BUILD_TESTS)
         # would be the worse failure.
         if(COGNATOR_BUILD_PYTHON_TESTS)
             execute_process(
-                COMMAND ${COGNATOR_PYTHON_EXECUTABLE} -c "import setuptools"
+                COMMAND ${COGNATOR_PYTHON_EXECUTABLE} -c "import setuptools, packaging.licenses"
                 RESULT_VARIABLE _setuptools_missing
                 OUTPUT_QUIET ERROR_QUIET)
             if(_setuptools_missing)
                 message(WARNING
-                    "${COGNATOR_PYTHON_EXECUTABLE} cannot import setuptools; "
+                    "${COGNATOR_PYTHON_EXECUTABLE} cannot import setuptools and "
+                    "packaging.licenses, which reading pyproject.toml needs; "
                     "skipping the python_api and python_install tests. "
-                    "Install it with: ${COGNATOR_PYTHON_EXECUTABLE} -m pip install setuptools wheel")
+                    "Install them with: ${COGNATOR_PYTHON_EXECUTABLE} -m pip install "
+                    "'setuptools>=77.0.0' 'packaging>=24.2' wheel")
                 set(COGNATOR_BUILD_PYTHON_TESTS OFF)
             endif()
         endif()

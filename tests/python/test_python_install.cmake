@@ -38,7 +38,8 @@ endif()
 # standard install, and where a runner does have it, it is often in the user
 # site, which a venv does not see.
 execute_process(
-    COMMAND "${venv_python}" -m pip install --quiet --upgrade setuptools wheel
+    COMMAND "${venv_python}" -m pip install --quiet --upgrade
+            "setuptools>=77.0.0" "packaging>=24.2" wheel
     RESULT_VARIABLE backend_result
     OUTPUT_VARIABLE backend_output
     ERROR_VARIABLE backend_error

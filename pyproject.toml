@@ -1,5 +1,12 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+# setuptools>=77 and packaging>=24.2 because `license` below is a PEP 639 SPDX
+# expression and `license-files` goes with it; older setuptools does not
+# understand either, and setuptools 77 without a matching packaging raises
+# ImportError on packaging.licenses while reading this file. The floor was
+# 68, which is why an install against a runner's older toolchain failed with a
+# traceback out of setuptools' own normalizer rather than anything about
+# cognator.
+requires = ["setuptools>=77.0.0", "packaging>=24.2", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]

@@ -51,7 +51,7 @@ jobs:
       # failing on a BackendUnavailable traceback -- but a skip here would be a
       # silent hole in CI, so install it and let them run.
       - name: Install the Python build backend
-        run: python3 -m pip install --upgrade setuptools wheel
+        run: python3 -m pip install --upgrade "setuptools>=77.0.0" "packaging>=24.2" wheel
 
       - name: Configure
         run: >
@@ -80,7 +80,7 @@ jobs:
       # failing on a BackendUnavailable traceback -- but a skip here would be a
       # silent hole in CI, so install it and let them run.
       - name: Install the Python build backend
-        run: python3 -m pip install --upgrade setuptools wheel
+        run: python3 -m pip install --upgrade "setuptools>=77.0.0" "packaging>=24.2" wheel
       - name: Configure without utf8proc
         run: >
           cmake -S . -B build/fallback
