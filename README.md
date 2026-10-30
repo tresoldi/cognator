@@ -200,6 +200,35 @@ The output sidecar contains:
 Python `CognateResult` objects also expose `resolved_threshold`, which is the
 actual family-level threshold chosen by the adaptive policy.
 
+### Weighted pairs and partial cognacy
+
+`--pairs-out` additionally writes one weighted row per same-concept,
+cross-lect pair: the `q(pairs)` a downstream correspondence model (regulae's
+soft-cognacy loader reads the TSV directly) can reweight. With
+`--pairs-unit morphemes` the forms are split at `+` and every cross-lect
+morpheme pair within a concept is scored instead, and `--morpheme-ids` adds a
+`Cognator_Morpheme_IDs` column (one id per morpheme, `-` for none) from
+clustering the morphemes.
+
+```sh
+cognator detect --in forms.tsv --out sidecar.tsv \
+  --pairs-out pairs.tsv --pairs-unit morphemes --morpheme-ids
+cognator detect --in forms.tsv --out sidecar.tsv --pairs-out q_pairs.json
+```
+
+```
+form_a    morph_a  form_b    morph_b  weight    distance  ...  null_n  null_scope
+a_water   0        b_water   0        1.000000  0.000000  ...  256     stratum
+a_water   1        b_water   1        0.000000  0.000000  ...  30      stratum
+```
+
+The weight is `1 -` the share of cross-concept, length-matched pairs from the
+same lect pair that are at least as close, so the shared two-segment suffix
+above gets 0 where the identical root gets 1. It is a background-match rate,
+not a probability of cognacy; [docs/pairs.md](docs/pairs.md) has the exact
+definition, its seed, and its limits. Without these options nothing in the
+output changes.
+
 Score a sidecar against gold cognacy with the C CLI:
 
 ```sh
@@ -403,6 +432,7 @@ Important packages:
 | `src/posterior.c` | correspondence and posterior scoring |
 | `src/graph.c` | distance-to-graph construction and clustering |
 | `src/detect.c` | orchestration, refinement, confidence |
+| `src/pairs.c` | pairwise export, empirical null, morpheme clusters |
 | `src/eval.c` | B-cubed evaluation |
 
 For deeper engineering direction, see [docs/roadmap.md](docs/roadmap.md).

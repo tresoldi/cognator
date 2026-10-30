@@ -33,6 +33,35 @@ Milestone 17 stabilizes the C API surface that the Python wrapper should bind.
 - Functions that fill output pointers leave ownership with the caller only after
   returning `CG_OK`.
 
+## Pairwise Export
+
+Added without changing any existing struct, enum or signature, so
+`CG_ABI_VERSION` stays 1: `cg_options`, `cg_sidecar_row` and the opaque
+`cg_result` keep their layout for every existing caller (the result's new
+fields are internal).
+
+- `cg_pairs_spec` (`unit`, `null_samples`, `min_null`, `null_seed`,
+  `morpheme_clusters`) is filled by `cg_pairs_spec_init_defaults`;
+  `CG_PAIRS_WORDS` / `CG_PAIRS_MORPHEMES` select the unit. Zero or negative
+  sizes and a zero seed mean the documented defaults.
+- `cg_detect_with_pairs(ctx, records, options, spec, &result)` is `cg_detect`
+  plus the export; its sidecar rows equal `cg_detect`'s for the same options.
+  `spec` NULL or `CG_PAIRS_NONE` is `cg_detect`; any other unit value is
+  `CG_ERR_UNSUPPORTED_OPTION`.
+- `cg_result_pair_count` / `cg_result_pair_at` return borrowed
+  `cg_pair_row`s, valid until `cg_result_free`. `cg_result_pairs_copy`
+  deep-copies them; release the copy with `cg_pair_rows_free(rows, count)`.
+- `cg_result_pairs_summary` fills a `cg_pairs_summary`; it returns
+  `CG_ERR_INVALID_ARGUMENT` for a result made without pairs.
+- `cg_result_morpheme_ids_at(result, row)` is the borrowed
+  `Cognator_Morpheme_IDs` value of a sidecar row, or NULL when morpheme
+  clusters were not computed.
+- `cg_result_pairs_tsv` and `cg_result_pairs_json` return owned strings,
+  released with `cg_string_free`. `cg_write_pairs(path, result, json)` and
+  `cg_write_sidecar_morphemes(path, result)` write files.
+
+What the weights mean, and do not, is in `docs/pairs.md`.
+
 ## Python Binding Guidance
 
 The Python wrapper should depend only on `include/cognator.h` symbols and should

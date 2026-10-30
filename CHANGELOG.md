@@ -2,6 +2,57 @@
 
 ## Unreleased
 
+### Weighted pairs, and partial cognacy from `+` boundaries
+
+cognator computed a distance for every same-concept pair and kept none of
+them: the only output was the partition. A correspondence model that wants
+soft cognacy -- regulae's soft loader, the framework's `q(pairs)` -- had
+nothing to read, and forms written with `+` boundaries were compared as whole
+words with the boundaries thrown away.
+
+`detect --pairs-out PATH` writes one row per same-concept cross-lect pair:
+`form_a form_b weight distance global local overlap null_n null_scope`, or the
+`q_pairs` JSON document (`role: "q"`, producer `cognator@<version>+merkmal.<commit>`,
+diagnostics) when PATH ends in `.json` or with `--pairs-format json`. With
+`--pairs-unit morphemes`, forms are split at `+` (a form without `+` is one
+morpheme, so a corpus without boundaries gives the word weights) and every
+cross-lect morpheme pair within a concept is scored with the scorers trained
+on whole words; rows gain `morph_a morph_b`, JSON ids become `ID#k`. Morphemes
+of one word are never paired. `--morpheme-ids` adds a trailing
+`Cognator_Morpheme_IDs` sidecar column from running the existing graph policy
+and Infomap on the morpheme nodes -- a convenience partition, not evidence.
+
+The weight is an empirical null rather than a transform of the distance:
+`1 -` the share of cross-concept pairs from the same lect pair, in the same
+length bins, whose distance is no larger. Short units match by chance more
+often, so a shared two-segment affix gets 0 where an identical five-segment
+root at the same distance gets 1 -- the heightened chance rate short exponents
+need. The sample is bounded (`--null-samples`, 256 per stratum) and seeded
+(`--null-seed`); small strata widen to the whole lect pair, and every row says
+which null it was read on. It is a background-match rate, not a calibrated
+probability of cognacy, and `docs/pairs.md` says so along with the rest of
+its limits: the 1.0 distance clamp compresses it, and on the small fixtures
+unrelated forms sharing two good correspondences can reach 0.9.
+
+The exported distance is the clustering distance bit for bit (one alignment
+routine now returns the components too, and the prior-scorer case is checked
+against the public API), and segment scores are memoized for the export so
+the null costs a fraction of a run rather than ten of them. Without the new
+options, sidecars are byte-identical to before on every fixture.
+
+C: `cg_detect_with_pairs`, `cg_pairs_spec`, `cg_pair_row`,
+`cg_pairs_summary`, `cg_result_pair_at`, `cg_result_pairs_copy` /
+`cg_pair_rows_free`, `cg_result_pairs_tsv` / `_json`, `cg_write_pairs`,
+`cg_write_sidecar_morphemes`, `cg_result_morpheme_ids_at`. New symbols only,
+so `CG_ABI_VERSION` stays 1. Python: `detect(..., pairs=True | "words" |
+"morphemes", morpheme_ids=..., null_samples=..., null_seed=...)`,
+`CognateResult.pairs`, `.pairs_document`, `.write_pairs`, and
+`cognator.detect_pairs`; the `cognator` console script takes the same flags.
+
+The committed WebAssembly engine was not rebuilt: its build script now lists
+`src/pairs.c`, and `web/BUILD_INFO` is stale until someone with Emscripten
+runs `web/build-wasm.sh`. The page does not use the export.
+
 ### merkmal is pinned rather than found
 
 The build looked for a merkmal beside the checkout and used whatever was there.

@@ -60,5 +60,28 @@ print(metrics.precision, metrics.recall, metrics.f1)
 print(metrics.to_dict())
 ```
 
+## Pairwise export
+
+`detect` also returns the weighted pairs (`q(pairs)`) when asked; the weights
+are background-match rates, not cognacy probabilities -- see `docs/pairs.md`.
+
+```python
+result = cognator.detect("forms.tsv", pairs="morphemes", morpheme_ids=True,
+                         preset="support-adaptive-bridge")
+result.pairs[0]          # {"form_a", "morph_a", "form_b", "morph_b", "weight",
+                         #  "distance", "global", "local", "overlap",
+                         #  "null_n", "null_scope"}
+result.pairs_document    # the q_pairs JSON document, parsed
+result.write_pairs("pairs.json")   # or .tsv; the same bytes the CLI writes
+result.write_sidecar("sidecar.tsv")  # with Cognator_Morpheme_IDs
+
+cognator.detect_pairs("forms.tsv")   # word pairs only, as a list
+```
+
+`pairs=True` or `"words"` gives word pairs, `"morphemes"` per-morpheme pairs
+split at `+`; `null_samples`, `null_min` and `null_seed` set the null sample.
+Without any of these keywords `detect` makes exactly the call it always made,
+and `result.pairs` is `None`.
+
 The raw C extension module is private; user code should import from `cognator`,
 not `cognator._cognator`.

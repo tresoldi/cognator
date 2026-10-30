@@ -702,6 +702,24 @@ Track A remains the optimization target. Track B/partial cognacy is supported
 and should remain in the benchmark harness, but promotion should be based on
 Track A until the primary quality target is met.
 
+Track B now has a native path, separate from Track A's clusters: `detect
+--pairs-unit morphemes` splits forms at `+`, scores every cross-lect morpheme
+pair within a concept with the word-trained scorers, weights each against a
+length-matched cross-concept null, and `--morpheme-ids` clusters the morphemes
+into a `Cognator_Morpheme_IDs` column (`docs/pairs.md`). It is not yet
+benchmarked. Open, in order:
+
+- score `Cognator_Morpheme_IDs` against partial-cognacy gold (the
+  arcaverborum datasets that carry morpheme-level cognacy) in the harness,
+  beside a LingPy `PartialCognates` baseline;
+- measure how far the weights are from calibrated on that gold before anyone
+  reads them as probabilities -- they are background-match rates;
+- decide whether morphemes need their own scorer tables, which this
+  deliberately does not do;
+- the clamp at distance 1.0 compresses the null; an unclamped ranking
+  statistic would resolve the weights better, at the cost of the weight no
+  longer being stated on the clustering distance.
+
 ## Immediate Next Steps
 
 Use **Open Work Items** near the top of this document as the active pickup
