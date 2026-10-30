@@ -3,6 +3,8 @@
 
 #include "cognator.h"
 
+#include <string.h>
+
 static PyObject *CognatorError;
 
 static PyObject *status_error(const char *where, cg_status status) {
@@ -175,6 +177,166 @@ static PyObject *py_detect_file(PyObject *self, PyObject *args, PyObject *kwargs
     return rows;
 }
 
+static PyObject *pair_row_to_dict(const cg_pair_row *row) {
+    static const char *scopes[4] = {"stratum", "lect_pair", "sparse", "none"};
+    int level = row->null_level >= 0 && row->null_level <= 3 ? row->null_level : 3;
+    return Py_BuildValue(
+        "{s:s,s:K,s:s,s:K,s:d,s:d,s:d,s:d,s:d,s:K,s:s}",
+        "form_a", row->form_a,
+        "morph_a", (unsigned long long)row->morph_a,
+        "form_b", row->form_b,
+        "morph_b", (unsigned long long)row->morph_b,
+        "weight", row->weight,
+        "distance", row->distance,
+        "global", row->global_distance,
+        "local", row->local_distance,
+        "overlap", row->overlap_distance,
+        "null_n", (unsigned long long)row->null_count,
+        "null_scope", scopes[level]);
+}
+
+/* Reads the pair-export keys; the rest of kwargs are cg_options. */
+static int apply_pairs_spec(PyObject *kwargs, cg_pairs_spec *spec) {
+    PyObject *value;
+    cg_pairs_spec_init_defaults(spec);
+    if (kwargs == NULL) return 0;
+    value = PyDict_GetItemString(kwargs, "pairs_unit");
+    if (value != NULL && value != Py_None) {
+        const char *unit = PyUnicode_AsUTF8(value);
+        if (unit == NULL) return -1;
+        if (strcmp(unit, "words") == 0) {
+            spec->unit = CG_PAIRS_WORDS;
+        } else if (strcmp(unit, "morphemes") == 0) {
+            spec->unit = CG_PAIRS_MORPHEMES;
+        } else {
+            PyErr_Format(PyExc_ValueError, "pairs must be 'words' or 'morphemes', not %R", value);
+            return -1;
+        }
+    }
+    value = PyDict_GetItemString(kwargs, "morpheme_ids");
+    if (value != NULL && value != Py_None) {
+        int truth = PyObject_IsTrue(value);
+        if (truth < 0) return -1;
+        spec->morpheme_clusters = truth;
+    }
+    if (spec->morpheme_clusters && spec->unit != CG_PAIRS_MORPHEMES) {
+        PyErr_SetString(PyExc_ValueError, "morpheme_ids clusters morphemes and needs pairs='morphemes'");
+        return -1;
+    }
+    value = PyDict_GetItemString(kwargs, "null_samples");
+    if (value != NULL && value != Py_None) {
+        long parsed = PyLong_AsLong(value);
+        if (PyErr_Occurred()) return -1;
+        spec->null_samples = (int)parsed;
+    }
+    value = PyDict_GetItemString(kwargs, "null_min");
+    if (value != NULL && value != Py_None) {
+        long parsed = PyLong_AsLong(value);
+        if (PyErr_Occurred()) return -1;
+        spec->min_null = (int)parsed;
+    }
+    value = PyDict_GetItemString(kwargs, "null_seed");
+    if (value != NULL && value != Py_None) {
+        unsigned long long parsed = PyLong_AsUnsignedLongLong(value);
+        if (PyErr_Occurred()) return -1;
+        spec->null_seed = (uint64_t)parsed;
+    }
+    return 0;
+}
+
+static PyObject *owned_string(cg_status status, char *text, const char *where) {
+    PyObject *value;
+    if (status != CG_OK) return status_error(where, status);
+    value = PyUnicode_FromString(text);
+    cg_string_free(text);
+    return value;
+}
+
+/* detect_file plus the pairwise export: a dict with the sidecar rows, the
+ * pair rows, and the TSV and q_pairs JSON exactly as the C writers produce
+ * them, so a file written from Python is the file the CLI writes. */
+static PyObject *py_detect_file_pairs(PyObject *self, PyObject *args, PyObject *kwargs) {
+    const char *path;
+    cg_context *ctx = NULL;
+    cg_records *records = NULL;
+    cg_result *result = NULL;
+    cg_options options;
+    cg_pairs_spec spec;
+    PyObject *out = NULL;
+    PyObject *rows = NULL;
+    PyObject *pairs = NULL;
+    PyObject *item = NULL;
+    char *text = NULL;
+    uint64_t i;
+    cg_status status;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "s:detect_file_pairs", &path)) return NULL;
+    if (apply_options(kwargs, &options) < 0) return NULL;
+    if (apply_pairs_spec(kwargs, &spec) < 0) return NULL;
+    status = cg_context_new_builtin(&ctx);
+    if (status != CG_OK) return status_error("context", status);
+    status = cg_read_table(path, &records);
+    if (status != CG_OK) {
+        cg_context_free(ctx);
+        return status_error("read_table", status);
+    }
+    status = cg_detect_with_pairs(ctx, records, &options, &spec, &result);
+    if (status != CG_OK) {
+        cg_records_free(records);
+        cg_context_free(ctx);
+        return status_error("detect", status);
+    }
+    out = PyDict_New();
+    rows = PyList_New((Py_ssize_t)cg_result_row_count(result));
+    pairs = PyList_New((Py_ssize_t)cg_result_pair_count(result));
+    if (out == NULL || rows == NULL || pairs == NULL) goto fail;
+    for (i = 0; i < cg_result_row_count(result); i++) {
+        PyObject *row = sidecar_row_to_dict(cg_result_row_at(result, i));
+        const char *morpheme_ids = cg_result_morpheme_ids_at(result, i);
+        if (row == NULL) goto fail;
+        PyList_SET_ITEM(rows, (Py_ssize_t)i, row);
+        item = PyFloat_FromDouble(cg_result_threshold(result));
+        if (item == NULL || PyDict_SetItemString(row, "Cognator_Resolved_Threshold", item) < 0) goto fail;
+        Py_CLEAR(item);
+        if (morpheme_ids != NULL) {
+            item = PyUnicode_FromString(morpheme_ids);
+            if (item == NULL || PyDict_SetItemString(row, "Cognator_Morpheme_IDs", item) < 0) goto fail;
+            Py_CLEAR(item);
+        }
+    }
+    for (i = 0; i < cg_result_pair_count(result); i++) {
+        PyObject *pair = pair_row_to_dict(cg_result_pair_at(result, i));
+        if (pair == NULL) goto fail;
+        PyList_SET_ITEM(pairs, (Py_ssize_t)i, pair);
+    }
+    if (PyDict_SetItemString(out, "rows", rows) < 0 || PyDict_SetItemString(out, "pairs", pairs) < 0) goto fail;
+    status = cg_result_pairs_tsv(result, &text);
+    item = owned_string(status, text, "pairs_tsv");
+    if (item == NULL || PyDict_SetItemString(out, "tsv", item) < 0) goto fail;
+    Py_CLEAR(item);
+    text = NULL;
+    status = cg_result_pairs_json(result, &text);
+    item = owned_string(status, text, "pairs_json");
+    if (item == NULL || PyDict_SetItemString(out, "json", item) < 0) goto fail;
+    Py_CLEAR(item);
+    Py_DECREF(rows);
+    Py_DECREF(pairs);
+    cg_result_free(result);
+    cg_records_free(records);
+    cg_context_free(ctx);
+    return out;
+fail:
+    Py_XDECREF(item);
+    Py_XDECREF(rows);
+    Py_XDECREF(pairs);
+    Py_XDECREF(out);
+    cg_result_free(result);
+    cg_records_free(records);
+    cg_context_free(ctx);
+    return NULL;
+}
+
 static PyObject *py_version(PyObject *self, PyObject *Py_UNUSED(ignored)) {
     (void)self;
     return PyUnicode_FromString(cg_version_string());
@@ -195,6 +357,7 @@ static PyObject *py_merkmal(PyObject *self, PyObject *Py_UNUSED(ignored)) {
 
 static PyMethodDef CognatorMethods[] = {
     {"detect_file", (PyCFunction)(void (*)(void))py_detect_file, METH_VARARGS | METH_KEYWORDS, "Run detection on a TSV/CSV file."},
+    {"detect_file_pairs", (PyCFunction)(void (*)(void))py_detect_file_pairs, METH_VARARGS | METH_KEYWORDS, "Run detection with the pairwise export (q(pairs))."},
     {"version", py_version, METH_NOARGS, "Return the linked C library version."},
     {"abi_version", py_abi_version, METH_NOARGS, "Return the linked C ABI version."},
     {"merkmal", py_merkmal, METH_NOARGS, "Return (version, commit) of the merkmal compiled in."},

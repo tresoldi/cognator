@@ -1,4 +1,5 @@
 import csv
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -13,6 +14,14 @@ import cognator
 ROOT = Path(__file__).resolve().parents[2]
 LATIN = ROOT / "tests" / "fixtures" / "linguistic" / "latin_romance_triplets.tsv"
 EXTENDED = ROOT / "tests" / "fixtures" / "linguistic" / "latin_romance_extended.tsv"
+PARTIAL = ROOT / "tests" / "fixtures" / "linguistic" / "partial_cognacy_compounds.tsv"
+PAIR_OPTIONS = {
+    "preset": "support-adaptive-bridge",
+    "threshold": 0.0,
+    "min_pairs": 1,
+    "scorer": "posterior",
+    "seed": 3,
+}
 
 
 def cluster_pairs(rows):
@@ -233,6 +242,108 @@ class PythonApiTests(unittest.TestCase):
                 check=True,
             )
             self.assertEqual(cluster_pairs(read_sidecar(py_out)), cluster_pairs(read_sidecar(c_out)))
+
+
+class PairExportTests(unittest.TestCase):
+    """detect(..., pairs=...): the q(pairs) export and partial cognacy."""
+
+    @staticmethod
+    def find(pairs, form_a, morph_a, form_b, morph_b):
+        for pair in pairs:
+            if (pair["form_a"], pair["morph_a"], pair["form_b"], pair["morph_b"]) == (
+                form_a,
+                morph_a,
+                form_b,
+                morph_b,
+            ):
+                return pair
+        raise AssertionError(f"no pair {form_a}#{morph_a} ~ {form_b}#{morph_b}")
+
+    def test_without_pairs_nothing_changes(self):
+        plain = cognator.detect(PARTIAL, **PAIR_OPTIONS)
+        self.assertIsNone(plain.pairs)
+        self.assertIsNone(plain.pairs_document)
+        with self.assertRaises(ValueError):
+            plain.write_pairs("unused.tsv")
+        words = cognator.detect(PARTIAL, pairs=True, **PAIR_OPTIONS)
+        morphs = cognator.detect(PARTIAL, pairs="morphemes", morpheme_ids=True, **PAIR_OPTIONS)
+        for result in (words, morphs):
+            stripped = [
+                {key: value for key, value in row.items() if key != "Cognator_Morpheme_IDs"}
+                for row in result.rows
+            ]
+            self.assertEqual(stripped, plain.rows)
+
+    def test_word_pairs(self):
+        pairs = cognator.detect_pairs(PARTIAL, **PAIR_OPTIONS)
+        self.assertEqual(len(pairs), 42)
+        for pair in pairs:
+            self.assertEqual((pair["morph_a"], pair["morph_b"]), (0, 0))
+            self.assertGreaterEqual(pair["weight"], 0.0)
+            self.assertLessEqual(pair["weight"], 1.0)
+
+    def test_morpheme_pairs_and_clusters(self):
+        result = cognator.detect(PARTIAL, pairs="morphemes", morpheme_ids=True, **PAIR_OPTIONS)
+        pairs = result.pairs
+        self.assertEqual(len(pairs), 150)
+        self.assertFalse([pair for pair in pairs if pair["form_a"] == pair["form_b"]])
+        self.assertGreaterEqual(self.find(pairs, "a_pebble", 0, "b_pebble", 0)["weight"], 0.9)
+        self.assertLessEqual(self.find(pairs, "a_pebble", 1, "c_pebble", 1)["weight"], 0.1)
+        suffix = self.find(pairs, "a_water", 1, "b_water", 1)
+        root = self.find(pairs, "a_water", 0, "b_water", 0)
+        self.assertAlmostEqual(suffix["distance"], root["distance"], places=12)
+        self.assertLess(suffix["weight"], root["weight"])
+        by_id = result.by_id()
+        self.assertEqual(by_id["a_pebble"]["Cognator_Morpheme_IDs"], by_id["b_pebble"]["Cognator_Morpheme_IDs"])
+        self.assertTrue(by_id["c_pebble"]["Cognator_Morpheme_IDs"].endswith(" -"))
+        self.assertEqual(len(by_id["a_fire"]["Cognator_Morpheme_IDs"].split()), 1)
+
+        document = result.pairs_document
+        self.assertEqual(document["role"], "q")
+        self.assertEqual(document["unit"], "morpheme")
+        self.assertTrue(document["producer"].startswith("cognator@0.1.0+merkmal."))
+        self.assertEqual(document["pairs"][0]["form_obs_a"], "a_pebble#0")
+        self.assertIn("threshold", result.pairs_diagnostics)
+        self.assertEqual(result.pairs_diagnostics["calibration"]["pairs"], 150)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            sidecar = Path(tmp) / "sidecar.tsv"
+            result.write_sidecar(sidecar)
+            self.assertIn("Cognator_Morpheme_IDs", sidecar.read_text().splitlines()[0])
+            tsv = Path(tmp) / "pairs.tsv"
+            result.write_pairs(tsv)
+            self.assertTrue(tsv.read_text().startswith("form_a\tmorph_a\tform_b\tmorph_b\tweight"))
+            as_json = Path(tmp) / "pairs.json"
+            result.write_pairs(as_json)
+            self.assertEqual(json.loads(as_json.read_text())["role"], "q")
+
+    def test_rejects_bad_pair_options(self):
+        with self.assertRaises(ValueError):
+            cognator.detect(PARTIAL, pairs="syllables", **PAIR_OPTIONS)
+        with self.assertRaises(ValueError):
+            cognator.detect(PARTIAL, pairs="words", morpheme_ids=True, **PAIR_OPTIONS)
+
+    def test_pairs_match_the_c_cli_byte_for_byte(self):
+        c_cli = os.environ.get("COGNATOR_CLI")
+        if not c_cli:
+            self.skipTest("COGNATOR_CLI not set")
+        result = cognator.detect(PARTIAL, pairs="morphemes", **PAIR_OPTIONS)
+        with tempfile.TemporaryDirectory() as tmp:
+            for suffix in ("tsv", "json"):
+                c_out = Path(tmp) / f"c.{suffix}"
+                py_out = Path(tmp) / f"py.{suffix}"
+                subprocess.run(
+                    [
+                        c_cli, "detect", "--in", str(PARTIAL), "--out", str(Path(tmp) / "sidecar.tsv"),
+                        "--preset", "support-adaptive-bridge", "--threshold", "0", "--min-pairs", "1",
+                        "--scorer", "posterior", "--seed", "3",
+                        "--pairs-out", str(c_out), "--pairs-unit", "morphemes",
+                    ],
+                    check=True,
+                    stderr=subprocess.DEVNULL,
+                )
+                result.write_pairs(py_out)
+                self.assertEqual(py_out.read_bytes(), c_out.read_bytes())
 
 
 class MerkmalProvenance(unittest.TestCase):

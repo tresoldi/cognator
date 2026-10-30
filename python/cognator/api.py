@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import tempfile
 from collections import defaultdict
 from collections.abc import Iterator, Mapping, Sequence
@@ -8,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Union
 
-from ._cognator import detect_file
+from ._cognator import detect_file, detect_file_pairs
 
 # A row, as it comes from csv.DictReader, from the extension, or from a
 # DataFrame's to_dict("records"). Values are read back as strings by
@@ -41,6 +42,11 @@ SIDECAR_COLUMNS = (
     "Cognator_Bootstrap_Low",
     "Cognator_Bootstrap_High",
 )
+MORPHEME_IDS_COLUMN = "Cognator_Morpheme_IDs"
+
+# Keyword arguments that select the pairwise export rather than a cg_options
+# field. Popped before the rest reach the extension.
+_PAIR_OPTIONS = ("pairs", "morpheme_ids", "null_samples", "null_min", "null_seed")
 
 
 @dataclass(frozen=True)
@@ -102,9 +108,42 @@ def _records_from_input(
     return _records_from_table_like(data)
 
 
-def _detect_records(
-    records: TableLike, options: Mapping[str, Any]
-) -> list[dict[str, Any]]:
+def _pairs_unit(pairs: Any, morpheme_ids: bool) -> str | None:
+    if pairs is None or pairs is False:
+        return "morphemes" if morpheme_ids else None
+    if pairs is True:
+        return "morphemes" if morpheme_ids else "words"
+    if pairs in ("words", "morphemes"):
+        return str(pairs)
+    raise ValueError(f"pairs must be True, 'words' or 'morphemes', not {pairs!r}")
+
+
+def _detect_path(path: str, options: Mapping[str, Any]) -> CognateResult:
+    options = dict(options)
+    pair_options = {name: options.pop(name) for name in _PAIR_OPTIONS if name in options}
+    morpheme_ids = bool(pair_options.get("morpheme_ids", False))
+    unit = _pairs_unit(pair_options.get("pairs"), morpheme_ids)
+    if unit is None:
+        # No export asked for: exactly the call this module always made.
+        return CognateResult(detect_file(path, **options))
+    found = detect_file_pairs(
+        path,
+        pairs_unit=unit,
+        morpheme_ids=morpheme_ids,
+        null_samples=pair_options.get("null_samples"),
+        null_min=pair_options.get("null_min"),
+        null_seed=pair_options.get("null_seed"),
+        **options,
+    )
+    return CognateResult(
+        found["rows"],
+        pairs=found["pairs"],
+        pairs_tsv=found["tsv"],
+        pairs_json=found["json"],
+    )
+
+
+def _detect_records(records: TableLike, options: Mapping[str, Any]) -> CognateResult:
     rows = _records_from_table_like(records)
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", newline="", suffix=".tsv") as handle:
         writer = csv.DictWriter(
@@ -114,17 +153,34 @@ def _detect_records(
         for record in rows:
             writer.writerow({name: _record_value(record, name) for name in INPUT_COLUMNS})
         handle.flush()
-        return detect_file(handle.name, **options)
+        return _detect_path(handle.name, options)
 
 
 def detect(data: PathLike | TableLike, **options: Any) -> CognateResult:
+    """Cluster a wordlist; see docs/python_usage.md for the options.
+
+    ``pairs=True`` (or ``"words"``) also computes the word-level pairwise
+    export, ``pairs="morphemes"`` the per-morpheme one, and
+    ``morpheme_ids=True`` adds morpheme clusters to every row. The weights are
+    background-match rates, not cognacy probabilities: docs/pairs.md.
+    """
     if isinstance(data, (str, bytes, Path)):
-        return CognateResult(detect_file(str(data), **options))
-    return CognateResult(_detect_records(data, options))
+        path = data.decode() if isinstance(data, bytes) else str(data)
+        return _detect_path(path, options)
+    return _detect_records(data, options)
 
 
 def detect_records(records: TableLike, **options: Any) -> CognateResult:
-    return CognateResult(_detect_records(records, options))
+    return _detect_records(records, options)
+
+
+def detect_pairs(
+    data: PathLike | TableLike, unit: str = "words", **options: Any
+) -> list[dict[str, Any]]:
+    """Only the weighted pairs: ``detect(data, pairs=unit, ...).pairs``."""
+    pairs = detect(data, pairs=unit, **options).pairs
+    assert pairs is not None
+    return pairs
 
 
 def load(path: PathLike) -> Wordlist:
@@ -192,9 +248,46 @@ def _bcubed(pred: Mapping[str, str], truth: Mapping[str, str]) -> EvaluationResu
 
 
 class CognateResult:
-    def __init__(self, rows: Sequence[Record]) -> None:
+    def __init__(
+        self,
+        rows: Sequence[Record],
+        *,
+        pairs: Sequence[dict[str, Any]] | None = None,
+        pairs_tsv: str | None = None,
+        pairs_json: str | None = None,
+    ) -> None:
         self.rows: list[Record] = list(rows)
         self.resolved_threshold = self._resolved_threshold()
+        # The pairwise export, when detect was asked for it; None otherwise.
+        self.pairs: list[dict[str, Any]] | None = None if pairs is None else list(pairs)
+        self._pairs_tsv = pairs_tsv
+        self._pairs_json = pairs_json
+
+    @property
+    def pairs_document(self) -> dict[str, Any] | None:
+        """The q_pairs document (role "q"), parsed; None without pairs."""
+        if self._pairs_json is None:
+            return None
+        document: dict[str, Any] = json.loads(self._pairs_json)
+        return document
+
+    @property
+    def pairs_diagnostics(self) -> dict[str, Any] | None:
+        document = self.pairs_document
+        return None if document is None else document["diagnostics"]
+
+    def write_pairs(self, path: PathLike, kind: str | None = None) -> None:
+        """Write the pairs as the CLI's --pairs-out does: q_pairs JSON when
+        ``kind`` is "json" or the path ends in .json, TSV otherwise."""
+        if self._pairs_tsv is None or self._pairs_json is None:
+            raise ValueError("this result has no pairs; detect with pairs=True")
+        if kind is None:
+            kind = "json" if str(path).endswith(".json") else "tsv"
+        if kind not in ("tsv", "json"):
+            raise ValueError(f"kind must be 'tsv' or 'json', not {kind!r}")
+        text = self._pairs_json if kind == "json" else self._pairs_tsv
+        with open(path, "w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
 
     def _resolved_threshold(self) -> float | None:
         for row in self.rows:
@@ -226,13 +319,16 @@ class CognateResult:
         return [dict(row) for row in self.rows]
 
     def write_sidecar(self, path: PathLike) -> None:
+        columns: tuple[str, ...] = SIDECAR_COLUMNS
+        if self.rows and MORPHEME_IDS_COLUMN in self.rows[0]:
+            columns = (*SIDECAR_COLUMNS, MORPHEME_IDS_COLUMN)
         with open(path, "w", encoding="utf-8", newline="") as handle:
             writer = csv.DictWriter(
-                handle, fieldnames=SIDECAR_COLUMNS, delimiter="\t", lineterminator="\n"
+                handle, fieldnames=columns, delimiter="\t", lineterminator="\n"
             )
             writer.writeheader()
             for row in self.rows:
-                writer.writerow({name: row.get(name, "") for name in SIDECAR_COLUMNS})
+                writer.writerow({name: row.get(name, "") for name in columns})
 
     def evaluate(
         self, truth: Wordlist | PathLike | TableLike, **options: Any

@@ -22,6 +22,15 @@ def detect_file(path: str, /, **options: Any) -> list[dict[str, Any]]:
     docs/python_usage.md, not duplicated here.
     """
 
+def detect_file_pairs(path: str, /, **options: Any) -> dict[str, Any]:
+    """detect_file plus the pairwise export.
+
+    Besides the cg_options fields it reads `pairs_unit` ("words" or
+    "morphemes"), `morpheme_ids`, `null_samples`, `null_min` and `null_seed`,
+    and returns {"rows", "pairs", "tsv", "json"}: the sidecar rows, one dict
+    per pair, and the TSV and q_pairs JSON the C writers produce.
+    """
+
 def version() -> str:
     """The linked C library's version string."""
 
