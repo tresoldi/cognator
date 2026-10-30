@@ -82,9 +82,33 @@ It is a **background-match rate** -- one minus a p-value-like quantity for
 "this pair is closer than chance pairings of the same shape are" -- and **not
 a calibrated posterior probability of cognacy**. In particular:
 
-- It is not calibrated against any gold standard, and on real data it has
-  not been measured against one. A weight of 0.9 does not mean nine in ten
-  such pairs are cognate.
+- It is not calibrated against any gold standard. A weight of 0.9 does not
+  mean nine in ten such pairs are cognate.
+- **First measurement against gold** (2026-10-30; IE-CoR expert cognacy for
+  Latin, Spanish, Portuguese, Catalan, French, Italian and Romanian, 1,201
+  forms taken from arcaverborum's committed web snapshot; default options).
+  - 3,680 within-concept word pairs: 2,441 gold-cognate, 1,239 not.
+  - **Ranking is good:** AUC 0.90. The median weight is 0.996 for cognates
+    and 0.75 for non-cognates.
+  - **As a probability it is poor.** Non-cognates average 0.59. 29% of them
+    weigh more than 0.9 (89% of cognates do).
+  - **Consequence for regulae:** kept as independent edges, these weights
+    would carry about 727 false edges beside 2,317 true ones. Under "no
+    relation", one minus a background rate is spread over [0, 1] by
+    construction, so even a perfect null would not give a probability.
+  - **Partial fix tried offline: a two-groups local false-discovery rate**
+    over the same p-values, with no labels used. Weight = 1 − π₀/f(p), with
+    π₀ from Storey's λ = 0.5 and f a non-increasing histogram fit.
+    - False edges fall to about 555 (true 2,237).
+    - It underestimates π₀ (0.24 against a true non-cognate share of 0.34).
+      Same-meaning non-cognates in related languages resemble each other
+      more than cross-meaning pairs do.
+    - So mid-range weights remain overconfident: in [0.6, 0.8), 42% are
+      cognate; in [0.8, 0.9), 52%.
+  - A calibrated weight needs either a labelled calibration map (isotonic, per
+    family or per depth band; `scripts/calibrate_confidence.py` does this for
+    the cluster confidence) or a null drawn from same-meaning non-cognates.
+    That second option is circular without labels.
 - Its resolution is `1/null_n`; with the default 256 it cannot tell 0.997
   from 1.
 - The distance is clamped at 1.0, and on small corpora much of the null sits
