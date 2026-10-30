@@ -50,7 +50,7 @@ emcc \
     -DCOGNATOR_MERKMAL_COMMIT="\"$MERKMAL_COMMIT\"" \
     -Iinclude -Isrc -I"$MERKMAL_DIR/include" -I"$MERKMAL_DIR/src" \
     web/cognator_wasm.c \
-    src/context.c src/data.c src/detect.c src/eval.c src/align.c src/graph.c \
+    src/context.c src/data.c src/detect.c src/pairs.c src/eval.c src/align.c src/graph.c \
     src/oov.c src/options.c src/posterior.c src/segment.c src/wordlist.c \
     "$MERKMAL_DIR/src/feature_set.c" \
     "$MERKMAL_DIR/src/geometry.c" \

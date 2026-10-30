@@ -1,0 +1,43 @@
+ID	Language_ID	Concept	Segments	Family
+a_pebble	Ala	PEBBLE	m a l u t + k e r i s	toy
+b_pebble	Bera	PEBBLE	m a l u d + g e r i s	toy
+c_pebble	Cumo	PEBBLE	m a l u t + w o n a	toy
+a_hearth	Ala	HEARTH	t o p a n + d a n e m	toy
+b_hearth	Bera	HEARTH	d o b a n + d a n e m	toy
+c_hearth	Cumo	HEARTH	t u p a n + j e m b u	toy
+a_nest	Ala	NEST	s i r o k + f u l i n	toy
+b_nest	Bera	NEST	s i r o g + f u l i n	toy
+c_nest	Cumo	NEST	s i r u k + z a t i r	toy
+a_rainbow	Ala	RAINBOW	h e l o r + g a v u s	toy
+b_rainbow	Bera	RAINBOW	h e l o r + g a v u s	toy
+c_rainbow	Cumo	RAINBOW	h i l u r + ʃ u k o m	toy
+a_riverbank	Ala	RIVERBANK	n i k a s + b o r e t	toy
+b_riverbank	Bera	RIVERBANK	n i g a s + b o r e d	toy
+c_riverbank	Cumo	RIVERBANK	n i k a s + l e v a	toy
+a_roofbeam	Ala	ROOFBEAM	p i m e l + r u d o k	toy
+b_roofbeam	Bera	ROOFBEAM	b i m e l + r u d o g	toy
+c_roofbeam	Cumo	ROOFBEAM	p i m i l + v a ʃ e n	toy
+a_water	Ala	WATER	m o r e v + n a	toy
+b_water	Bera	WATER	m o r e v + n a	toy
+c_water	Cumo	WATER	m u r i v + n a	toy
+a_stone	Ala	STONE	l a s i p + n a	toy
+b_stone	Bera	STONE	l a s i b + n a	toy
+c_stone	Cumo	STONE	l a s i p + n a	toy
+a_tree	Ala	TREE	w e t u l + n a	toy
+b_tree	Bera	TREE	w e d u l + n a	toy
+c_tree	Cumo	TREE	w i t u l + n a	toy
+a_bird	Ala	BIRD	j o m i r + n a	toy
+b_bird	Bera	BIRD	j o m i r + n a	toy
+c_bird	Cumo	BIRD	j u m i r + n a	toy
+a_hill	Ala	HILL	s u k e t + n a	toy
+b_hill	Bera	HILL	s u g e d + n a	toy
+c_hill	Cumo	HILL	s u k i t + n a	toy
+a_sky	Ala	SKY	r a v o n + n a	toy
+b_sky	Bera	SKY	r a v o n + n a	toy
+c_sky	Cumo	SKY	r a v u n + n a	toy
+a_fire	Ala	FIRE	k a t u m e	toy
+b_fire	Bera	FIRE	g a d u m e	toy
+c_fire	Cumo	FIRE	k a t u m i	toy
+a_moon	Ala	MOON	t i s a l o	toy
+b_moon	Bera	MOON	d i s a l o	toy
+c_moon	Cumo	MOON	o r e v a	toy

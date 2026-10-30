@@ -1,6 +1,7 @@
 #include "internal/align.h"
 #include "internal/context.h"
 #include "internal/data.h"
+#include "internal/pairs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,11 @@ typedef struct cg_seq {
     char **items;
     size_t count;
     size_t cap;
+    /* Offsets into items where a `+` stood; only kept for the morpheme
+     * export, and never read by clustering. */
+    size_t *breaks;
+    size_t break_count;
+    size_t break_cap;
 } cg_seq;
 
 typedef struct cg_form_pair_list {
@@ -53,6 +59,7 @@ static void seq_free(cg_seq *seq) {
         free(seq->items[i]);
     }
     free(seq->items);
+    free(seq->breaks);
     *seq = (cg_seq){0};
 }
 
@@ -75,7 +82,21 @@ static cg_status seq_push(cg_seq *seq, const char *value) {
     return CG_OK;
 }
 
-static cg_status parse_record_sequence(const cg_context *ctx, const cg_record *record, int class_reduce, cg_oov_report *oov, cg_seq *seq) {
+static cg_status seq_push_break(cg_seq *seq) {
+    if (seq->break_count == seq->break_cap) {
+        size_t next_cap = seq->break_cap == 0 ? 4 : seq->break_cap * 2;
+        size_t *next = (size_t *)realloc(seq->breaks, next_cap * sizeof(*next));
+        if (next == NULL) {
+            return CG_ERR_OOM;
+        }
+        seq->breaks = next;
+        seq->break_cap = next_cap;
+    }
+    seq->breaks[seq->break_count++] = seq->count;
+    return CG_OK;
+}
+
+static cg_status parse_record_sequence(const cg_context *ctx, const cg_record *record, int class_reduce, int keep_breaks, cg_oov_report *oov, cg_seq *seq) {
     cg_tokens *tokens = NULL;
     uint64_t i;
     cg_status status = cg_segment_parse_with_oov(ctx, record->segments, oov, &tokens);
@@ -86,6 +107,14 @@ static cg_status parse_record_sequence(const cg_context *ctx, const cg_record *r
         const cg_token *token = cg_tokens_get(tokens, i);
         char *reduced = NULL;
         const char *g;
+        if (keep_breaks && token != NULL && token->boundary) {
+            status = seq_push_break(seq);
+            if (status != CG_OK) {
+                cg_tokens_free(tokens);
+                return status;
+            }
+            continue;
+        }
         if (token == NULL || token->boundary || token->grapheme == NULL || token->grapheme[0] == '\0') {
             continue;
         }
@@ -415,6 +444,162 @@ static cg_status distance_for_pair(const cg_context *ctx, const cg_seq *a, const
     return cg_align_distance_combined(ctx, (const char *const *)a->items, (uint64_t)a->count, (const char *const *)b->items, (uint64_t)b->count, 1, out);
 }
 
+/* distance_for_pair for the pair export: the same scorer choice, direction and
+ * alignment mode, but over any span of the two rows and with the alignment
+ * components kept. The returned distance is bit-for-bit what distance_for_pair
+ * gives for the whole words (see components_generic in align.c).
+ *
+ * The export aligns far more pairs than clustering does -- every null sample
+ * -- and a segment score costs a posterior lookup plus two merkmal role
+ * lookups. Scores are a pure function of (scorer, source, target), so they
+ * are memoized here; the cached double is the one the scorer returned, so
+ * nothing downstream can tell. */
+typedef struct score_memo_entry {
+    char *source;
+    char *target;
+    size_t table;
+    double score;
+    int used;
+} score_memo_entry;
+
+typedef struct score_memo {
+    score_memo_entry *slots;
+    size_t slot_count;
+    size_t used;
+} score_memo;
+
+typedef struct pairs_oracle_user {
+    const cg_context *ctx;
+    const cg_records *records;
+    cg_lect_pair_table *tables;
+    size_t table_count;
+    const cg_options *options;
+    score_memo memo;
+} pairs_oracle_user;
+
+typedef struct memo_score_user {
+    pairs_oracle_user *oracle;
+    size_t table;          /* SIZE_MAX for the merkmal prior */
+} memo_score_user;
+
+static uint64_t memo_hash(size_t table, const char *source, const char *target) {
+    uint64_t h = 1469598103934665603ull ^ (uint64_t)table;
+    const unsigned char *p;
+    for (p = (const unsigned char *)source; *p; p++) {
+        h ^= *p;
+        h *= 1099511628211ull;
+    }
+    h ^= 0x1f;
+    h *= 1099511628211ull;
+    for (p = (const unsigned char *)target; *p; p++) {
+        h ^= *p;
+        h *= 1099511628211ull;
+    }
+    return h;
+}
+
+static void memo_free(score_memo *memo) {
+    size_t i;
+    for (i = 0; i < memo->slot_count; i++) {
+        free(memo->slots[i].source);
+        free(memo->slots[i].target);
+    }
+    free(memo->slots);
+    *memo = (score_memo){0};
+}
+
+static cg_status memo_grow(score_memo *memo) {
+    size_t next_count = memo->slot_count == 0 ? 1024 : memo->slot_count * 2;
+    score_memo_entry *next = (score_memo_entry *)calloc(next_count, sizeof(*next));
+    size_t i;
+    if (next == NULL) return CG_ERR_OOM;
+    for (i = 0; i < memo->slot_count; i++) {
+        score_memo_entry *e = &memo->slots[i];
+        size_t slot;
+        if (!e->used) continue;
+        slot = (size_t)(memo_hash(e->table, e->source, e->target) % next_count);
+        while (next[slot].used) slot = (slot + 1) % next_count;
+        next[slot] = *e;
+    }
+    free(memo->slots);
+    memo->slots = next;
+    memo->slot_count = next_count;
+    return CG_OK;
+}
+
+static cg_status memo_score_cb(const char *source, const char *target, void *user, double *out) {
+    memo_score_user *mu = (memo_score_user *)user;
+    pairs_oracle_user *u = mu->oracle;
+    score_memo *memo = &u->memo;
+    size_t slot;
+    double value = 0.0;
+    cg_status status;
+    if (memo->slot_count == 0 || (memo->used + 1) * 2 > memo->slot_count) {
+        status = memo_grow(memo);
+        if (status != CG_OK) return status;
+    }
+    slot = (size_t)(memo_hash(mu->table, source, target) % memo->slot_count);
+    while (memo->slots[slot].used) {
+        score_memo_entry *e = &memo->slots[slot];
+        if (e->table == mu->table && strcmp(e->source, source) == 0 && strcmp(e->target, target) == 0) {
+            *out = e->score;
+            return CG_OK;
+        }
+        slot = (slot + 1) % memo->slot_count;
+    }
+    if (mu->table == SIZE_MAX) {
+        status = cg_prior_score(u->ctx, source, target, 1, &value);
+    } else {
+        cg_posterior_score_user inner = {u->ctx, u->tables[mu->table].table, 1};
+        status = posterior_score_cb(source, target, &inner, &value);
+    }
+    if (status != CG_OK) return status;
+    memo->slots[slot].source = cg_strdup(source);
+    memo->slots[slot].target = cg_strdup(target);
+    if (memo->slots[slot].source == NULL || memo->slots[slot].target == NULL) {
+        free(memo->slots[slot].source);
+        free(memo->slots[slot].target);
+        memo->slots[slot].source = NULL;
+        memo->slots[slot].target = NULL;
+        return CG_ERR_OOM;
+    }
+    memo->slots[slot].table = mu->table;
+    memo->slots[slot].score = value;
+    memo->slots[slot].used = 1;
+    memo->used++;
+    *out = value;
+    return CG_OK;
+}
+
+static cg_status pairs_oracle(void *user, size_t rec_a, const char *const *a, size_t a_count, size_t rec_b, const char *const *b, size_t b_count, cg_internal_components *components, double *distance) {
+    pairs_oracle_user *u = (pairs_oracle_user *)user;
+    const cg_record *ra = record_at(u->records, rec_a);
+    const cg_record *rb = record_at(u->records, rec_b);
+    size_t idx = find_pair_table(u->tables, u->table_count, ra->language_id, rb->language_id);
+    int global = u->options->alignment_mode != NULL && strcmp(u->options->alignment_mode, "global") == 0;
+    memo_score_user mu;
+    cg_status status;
+    mu.oracle = u;
+    if (idx != SIZE_MAX && u->tables[idx].has_posterior) {
+        int reverse = string_less(rb->language_id, ra->language_id);
+        mu.table = idx;
+        status = cg_internal_distance_components(
+            reverse ? b : a, reverse ? b_count : a_count,
+            reverse ? a : b, reverse ? a_count : b_count,
+            memo_score_cb, &mu, components);
+    } else {
+        /* As cg_align_distance_combined: the merkmal prior, prosody-aware,
+         * in row order. */
+        mu.table = SIZE_MAX;
+        status = cg_internal_distance_components(a, a_count, b, b_count, memo_score_cb, &mu, components);
+    }
+    if (status != CG_OK) {
+        return status;
+    }
+    *distance = global ? components->global : components->combined;
+    return CG_OK;
+}
+
 static cg_status make_cognator_id(char **out, const char *family, const char *concept, uint64_t mod) {
     size_t len = strlen(family ? family : "") + strlen(concept ? concept : "") + 64;
     char *s = (char *)malloc(len);
@@ -497,8 +682,11 @@ static double resolve_concept_threshold(double *distances, size_t count, double 
     return cg_clamp(shrink * family_threshold + (1.0 - shrink) * local, options->threshold_min, options->threshold_max);
 }
 
-cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options *options_in, cg_result **out) {
+static cg_status detect_impl(cg_context *ctx, const cg_records *records, const cg_options *options_in, const cg_pairs_spec *pairs_spec, cg_result **out) {
     cg_options options;
+    cg_pairs_spec pspec;
+    int want_pairs = pairs_spec != NULL && (pairs_spec->unit == CG_PAIRS_WORDS || pairs_spec->unit == CG_PAIRS_MORPHEMES);
+    int keep_breaks = want_pairs && pairs_spec->unit == CG_PAIRS_MORPHEMES;
     cg_result *result = NULL;
     cg_oov_report *oov = NULL;
     cg_seq *seqs = NULL;
@@ -517,6 +705,12 @@ cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options
         return CG_ERR_INVALID_ARGUMENT;
     }
     *out = NULL;
+    if (pairs_spec != NULL && pairs_spec->unit != CG_PAIRS_NONE && !want_pairs) {
+        return CG_ERR_UNSUPPORTED_OPTION;
+    }
+    if (want_pairs) {
+        cg_internal_pairs_spec_effective(&pspec, pairs_spec);
+    }
     options_effective(&options, options_in);
     if (options.merkmal_system != NULL && options.merkmal_system[0] != '\0') {
         status = cg_context_use_system(ctx, options.merkmal_system);
@@ -532,7 +726,7 @@ cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options
     status = cg_oov_report_new(&oov);
     if (status != CG_OK) goto done;
     for (i = 0; i < records->count; i++) {
-        status = parse_record_sequence(ctx, record_at(records, i), options.class_reduce, oov, &seqs[i]);
+        status = parse_record_sequence(ctx, record_at(records, i), options.class_reduce, keep_breaks, oov, &seqs[i]);
         if (status != CG_OK) goto done;
     }
     status = build_pair_tables(ctx, records, seqs, &options, &tables, &table_count);
@@ -670,6 +864,35 @@ concept_done:
         cg_bootstrap_summary_free(boot);
         if (status != CG_OK) goto done;
     }
+    if (want_pairs) {
+        cg_pairs_form *forms = (cg_pairs_form *)calloc(records->count + 1, sizeof(*forms));
+        pairs_oracle_user oracle = {ctx, records, tables, table_count, &options, {NULL, 0, 0}};
+        cg_pairs_input input;
+        if (forms == NULL) { status = CG_ERR_OOM; goto done; }
+        for (i = 0; i < records->count; i++) {
+            forms[i].items = (const char *const *)seqs[i].items;
+            forms[i].count = seqs[i].count;
+            forms[i].breaks = seqs[i].breaks;
+            forms[i].break_count = seqs[i].break_count;
+        }
+        memset(&input, 0, sizeof(input));
+        input.records = records;
+        input.forms = forms;
+        input.distance = pairs_oracle;
+        input.user = &oracle;
+        input.spec = pspec;
+        input.word_threshold = result->threshold;
+        input.fixed_threshold = options.threshold;
+        input.threshold_min = options.threshold_min;
+        input.threshold_max = options.threshold_max;
+        input.graph_spec = graph_spec_from_options(&options);
+        input.refine_spec = refine_spec_from_options(&options);
+        input.seed = options.seed;
+        status = cg_internal_pairs_run(&input, result);
+        memo_free(&oracle.memo);
+        free(forms);
+        if (status != CG_OK) goto done;
+    }
     result->oov_count = cg_oov_report_count(oov);
     if (result->oov_count > 0) {
         result->oov = (cg_oov_row *)calloc(result->oov_count, sizeof(*result->oov));
@@ -697,9 +920,23 @@ done:
     return status;
 }
 
+cg_status cg_detect(cg_context *ctx, const cg_records *records, const cg_options *options_in, cg_result **out) {
+    return detect_impl(ctx, records, options_in, NULL, out);
+}
+
+cg_status cg_detect_with_pairs(cg_context *ctx, const cg_records *records, const cg_options *options_in, const cg_pairs_spec *spec, cg_result **out) {
+    return detect_impl(ctx, records, options_in, spec, out);
+}
+
 void cg_result_free(cg_result *result) {
     size_t i;
     if (result == NULL) return;
+    for (i = 0; i < result->pair_count; i++) cg_free_pair_row(&result->pairs[i]);
+    free(result->pairs);
+    if (result->morpheme_ids != NULL) {
+        for (i = 0; i < result->row_count; i++) free(result->morpheme_ids[i]);
+        free(result->morpheme_ids);
+    }
     for (i = 0; i < result->row_count; i++) cg_free_sidecar_row(&result->rows[i]);
     free(result->rows);
     for (i = 0; i < result->oov_count; i++) cg_free_oov_row(&result->oov[i]);

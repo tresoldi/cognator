@@ -112,6 +112,7 @@ add_library(cognator
     src/context.c
     src/data.c
     src/detect.c
+    src/pairs.c
     src/eval.c
     src/align.c
     src/graph.c
@@ -245,6 +246,10 @@ if(COGNATOR_BUILD_TESTS)
     add_executable(test_detect tests/c/test_detect.c)
     target_link_libraries(test_detect PRIVATE cognator::cognator)
     add_test(NAME detect COMMAND test_detect)
+    add_executable(test_pairs tests/c/test_pairs.c)
+    target_link_libraries(test_pairs PRIVATE cognator::cognator)
+    add_test(NAME pairs COMMAND test_pairs
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/linguistic/partial_cognacy_compounds.tsv)
     add_executable(test_eval tests/c/test_eval.c)
     target_link_libraries(test_eval PRIVATE cognator::cognator)
     add_test(NAME eval COMMAND test_eval)
@@ -276,6 +281,12 @@ if(COGNATOR_BUILD_TESTS)
                 -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
                 -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_cli_detect
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_cli_detect.cmake)
+        add_test(NAME cli_pairs
+            COMMAND ${CMAKE_COMMAND}
+                -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/linguistic/partial_cognacy_compounds.tsv
+                -DTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_cli_pairs
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/c/test_cli_pairs.cmake)
         add_test(NAME cli_eval
             COMMAND ${CMAKE_COMMAND}
                 -DCOGNATOR_CLI=$<TARGET_FILE:cognator_cli>

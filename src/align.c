@@ -1,3 +1,4 @@
+#include "internal/align.h"
 #include "internal/context.h"
 #include "internal/data.h"
 
@@ -499,6 +500,88 @@ static cg_status combined_distance_generic(
     return CG_OK;
 }
 
+/* The three alignment views behind the combined distance, each normalized the
+ * way its own distance is, plus the two distances the pipeline actually uses.
+ * `global` is bit-for-bit what distance_generic returns and `combined` what
+ * combined_distance_generic returns: the same calls, in the same order, with
+ * the same arithmetic, so a pair export reports the number clustering used.
+ * `local` and `overlap` are each 1 - 2s/(aa+bb) clamped to [0, 1]; they are
+ * reported for reading, and combined is the clamped mean of the *unclamped*
+ * three, which is why it is not always the mean of the reported ones. */
+static cg_status components_generic(
+    const char *const *source,
+    size_t source_count,
+    const char *const *target,
+    size_t target_count,
+    cg_score_fn score,
+    void *user,
+    cg_internal_components *out
+) {
+    cg_alignment *alignment = NULL;
+    double local = 0.0;
+    double overlap = 0.0;
+    double aa = 0.0;
+    double bb = 0.0;
+    cg_status status;
+
+    if (out == NULL) {
+        return CG_ERR_INVALID_ARGUMENT;
+    }
+    if (source_count == 0 && target_count == 0) {
+        *out = (cg_internal_components){0.0, 0.0, 0.0, 0.0};
+        return CG_OK;
+    }
+    if (source_count == 0 || target_count == 0) {
+        *out = (cg_internal_components){1.0, 1.0, 1.0, 1.0};
+        return CG_OK;
+    }
+    status = needleman_wunsch_generic(source, source_count, target, target_count, score, user, &alignment);
+    if (status == CG_OK) {
+        status = local_score_generic(source, source_count, target, target_count, score, user, &local);
+    }
+    if (status == CG_OK) {
+        status = overlap_score_generic(source, source_count, target, target_count, score, user, &overlap);
+    }
+    if (status == CG_OK) {
+        status = self_score(source, source_count, score, user, &aa);
+    }
+    if (status == CG_OK) {
+        status = self_score(target, target_count, score, user, &bb);
+    }
+    if (status != CG_OK) {
+        cg_alignment_free(alignment);
+        return status;
+    }
+    {
+        double denom1 = aa + bb;
+        double denom3 = 3.0 * (aa + bb);
+        double g;
+        double l;
+        double o;
+        double c;
+        if (denom1 <= 0.0) {
+            g = 1.0;
+            l = 1.0;
+            o = 1.0;
+        } else {
+            g = 1.0 - (2.0 * alignment->score) / denom1;
+            l = 1.0 - (2.0 * local) / denom1;
+            o = 1.0 - (2.0 * overlap) / denom1;
+        }
+        if (denom3 <= 0.0) {
+            c = 1.0;
+        } else {
+            c = 1.0 - (2.0 * (alignment->score + local + overlap)) / denom3;
+        }
+        out->global = g < 0.0 ? 0.0 : (g > 1.0 ? 1.0 : g);
+        out->local = l < 0.0 ? 0.0 : (l > 1.0 ? 1.0 : l);
+        out->overlap = o < 0.0 ? 0.0 : (o > 1.0 ? 1.0 : o);
+        out->combined = c < 0.0 ? 0.0 : (c > 1.0 ? 1.0 : c);
+    }
+    cg_alignment_free(alignment);
+    return CG_OK;
+}
+
 void cg_alignment_free(cg_alignment *alignment) {
     if (alignment == NULL) {
         return;
@@ -648,4 +731,16 @@ cg_status cg_internal_distance_combined(
     double *out
 ) {
     return combined_distance_generic(source, source_count, target, target_count, score, user, out);
+}
+
+cg_status cg_internal_distance_components(
+    const char *const *source,
+    size_t source_count,
+    const char *const *target,
+    size_t target_count,
+    cg_score_fn score,
+    void *user,
+    cg_internal_components *out
+) {
+    return components_generic(source, source_count, target, target_count, score, user, out);
 }

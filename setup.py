@@ -78,6 +78,7 @@ sources = [
     ROOT / "src" / "context.c",
     ROOT / "src" / "data.c",
     ROOT / "src" / "detect.c",
+    ROOT / "src" / "pairs.c",
     ROOT / "src" / "eval.c",
     ROOT / "src" / "align.c",
     ROOT / "src" / "graph.c",

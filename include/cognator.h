@@ -199,6 +199,61 @@ typedef struct cg_eval_result {
     double f1;
 } cg_eval_result;
 
+/* Pairwise export: q(pairs), the proposal mass a downstream correspondence
+ * model may reweight. Not cognacy, and not evidence -- see docs/pairs.md.
+ *
+ * Added beside the existing API without changing any existing struct, enum
+ * or signature, so CG_ABI_VERSION is unchanged: these are new symbols only. */
+#define CG_PAIRS_NONE 0
+#define CG_PAIRS_WORDS 1
+#define CG_PAIRS_MORPHEMES 2
+
+/* Where a pair's weight was read: which background sample it was compared to.
+ * See docs/pairs.md for the widening rule. */
+#define CG_NULL_STRATUM 0     /* same lect pair, same length bins */
+#define CG_NULL_LECT_PAIR 1   /* same lect pair, any length (stratum too small) */
+#define CG_NULL_SPARSE 2      /* same lect pair, fewer than min_null pairs */
+#define CG_NULL_NONE 3        /* no cross-concept pair at all; weight is 0 */
+
+typedef struct cg_pairs_spec {
+    int unit;                 /* CG_PAIRS_WORDS or CG_PAIRS_MORPHEMES */
+    int null_samples;         /* max null pairs per stratum; <= 0 means 256 */
+    int min_null;             /* smallest stratum used as is; <= 0 means 20 */
+    uint64_t null_seed;       /* seed of the null sample; 0 means 1 */
+    int morpheme_clusters;    /* morpheme unit only: cluster morpheme nodes */
+} cg_pairs_spec;
+
+typedef struct cg_pair_row {
+    const char *form_a;       /* the earlier of the two rows in the input */
+    uint64_t morph_a;         /* 0-based morpheme index; 0 for the word unit */
+    const char *form_b;
+    uint64_t morph_b;
+    double weight;            /* 1 - background-match rate, in [0, 1] */
+    double distance;          /* the distance clustering uses */
+    double global_distance;   /* alignment components, each in [0, 1] */
+    double local_distance;
+    double overlap_distance;
+    uint64_t null_count;      /* size of the null sample the weight was read on */
+    int null_level;           /* CG_NULL_* */
+} cg_pair_row;
+
+typedef struct cg_pairs_summary {
+    int unit;
+    uint64_t pair_count;
+    uint64_t strata;          /* (lect pair, length bin pair) null samples drawn */
+    uint64_t null_pairs;      /* distances computed for all null samples */
+    uint64_t level_counts[4]; /* pairs by CG_NULL_* level */
+    int null_samples;
+    int min_null;
+    uint64_t null_seed;
+    double mean_weight;
+    uint64_t weight_ge_050;
+    uint64_t weight_ge_095;
+    double threshold;         /* the word-level resolved threshold */
+    double morpheme_threshold;/* morpheme clustering threshold, or 0 if not run */
+    uint64_t morpheme_count;  /* morpheme nodes (= forms for the word unit) */
+} cg_pairs_summary;
+
 CG_API const char *cg_version_string(void);
 CG_API int cg_version_major(void);
 CG_API int cg_version_minor(void);
@@ -268,6 +323,17 @@ CG_API cg_status cg_detect(
     const cg_options *options,
     cg_result **out
 );
+CG_API void cg_pairs_spec_init_defaults(cg_pairs_spec *spec);
+/* cg_detect, plus the pairwise export described by spec. Clusters and sidecar
+ * rows are exactly those cg_detect returns for the same options; spec NULL or
+ * unit CG_PAIRS_NONE is cg_detect. */
+CG_API cg_status cg_detect_with_pairs(
+    cg_context *ctx,
+    const cg_records *records,
+    const cg_options *options,
+    const cg_pairs_spec *spec,
+    cg_result **out
+);
 CG_API void cg_result_free(cg_result *result);
 CG_API uint64_t cg_result_row_count(const cg_result *result);
 /* Borrowed; valid until cg_result_free(result). */
@@ -283,6 +349,27 @@ CG_API const cg_oov_row *cg_result_oov_at(const cg_result *result, uint64_t inde
 CG_API cg_status cg_oov_row_copy(const cg_oov_row *row, cg_oov_row *out);
 CG_API void cg_oov_row_clear(cg_oov_row *row);
 CG_API cg_status cg_write_sidecar(const char *path, const cg_result *result);
+/* Pairs, when the result came from cg_detect_with_pairs; 0 otherwise. */
+CG_API uint64_t cg_result_pair_count(const cg_result *result);
+/* Borrowed; valid until cg_result_free(result). */
+CG_API const cg_pair_row *cg_result_pair_at(const cg_result *result, uint64_t index);
+/* Deep copy of every pair row; release with cg_pair_rows_free. */
+CG_API cg_status cg_result_pairs_copy(const cg_result *result, cg_pair_row **rows_out, uint64_t *count_out);
+CG_API void cg_pair_rows_free(cg_pair_row *rows, uint64_t count);
+CG_API cg_status cg_result_pairs_summary(const cg_result *result, cg_pairs_summary *out);
+/* Space-separated morpheme cluster ids of a sidecar row ('-' for a morpheme in
+ * no cross-lect set), or NULL when morpheme clusters were not computed.
+ * Borrowed; valid until cg_result_free(result). */
+CG_API const char *cg_result_morpheme_ids_at(const cg_result *result, uint64_t index);
+/* The pair export as text: TSV, or the q_pairs JSON document. Owned; release
+ * with cg_string_free. */
+CG_API cg_status cg_result_pairs_tsv(const cg_result *result, char **out);
+CG_API cg_status cg_result_pairs_json(const cg_result *result, char **out);
+/* json nonzero writes the q_pairs document, zero the TSV. */
+CG_API cg_status cg_write_pairs(const char *path, const cg_result *result, int json);
+/* The sidecar with a trailing Cognator_Morpheme_IDs column. */
+CG_API cg_status cg_write_sidecar_morphemes(const char *path, const cg_result *result);
+
 CG_API cg_status cg_write_oov_report(const char *path, const cg_result *result);
 CG_API cg_status cg_eval_b_cubed(
     const char *pred_path,

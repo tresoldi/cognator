@@ -11,6 +11,14 @@ They are not replacements for full CoreCog benchmarking.
 - `latin_romance_extended.tsv` widens that check to four lects and six concepts,
   including stronger Romance reductions and two deliberate Latin/non-Latin
   lexical splits.
+- `partial_cognacy_compounds.tsv` is synthetic, with `+` morpheme boundaries:
+  three lects (Ala, Bera, Cumo; Bera voices stops, Cumo raises mid vowels),
+  six compounds whose first morpheme is cognate in all three and whose second
+  is replaced in Cumo, six roots carrying the same two-segment suffix `n a`
+  in every lect, and two words without boundaries. `test_pairs` and
+  `cli_pairs` use it for the pairwise export (`docs/pairs.md`): shared
+  morphemes strong, replaced ones weak, the shared suffix penalised against an
+  identical root at the same distance.
 
 The CTest `linguistic_smoke` test runs the C CLI `detect` command on both
 fixtures, then scores the sidecars with the C CLI `eval` command. These checks

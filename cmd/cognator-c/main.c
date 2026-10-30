@@ -15,6 +15,12 @@ typedef struct detect_args {
     int max_lects;
     uint64_t max_pairs;
     cg_options options;
+    /* Pairwise export; all unset means a plain cg_detect run. */
+    const char *pairs_out;
+    const char *pairs_format;
+    const char *pairs_unit;
+    int morpheme_ids;
+    cg_pairs_spec pairs;
 } detect_args;
 
 typedef struct sweep_args {
@@ -112,7 +118,15 @@ static void detect_usage(FILE *stream) {
             "  --max-pairs N\n"
             "  --dirichlet-concentration X\n"
             "  --dirichlet-sharpness X\n"
-            "  --dirichlet-scale NAME\n");
+            "  --dirichlet-scale NAME\n\n"
+            "pairwise export (q(pairs); see docs/pairs.md):\n"
+            "  --pairs-out PATH        write weighted pairs; JSON q_pairs if PATH ends in .json\n"
+            "  --pairs-format NAME     tsv | json, overriding the extension\n"
+            "  --pairs-unit NAME       words (default) | morphemes (split at '+')\n"
+            "  --morpheme-ids          add Cognator_Morpheme_IDs to the sidecar (morphemes)\n"
+            "  --null-samples N        null pairs drawn per stratum (default 256)\n"
+            "  --null-min N            smallest stratum used before widening (default 20)\n"
+            "  --null-seed N           seed of the null sample (default 1)\n");
 }
 
 static void sweep_usage(FILE *stream) {
@@ -458,6 +472,12 @@ static int parse_detect_args(int argc, char **argv, detect_args *args) {
     args->max_forms = 0;
     args->max_lects = 0;
     args->max_pairs = 0;
+    args->pairs_out = NULL;
+    args->pairs_format = NULL;
+    args->pairs_unit = NULL;
+    args->morpheme_ids = 0;
+    cg_pairs_spec_init_defaults(&args->pairs);
+    args->pairs.unit = CG_PAIRS_NONE;
     if (!scan_preset(argc, argv, &args->options)) {
         return 0;
     }
@@ -567,6 +587,31 @@ static int parse_detect_args(int argc, char **argv, detect_args *args) {
             if (!set_double_option("--dirichlet-sharpness", value, &args->options.dirichlet_sharpness)) return 0;
         } else if ((value = detect_arg_value(argc, argv, &i, arg, "--dirichlet-scale")) != NULL) {
             args->options.dirichlet_scale_mode = value;
+        } else if ((value = detect_arg_value(argc, argv, &i, arg, "--pairs-out")) != NULL) {
+            args->pairs_out = value;
+        } else if ((value = detect_arg_value(argc, argv, &i, arg, "--pairs-format")) != NULL) {
+            if (strcmp(value, "tsv") != 0 && strcmp(value, "json") != 0) {
+                fprintf(stderr, "detect: --pairs-format must be tsv or json: %s\n", value);
+                return 0;
+            }
+            args->pairs_format = value;
+        } else if ((value = detect_arg_value(argc, argv, &i, arg, "--pairs-unit")) != NULL) {
+            if (strcmp(value, "words") != 0 && strcmp(value, "morphemes") != 0) {
+                fprintf(stderr, "detect: --pairs-unit must be words or morphemes: %s\n", value);
+                return 0;
+            }
+            args->pairs_unit = value;
+        } else if (strcmp(arg, "--morpheme-ids") == 0) {
+            args->morpheme_ids = 1;
+        } else if ((value = detect_arg_value(argc, argv, &i, arg, "--null-samples")) != NULL) {
+            if (!set_nonnegative_int_option("--null-samples", value, &args->pairs.null_samples)) return 0;
+        } else if ((value = detect_arg_value(argc, argv, &i, arg, "--null-min")) != NULL) {
+            if (!set_nonnegative_int_option("--null-min", value, &args->pairs.min_null)) return 0;
+        } else if ((value = detect_arg_value(argc, argv, &i, arg, "--null-seed")) != NULL) {
+            if (!parse_uint64_value(value, &args->pairs.null_seed)) {
+                fprintf(stderr, "detect: invalid unsigned integer for --null-seed: %s\n", value);
+                return 0;
+            }
         } else if (is_flag(arg, "--merkmal-dir")) {
             value = detect_arg_value(argc, argv, &i, arg, "--merkmal-dir");
             if (value == NULL) return 0;
@@ -581,7 +626,26 @@ static int parse_detect_args(int argc, char **argv, detect_args *args) {
         detect_usage(stderr);
         return 0;
     }
+    if (args->morpheme_ids && args->pairs_unit != NULL && strcmp(args->pairs_unit, "morphemes") != 0) {
+        fprintf(stderr, "detect: --morpheme-ids clusters morphemes and needs --pairs-unit morphemes\n");
+        return 0;
+    }
+    if (args->pairs_out == NULL && (args->pairs_format != NULL || (args->pairs_unit != NULL && !args->morpheme_ids))) {
+        fprintf(stderr, "detect: --pairs-format and --pairs-unit need --pairs-out\n");
+        return 0;
+    }
+    if (args->pairs_out != NULL || args->morpheme_ids) {
+        int morphemes = args->morpheme_ids || (args->pairs_unit != NULL && strcmp(args->pairs_unit, "morphemes") == 0);
+        args->pairs.unit = morphemes ? CG_PAIRS_MORPHEMES : CG_PAIRS_WORDS;
+        args->pairs.morpheme_clusters = args->morpheme_ids;
+    }
     return 1;
+}
+
+static int ends_with(const char *s, const char *suffix) {
+    size_t n = strlen(s);
+    size_t m = strlen(suffix);
+    return n >= m && strcmp(s + n - m, suffix) == 0;
 }
 
 static int apply_common_run_option(const char *command, int argc, char **argv, int *i, const char *arg, cg_options *options, int *matched) {
@@ -840,12 +904,16 @@ static int detect_cmd(int argc, char **argv) {
             }
         }
     }
-    status = cg_detect(ctx, records, &args.options, &result);
+    if (args.pairs.unit != CG_PAIRS_NONE) {
+        status = cg_detect_with_pairs(ctx, records, &args.options, &args.pairs, &result);
+    } else {
+        status = cg_detect(ctx, records, &args.options, &result);
+    }
     if (status != CG_OK) {
         fprintf(stderr, "detect: pipeline: %s\n", cg_status_string(status));
         goto done;
     }
-    status = cg_write_sidecar(args.out, result);
+    status = args.morpheme_ids ? cg_write_sidecar_morphemes(args.out, result) : cg_write_sidecar(args.out, result);
     if (status != CG_OK) {
         fprintf(stderr, "detect: write %s: %s\n", args.out, cg_status_string(status));
         goto done;
@@ -868,6 +936,25 @@ static int detect_cmd(int argc, char **argv) {
             (unsigned long long)cg_result_oov_count(result),
             cg_merkmal_version(),
             cg_merkmal_commit());
+    if (args.pairs_out != NULL) {
+        int json = args.pairs_format != NULL ? strcmp(args.pairs_format, "json") == 0 : ends_with(args.pairs_out, ".json");
+        cg_pairs_summary summary;
+        status = cg_write_pairs(args.pairs_out, result, json);
+        if (status != CG_OK) {
+            fprintf(stderr, "detect: write %s: %s\n", args.pairs_out, cg_status_string(status));
+            goto done;
+        }
+        if (cg_result_pairs_summary(result, &summary) == CG_OK) {
+            fprintf(stderr,
+                    "detect: %llu %s pairs, mean weight %.3f, %llu null pairs in %llu strata (seed %llu)\n",
+                    (unsigned long long)summary.pair_count,
+                    summary.unit == CG_PAIRS_MORPHEMES ? "morpheme" : "word",
+                    summary.mean_weight,
+                    (unsigned long long)summary.null_pairs,
+                    (unsigned long long)summary.strata,
+                    (unsigned long long)summary.null_seed);
+        }
+    }
     exit_code = 0;
 
 done:

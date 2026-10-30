@@ -409,15 +409,19 @@ cg_status cg_records_filter_family(
     return CG_OK;
 }
 
-cg_status cg_write_sidecar_rows(
+/* extra_header NULL writes the sidecar exactly as it has always been written;
+ * otherwise one more column, extra_values[i] per row ("" for NULL). */
+cg_status cg_internal_write_sidecar_rows(
     const char *path,
     const cg_sidecar_row *rows,
-    uint64_t count
+    uint64_t count,
+    const char *extra_header,
+    const char *const *extra_values
 ) {
     FILE *f;
     uint64_t i;
 
-    if (path == NULL || (rows == NULL && count > 0)) {
+    if (path == NULL || (rows == NULL && count > 0) || (extra_header != NULL && extra_values == NULL && count > 0)) {
         return CG_ERR_INVALID_ARGUMENT;
     }
     f = fopen(path, "wb");
@@ -429,16 +433,19 @@ cg_status cg_write_sidecar_rows(
         "ID\tCognator_ID\tCognator_Confidence\tCognator_Assigned_Support\t"
         "Cognator_Alternative_Support\tCognator_Support_Margin\t"
         "Cognator_Cluster_Size\tCognator_Candidate_Neighbors\t"
-        "Cognator_Bootstrap\tCognator_Bootstrap_Low\tCognator_Bootstrap_High\n"
+        "Cognator_Bootstrap\tCognator_Bootstrap_Low\tCognator_Bootstrap_High%s%s\n",
+        extra_header == NULL ? "" : "\t",
+        extra_header == NULL ? "" : extra_header
     ) < 0) {
         fclose(f);
         return CG_ERR_IO;
     }
     for (i = 0; i < count; i++) {
         const cg_sidecar_row *row = &rows[i];
+        const char *extra = extra_header == NULL ? NULL : extra_values[i];
         if (fprintf(
             f,
-            "%s\t%s\t%.6f\t%.6f\t%.6f\t%.6f\t%d\t%d\t%.6f\t%.6f\t%.6f\n",
+            "%s\t%s\t%.6f\t%.6f\t%.6f\t%.6f\t%d\t%d\t%.6f\t%.6f\t%.6f%s%s\n",
             row->id == NULL ? "" : row->id,
             row->cognator_id == NULL ? "" : row->cognator_id,
             row->confidence,
@@ -449,11 +456,21 @@ cg_status cg_write_sidecar_rows(
             row->candidate_neighbors,
             row->bootstrap,
             row->bootstrap_low,
-            row->bootstrap_high
+            row->bootstrap_high,
+            extra_header == NULL ? "" : "\t",
+            extra_header == NULL ? "" : (extra == NULL ? "" : extra)
         ) < 0) {
             fclose(f);
             return CG_ERR_IO;
         }
     }
     return fclose(f) == 0 ? CG_OK : CG_ERR_IO;
+}
+
+cg_status cg_write_sidecar_rows(
+    const char *path,
+    const cg_sidecar_row *rows,
+    uint64_t count
+) {
+    return cg_internal_write_sidecar_rows(path, rows, count, NULL, NULL);
 }
